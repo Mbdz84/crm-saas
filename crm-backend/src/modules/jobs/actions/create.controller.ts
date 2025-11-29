@@ -24,7 +24,7 @@ export async function createJob(req: Request, res: Response) {
 
     const jtName = jobTypeId
       ? await prisma.jobType.findUnique({ where: { id: jobTypeId } })
-          .then((jt) => jt?.name || "")
+          .then((jt: any) => jt?.name || "")
       : "";
 
     const finalTitle =
