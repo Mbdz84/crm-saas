@@ -67,7 +67,7 @@ export async function closeJob(req: Request, res: Response) {
     if (!closedStatus)
       return res.status(400).json({ error: "Closed status not found" });
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const newStatusId = req.body.statusId ?? job.statusId;
       const isFinalClose = newStatusId === closedStatus.id;
 
