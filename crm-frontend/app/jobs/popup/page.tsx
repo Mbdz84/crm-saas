@@ -5,5 +5,5 @@ export default function ModalJobPage({
 }: {
   params: { shortId: string };
 }) {
-  return <JobView jobId={params.shortId} modal />;
+  return <JobView shortId={params.shortId} modal />;
 }
