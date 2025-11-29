@@ -24,7 +24,7 @@ export function calculateTotals(rows: any[]) {
     sumCheck: 0,
   };
 
-  rows.forEach((job) => {
+  rows.forEach((job: any) => {
     const c = job.closing;
     if (!c) return;
 
