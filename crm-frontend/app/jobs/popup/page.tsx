@@ -1,4 +1,4 @@
-import JobView from "../../_components/JobView";
+import JobView from "./_components/JobView";
 
 export default function ModalJobPage({
   params,
