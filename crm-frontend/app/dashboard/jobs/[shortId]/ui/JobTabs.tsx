@@ -2,7 +2,7 @@
 
 import { useJob } from "../state/JobProvider";
 import OverviewTab from "./OverviewTab";
-import LogTab from "./LogTab";
+import LogTab from "./LogsTab";
 import RecordingsTab from "./RecordingsTab";
 
 export default function JobTabs() {
