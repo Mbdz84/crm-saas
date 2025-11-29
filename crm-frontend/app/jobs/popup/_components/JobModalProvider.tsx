@@ -1,6 +1,6 @@
 "use client";
 
-import { JobProvider } from "../[shortId]/state/JobProvider";
+import { JobProvider } from "../../../dashboard/jobs/[shortId]/state/JobProvider";
 
 // ⚠️ Fake params provider used only for modal popups
 import { createContext, useContext } from "react";
