@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useJob } from "../../state/JobProvider";
 import { useJobActions } from "../../state/useJobActions";
 import PaymentBlocks from "./PaymentBlocks";
@@ -46,7 +47,7 @@ export default function ClosingPanel() {
     editableJob.statusId ?? job.statusId ?? undefined;
 
   const currentStatusName =
-    statuses.find((s) => s.id === currentStatusId)?.name ??
+    statuses.find((s: any) => s.id === currentStatusId)?.name ??
     editableJob.jobStatus?.name ??
     editableJob.status ??
     job.jobStatus?.name ??
