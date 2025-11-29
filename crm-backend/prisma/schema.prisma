@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//
+// ─────────────────────────────────────────────
+// MODEL company
+// ─────────────────────────────────────────────
+//
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  domain    String?
+  phone     String?
+  address   String?
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // JSON settings for technician SMS template
+  smsSettings Json? // ← NEW
+
+  // Relations
+  users        User[]
+  jobs         Job[]
+  jobTypes     JobType[]
+  leadSources  LeadSource[]
+  callSessions JobCallSession[] @relation("CompanyCallSessions")
+}
+
+//
+// ─────────────────────────────────────────────
+// user model
+// ─────────────────────────────────────────────
+//
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  phone     String?
+  active    Boolean  @default(true)
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  // Technician Assigned Jobs
+  technicianJobs    Job[]        @relation("TechnicianJobs")
+  jobClosingsClosed JobClosing[] @relation("JobClosingClosedBy")
+
+  callSessions JobCallSession[] @relation("UserCallSessions")
+  maskedCalls  Boolean          @default(false)
+  logs         JobLog[] // 🔥 NEW: user → job logs
+}
+
+//
+// ─────────────────────────────────────────────
+// JOB TYPES
+// ─────────────────────────────────────────────
+//
+model JobType {
+  id     String  @id @default(cuid())
+  name   String
+  active Boolean @default(true)
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  jobs Job[]
+}
+
+//
+// ─────────────────────────────────────────────
+// LEAD SOURCES
+// ─────────────────────────────────────────────
+//
+model LeadSource {
+  id   String @id @default(cuid())
+  name String
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  jobs Job[]
+}
+
+//
+// ─────────────────────────────────────────────
+// JOB MODEL
+// ─────────────────────────────────────────────
+//
+model Job {
+  id              String  @id @default(cuid())
+  shortId         String  @unique
+  title           String
+  description     String?
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?
+
+  jobTypeId    String?
+  technicianId String?
+  sourceId     String?
+  statusId     String?
+  status       String    @default("Accepted")
+  scheduledAt  DateTime?
+  companyId    String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  jobType    JobType?    @relation(fields: [jobTypeId], references: [id])
+  technician User?       @relation("TechnicianJobs", fields: [technicianId], references: [id])
+  source     LeadSource? @relation(fields: [sourceId], references: [id])
+  company    Company     @relation(fields: [companyId], references: [id])
+
+  jobStatus       JobStatus? @relation("JobStatusRelation", fields: [statusId], references: [id])
+  closedAt        DateTime?
+  isClosingLocked Boolean    @default(false)
+
+  closing      JobClosing?
+  logs         JobLog[]
+  callSessions JobCallSession[]
+  records      JobRecord[]
+}
+
+//
+// ─────────────────────────────────────────────
+// JOB closing
+// ─────────────────────────────────────────────
+//
+model JobClosing {
+  id String @id @default(cuid())
+
+  // link to job
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id])
+
+  // who closed it
+  closedAt       DateTime @default(now())
+  closedByUserId String?
+  closedByUser   User?    @relation("JobClosingClosedBy", fields: [closedByUserId], references: [id])
+
+  // invoice number (optional, for your report)
+  invoiceNumber String?
+
+  // payments snapshot (your PaymentRow[])
+  payments Json
+
+  // core money fields
+  totalAmount     Decimal  @db.Decimal(10, 2)
+  totalCcFee      Decimal  @db.Decimal(10, 2)
+  ccFeePercentAvg Decimal? @db.Decimal(5, 2)
+
+  techParts    Decimal @db.Decimal(10, 2)
+  leadParts    Decimal @db.Decimal(10, 2)
+  companyParts Decimal @db.Decimal(10, 2)
+  totalParts   Decimal @db.Decimal(10, 2)
+
+  adjustedTotal Decimal @db.Decimal(10, 2)
+
+  // percentages
+  techPercent    Decimal @db.Decimal(5, 2)
+  leadPercent    Decimal @db.Decimal(5, 2)
+  companyPercent Decimal @db.Decimal(5, 2)
+
+  // v1.1 + v1.2 + v1.3 toggles
+  excludeTechFromParts  Boolean @default(false)
+  techPaysAdditionalFee Boolean @default(false)
+  leadAdditionalFee     Decimal @db.Decimal(10, 2)
+  leadOwnedByCompany    Boolean @default(false)
+
+  // profits (display + base)
+  techProfit           Decimal @db.Decimal(10, 2)
+  leadProfit           Decimal @db.Decimal(10, 2)
+  companyProfitBase    Decimal @db.Decimal(10, 2)
+  companyProfitDisplay Decimal @db.Decimal(10, 2)
+
+  // balances
+  techBalance    Decimal @db.Decimal(10, 2)
+  leadBalance    Decimal @db.Decimal(10, 2)
+  companyBalance Decimal @db.Decimal(10, 2)
+
+  // Financial check
+  sumCheck Decimal @db.Decimal(10, 4)
+
+  // new payment totals
+  cashTotal   Decimal @db.Decimal(10, 2) @default(0)
+  creditTotal Decimal @db.Decimal(10, 2) @default(0)
+  checkTotal  Decimal @db.Decimal(10, 2) @default(0)
+  zelleTotal  Decimal @db.Decimal(10, 2) @default(0)
+  createdAt DateTime @default(now())
+}
+
+//
+// ─────────────────────────────────────────────
+// JobLog - log teb inside job page
+// ─────────────────────────────────────────────
+//
+model JobLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  type      String
+  text      String
+
+  // NEW — who created the log
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id])
+}
+
+//
+// ─────────────────────────────────────────────
+// JOB STATUS LIST
+// ─────────────────────────────────────────────
+//
+model JobStatus {
+  id     String  @id @default(cuid())
+  name   String
+  order  Int     @default(0)
+  active Boolean @default(true)
+
+  color  String  @default("#6b7280") // NEW
+  locked Boolean @default(false) // NEW
+
+  jobs Job[] @relation("JobStatusRelation")
+}
+
+//
+// ─────────────────────────────────────────────
+// TWILIO CALL RECORDING TO TECHS
+// ─────────────────────────────────────────────
+//
+model JobCallSession {
+  id           String @id @default(cuid())
+  jobId        String
+  job          Job    @relation(fields: [jobId], references: [id])
+  technicianId String
+
+  customerPhone String
+  extension     String
+  technician    User    @relation("UserCallSessions", fields: [technicianId], references: [id])
+  company       Company @relation("CompanyCallSessions", fields: [companyId], references: [id])
+
+  companyId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([jobId])
+  @@index([technicianId])
+  @@index([customerPhone])
+  @@index([companyId, extension])
+}
+
+//
+// ─────────────────────────────────────────────
+// TWILIO JOB CALL RECORDINGS
+// ─────────────────────────────────────────────
+//
+model JobRecord {
+  id           String   @id @default(cuid())
+  jobId        String
+  callSid      String
+  recordingSid String
+  from         String?
+  to           String?
+  url          String
+  parentCallSid String?
+ 
+  // NEW FIELDS NEEDED FOR UI + TWILIO
+  duration     Int?       // Recording duration
+  status       String?    // completed | busy | failed | no-answer | ringing | queued
+  transcript   String?    // optional text transcript
+
+  createdAt    DateTime @default(now())
+
+  job Job @relation(fields: [jobId], references: [id])
+}

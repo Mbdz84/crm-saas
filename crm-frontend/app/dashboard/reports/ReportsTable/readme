@@ -1,0 +1,18 @@
+app/dashboard/reports/ReportsTable/
+│
+├── index.tsx
+│
+├── TableHeader.tsx
+├── TableRow.tsx
+├── TotalsRow.tsx
+│
+├── exports/
+│   ├── exportCSV.ts
+│   ├── exportPDF.ts
+│   └── printTable.ts
+│
+└── utils/
+    ├── money.ts
+    ├── balanceColor.ts
+    ├── totalsCalculator.ts
+    └── columnDefs.ts
