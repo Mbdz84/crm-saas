@@ -140,7 +140,7 @@ export default function CreateJobPage() {
           `${form.customerName}${
             form.jobTypeId
               ? " - " +
-                (jobTypes.find((jt) => jt.id === form.jobTypeId)?.name || "")
+                (jobTypes.find((jt: any) => jt.id === form.jobTypeId)?.name || "")
               : ""
           }`,
         description: form.description,
@@ -287,7 +287,7 @@ export default function CreateJobPage() {
                   onChange={handleChange}
                 >
                   <option value="">Select job type</option>
-                  {jobTypes.map((jt) => (
+                  {jobTypes.map((jt: any) => (
                     <option key={jt.id} value={jt.id}>
                       {jt.name}
                     </option>
