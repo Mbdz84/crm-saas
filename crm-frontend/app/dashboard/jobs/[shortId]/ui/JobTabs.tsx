@@ -2,7 +2,7 @@
 
 import { useJob } from "../state/JobProvider";
 import OverviewTab from "./OverviewTab";
-import LogTab from "./LogsTab";
+import LogsTab from "./LogsTab";
 import RecordingsTab from "./RecordingsTab";
 
 export default function JobTabs() {
@@ -36,7 +36,7 @@ export default function JobTabs() {
 
       {/* ACTIVE TAB */}
       {tab === "overview" && <OverviewTab />}
-      {tab === "log" && <LogTab />}
+      {tab === "log" && <LogsTab />}
       {tab === "recordings" && <RecordingsTab />}
     </div>
   );
