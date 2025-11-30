@@ -14,33 +14,39 @@ import {
 const router = Router();
 
 /* ============================================================
-   FIX: Always put literal routes BEFORE parameter routes
+   IMPORTANT: Literal routes BEFORE any :shortId routes
 ============================================================ */
 
-/* ------------ PARSE SMS + CREATE PARSED JOB --------------- */
+/* ------------ PARSE SMS (PRIMARY ROUTE) -------------------- */
 router.post("/parse/sms", ParseController.parseJobFromText);
+
+/* ------------ PARSE ALIAS: /parse (fallback) --------------- */
+/* This allows the frontend to call /jobs/parse safely */
+router.post("/parse", ParseController.parseJobFromText);
+
+/* ------------ CREATE JOB FROM PARSED ----------------------- */
 router.post("/create/from-parsed", CreateController.createJobFromParsed);
 
-/* --------------- GET ALL JOBS ----------------------------- */
+/* --------------- GET ALL JOBS ------------------------------ */
 router.get("/", GetController.getJobs);
 
-/* --------------- CREATE JOB ------------------------------- */
+/* --------------- CREATE JOB -------------------------------- */
 router.post("/", CreateController.createJob);
 
-/* --------------- EXTENSIONS ------------------------------- */
+/* --------------- EXTENSIONS -------------------------------- */
 router.post("/:shortId/refresh-extension", ExtensionController.refreshExtension);
 
-/* --------------- CLOSING / REOPEN -------------------------- */
+/* --------------- CLOSING / REOPEN --------------------------- */
 router.post("/:shortId/close", CloseController.closeJob);
 router.post("/:shortId/reopen", ReopenController.reopenJob);
 
-/* --------------- SMS --------------------------------------- */
+/* --------------- SMS ---------------------------------------- */
 router.post("/:shortId/resend-sms", SmsController.resendJobSms);
 
-/* --------------- RECORDINGS -------------------------------- */
+/* --------------- RECORDINGS --------------------------------- */
 router.get("/:shortId/recordings", RecordingsController.getJobRecordings);
 
-/* --------------- GET / UPDATE SINGLE JOB ------------------- */
+/* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);
 router.put("/:shortId", UpdateController.updateJobByShortId);
 
