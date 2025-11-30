@@ -62,12 +62,12 @@ export async function login(req: Request, res: Response) {
       req.hostname.startsWith("192.168.");
 
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: !isLocal,        // HTTPS only in production
-      sameSite: isLocal ? "lax" : "none",
-      domain: isLocal ? undefined : ".moriel.work", // shared across subdomains
-      path: "/",
-    });
+  httpOnly: true,
+  secure: true,          // required on HTTPS
+  sameSite: "none",      // required for cross-domain cookies
+  path: "/",
+  domain: "moriel.work", // allow both app.moriel.work + api.moriel.work
+});
 
     return res.json({ message: "Logged in", user });
   } catch (err) {
