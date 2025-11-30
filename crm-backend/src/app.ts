@@ -43,10 +43,17 @@ app.use(cookieParser());
 // CORS
 app.use(
   cors({
-    origin: ["http://localhost:3000"],
+    origin: [
+      "https://app.moriel.work",
+      "https://www.app.moriel.work",
+      "http://localhost:3000"
+    ],
     credentials: true,
   })
 );
+
+// FIX for Cloud Run preflight handling:
+app.options("*", cors());
 
 // logout
 app.use("/logout", logoutRoutes);
