@@ -1,78 +1,71 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
   const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const onSubmit = async (e: any) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    setLoading(true);
+    setError("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // 🔥 VERY IMPORTANT for cookies
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/login`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ email, password }),
+        }
+      );
 
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || "Login failed");
-        setLoading(false);
+        setError(data.error || "Login failed");
         return;
       }
 
-      toast.success("Welcome back!");
-
-      // Redirect to dashboard
-      router.push("/dashboard");
+      // Login success → redirect
+      router.push("/dashboard/jobs");
     } catch (err) {
-      toast.error("Network error");
+      setError("Network error");
+      console.error(err);
     }
-
-    setLoading(false);
-  };
+  }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className="text-sm font-medium">Email</label>
-        <input
-          type="email"
-          required
-          className="w-full border rounded px-3 py-2 mt-1"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="Email"
+        className="w-full border p-2 rounded"
+      />
 
-      <div>
-        <label className="text-sm font-medium">Password</label>
-        <input
-          type="password"
-          required
-          className="w-full border rounded px-3 py-2 mt-1"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+        className="w-full border p-2 rounded"
+      />
+
+      {error && <p className="text-red-600">{error}</p>}
 
       <button
         type="submit"
-        disabled={loading}
-        className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700"
+        className="w-full bg-blue-600 text-white py-2 rounded"
       >
-        {loading ? "Logging in..." : "Login"}
+        Login
       </button>
     </form>
   );
