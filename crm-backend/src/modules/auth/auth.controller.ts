@@ -51,22 +51,24 @@ export async function login(req: Request, res: Response) {
       { expiresIn: "7d" }
     );
 
-    /* --------------------------------------------------------
-       COOKIE CONFIG — WORKS FOR BOTH DEV & PRODUCTION
-    -------------------------------------------------------- */
+/* --------------------------------------------------------
+   COOKIE CONFIG — WORKS FOR BOTH LOCAL & PRODUCTION
+-------------------------------------------------------- */
 
-    const isLocal =
-      req.hostname === "localhost" ||
-      req.hostname.startsWith("127.") ||
-      req.hostname.startsWith("10.") ||
-      req.hostname.startsWith("192.168.");
+// Detect if running on localhost
+const isLocal =
+  req.hostname === "localhost" ||
+  req.hostname.startsWith("127.") ||
+  req.hostname.startsWith("10.") ||
+  req.hostname.startsWith("192.168.") ||
+  process.env.IS_LOCAL === "true"; // optional override
 
-    res.cookie("token", token, {
+res.cookie("token", token, {
   httpOnly: true,
-  secure: true,          // required on HTTPS
-  sameSite: "none",      // required for cross-domain cookies
+  secure: !isLocal,                 // Local → false, Production → true
+  sameSite: isLocal ? "lax" : "none", // Required for cross-domain cookies
+  domain: isLocal ? undefined : ".moriel.work", // Production cookie domain
   path: "/",
-  domain: "moriel.work", // allow both app.moriel.work + api.moriel.work
 });
 
     return res.json({ message: "Logged in", user });
