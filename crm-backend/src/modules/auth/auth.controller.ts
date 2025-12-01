@@ -60,14 +60,13 @@ const isLocal =
   req.hostname === "localhost" ||
   req.hostname.startsWith("127.") ||
   req.hostname.startsWith("10.") ||
-  req.hostname.startsWith("192.168.") ||
-  process.env.IS_LOCAL === "true"; // optional override
+  req.hostname.startsWith("192.168.");
 
 res.cookie("token", token, {
   httpOnly: true,
-  secure: !isLocal,                 // Local → false, Production → true
-  sameSite: isLocal ? "lax" : "none", // Required for cross-domain cookies
-  domain: isLocal ? undefined : ".moriel.work", // Production cookie domain
+  secure: !isLocal,                   // Production → TRUE (required)
+  sameSite: isLocal ? "lax" : "none", // Production → NONE (required for cross-domain)
+  domain: isLocal ? undefined : ".moriel.work", // Production cookie for all subdomains
   path: "/",
 });
 
