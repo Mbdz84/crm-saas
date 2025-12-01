@@ -12,6 +12,8 @@ export default function LogoutPage() {
         method: "POST",
         credentials: "include",
       });
+
+      // Use replace() to avoid going back
       router.replace("/login");
     }
     run();

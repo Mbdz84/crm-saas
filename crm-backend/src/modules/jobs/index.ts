@@ -7,6 +7,7 @@ import * as ReopenController from "./actions/reopen.controller";
 import * as GetController from "./actions/get.controller";
 import * as SmsController from "./actions/sms.controller";
 import * as RecordingsController from "./actions/recordings.controller";
+import { DeleteController } from "./actions/delete.controller";
 
 export {
   ExtensionController,
@@ -18,4 +19,5 @@ export {
   GetController,
   SmsController,
   RecordingsController,
+  DeleteController,
 };

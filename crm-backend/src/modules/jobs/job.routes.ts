@@ -1,4 +1,5 @@
 import { Router } from "express";
+import prisma from "../../prisma/client";
 import {
   ExtensionController,
   ParseController,
@@ -9,6 +10,7 @@ import {
   GetController,
   SmsController,
   RecordingsController,
+  DeleteController,
 } from "./index";
 
 const router = Router();
@@ -24,20 +26,11 @@ router.post("/parse/sms", ParseController.parseJobFromText);
 /* This allows the frontend to call /jobs/parse safely */
 router.post("/parse", ParseController.parseJobFromText);
 
-/* ------------ PARSE SMS (PRIMARY ROUTE) -------------------- */
-router.post("/parse/sms", ParseController.parseJobFromText);
-
-/* ------------ PARSE ALIAS ---------------------------------- */
-router.post("/parse", ParseController.parseJobFromText);
-
 /* ------------ CREATE FROM PARSED (PRIMARY ROUTE) ----------- */
 router.post("/create/from-parsed", CreateController.createJobFromParsed);
 
 /* ------------ ALIAS TO MATCH FRONTEND ---------------------- */
 router.post("/create-from-parse", CreateController.createJobFromParsed);
-
-/* ------------ CREATE JOB FROM PARSED ----------------------- */
-router.post("/create/from-parsed", CreateController.createJobFromParsed);
 
 /* --------------- GET ALL JOBS ------------------------------ */
 router.get("/", GetController.getJobs);
@@ -61,5 +54,14 @@ router.get("/:shortId/recordings", RecordingsController.getJobRecordings);
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);
 router.put("/:shortId", UpdateController.updateJobByShortId);
+
+/* --------------- GET / UPDATE SINGLE JOB -------------------- */
+router.get("/:shortId", GetController.getJobByShortId);
+router.put("/:shortId", UpdateController.updateJobByShortId);
+
+/* --------------- DELETE JOB -------------------- */
+router.delete("/:shortId", DeleteController.deleteJob);
+
+
 
 export default router;

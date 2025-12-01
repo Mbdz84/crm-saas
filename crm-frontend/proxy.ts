@@ -20,7 +20,7 @@ export function proxy(req: NextRequest) {
 
   // Logged in → redirect login → dashboard
   if (token && isLoginPage) {
-    url.pathname = "/jobs";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 

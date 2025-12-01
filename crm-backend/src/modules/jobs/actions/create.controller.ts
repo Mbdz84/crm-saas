@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { generateUniqueShortId } from "../utils/shortId";
-import { defaultSmsSettings } from "../../smsSettings/smsSettings.controller";
 import { sendTechSms } from "./sms.controller";
 
 export async function createJob(req: Request, res: Response) {
