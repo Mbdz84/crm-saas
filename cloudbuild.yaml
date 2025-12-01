@@ -1,0 +1,44 @@
+steps:
+  # ---------------------------------------------------------
+  # 1. BUILD DOCKER IMAGE
+  # ---------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '-t',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/crm-repo/api-moriel-work:$COMMIT_SHA',
+        './crm-backend'
+      ]
+
+  # ---------------------------------------------------------
+  # 2. PUSH DOCKER IMAGE TO ARTIFACT REGISTRY
+  # ---------------------------------------------------------
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/crm-repo/api-moriel-work:$COMMIT_SHA'
+      ]
+
+  # ---------------------------------------------------------
+  # 3. DEPLOY TO CLOUD RUN
+  # ---------------------------------------------------------
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      [
+        'run',
+        'deploy',
+        'api-moriel-work',
+        '--image',
+        'us-central1-docker.pkg.dev/$PROJECT_ID/crm-repo/api-moriel-work:$COMMIT_SHA',
+        '--region',
+        'us-central1',
+        '--platform',
+        'managed',
+        '--allow-unauthenticated'
+      ]
+
+images:
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/crm-repo/api-moriel-work:$COMMIT_SHA'
