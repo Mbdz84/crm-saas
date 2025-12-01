@@ -7,7 +7,8 @@ export function middleware(req: NextRequest) {
   // Public routes
   if (req.nextUrl.pathname.startsWith("/login")) {
     if (token) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      // 🔥 FIX: redirect logged-in users to a REAL page
+      return NextResponse.redirect(new URL("/dashboard/jobs", req.url));
     }
     return NextResponse.next();
   }
