@@ -12,14 +12,10 @@ export default function LogoutPage() {
         method: "POST",
         credentials: "include",
       });
-      router.push("/login");
+      router.replace("/login");
     }
     run();
   }, []);
 
-  return (
-    <div className="p-6">
-      Logging out...
-    </div>
-  );
+  return <div className="p-6">Logging out...</div>;
 }
