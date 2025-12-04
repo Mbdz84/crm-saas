@@ -1,1 +1,38 @@
+# macOS
 .DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Build output
+crm-backend/build/
+crm-frontend/.next/
+crm-frontend/out/
+
+# Prisma migrations auto-build
+crm-backend/prisma/migrations/*
+
+# Env files
+*.env
+*.env.local
+env/
+
+# IDE files
+.vscode/
+.idea/
+
+# Cache
+.next/
+dist/
+tmp/
+*.log
+
+# Uploaded junk
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.gif
