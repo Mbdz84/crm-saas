@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 export default function EditTechModal({ tech, onUpdated }: any) {
   const [open, setOpen] = useState(false);
@@ -25,7 +26,7 @@ export default function EditTechModal({ tech, onUpdated }: any) {
       onUpdated();
       setOpen(false);
     } else {
-      alert("Failed to update technician");
+      toast.error("Failed to update technician");
     }
   };
 

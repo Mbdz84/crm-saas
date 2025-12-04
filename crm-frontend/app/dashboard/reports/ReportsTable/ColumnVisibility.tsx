@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { columnDefs } from "./utils/columnDefs";
+import { toast } from "sonner";
 
 export default function ColumnVisibility({ visible, setVisible }: any) {
   // Save current layout as the user's default
@@ -11,7 +12,7 @@ export default function ColumnVisibility({ visible, setVisible }: any) {
         "report_column_defaults",
         JSON.stringify(visible)
       );
-      alert("Saved as your default layout.");
+      toast.success("Saved as your default layout.");
     } catch (err) {
       console.error("Save default layout error:", err);
     }

@@ -17,6 +17,21 @@ export async function closeJob(req: Request, res: Response) {
     if (!user || user.companyId !== job.companyId)
       return res.status(403).json({ error: "Forbidden" });
 
+    // ❌ Technicians cannot finalize (only pending close)
+    if (req.user?.role === "technician") {
+      return res.status(403).json({
+        error: "Technicians cannot finalize closing. Use Pending Close.",
+      });
+    }
+
+    // ❌ Prevent closing canceled jobs
+    if (
+      job.status?.toLowerCase() === "canceled" ||
+      job.status?.toLowerCase() === "cancelled"
+    ) {
+      return res.status(400).json({ error: "Cannot close a canceled job" });
+    }
+
     const body = req.body || {};
     const {
       invoiceNumber,
@@ -45,22 +60,10 @@ export async function closeJob(req: Request, res: Response) {
       sumCheck,
     } = body;
 
-    // PAYMENT TOTALS
     const { cashTotal, creditTotal, checkTotal, zelleTotal } =
       calcPaymentTotals(payments);
 
-    // CC AVG PERCENT
-    let ccFeePercentAvg: number | null = null;
-    if (Array.isArray(payments) && totalCcFee > 0) {
-      const ccBase = payments
-        .filter((p: any) => p.payment === "credit")
-        .reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
-
-      if (ccBase > 0) {
-        ccFeePercentAvg = (Number(totalCcFee) / ccBase) * 100;
-      }
-    }
-
+    // Find CLOSED status row
     const closedStatus = await prisma.jobStatus.findFirst({
       where: { name: "Closed", active: true },
     });
@@ -68,18 +71,25 @@ export async function closeJob(req: Request, res: Response) {
       return res.status(400).json({ error: "Closed status not found" });
 
     const result = await prisma.$transaction(async (tx: any) => {
-      const newStatusId = req.body.statusId ?? job.statusId;
-      const isFinalClose = newStatusId === closedStatus.id;
+      // ❗ Always force status to CLOSED (Fix #1)
+      const newStatusId = closedStatus.id;
 
+      // Mark job as fully closed
       const updatedJob = await tx.job.update({
         where: { id: job.id },
         data: {
-          isClosingLocked: isFinalClose,
-          closedAt: isFinalClose ? new Date() : null,
+          isClosingLocked: true,
+          closedAt: new Date(),
           statusId: newStatusId,
         },
       });
 
+      // ❗ Fix #3 — if any leftover closing data exists but status ≠ Closed, clear it
+      if (updatedJob.statusId !== closedStatus.id) {
+        await tx.jobClosing.deleteMany({ where: { jobId: job.id } });
+      }
+
+      // Create/update closing row
       const closing = await tx.jobClosing.upsert({
         where: { jobId: job.id },
         update: {
@@ -87,7 +97,6 @@ export async function closeJob(req: Request, res: Response) {
           payments: Array.isArray(payments) ? payments : [],
           totalAmount: Number(totalAmount) || 0,
           totalCcFee: Number(totalCcFee) || 0,
-          ccFeePercentAvg,
           techParts: Number(techParts) || 0,
           leadParts: Number(leadParts) || 0,
           companyParts: Number(companyParts) || 0,
@@ -108,12 +117,11 @@ export async function closeJob(req: Request, res: Response) {
           leadBalance: Number(leadBalance) || 0,
           companyBalance: Number(companyBalance) || 0,
           sumCheck: Number(sumCheck) || 0,
-          // NEW PAYMENT TOTALS
           cashTotal,
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: isFinalClose ? new Date() : undefined,
+          closedAt: new Date(),
           closedByUserId: user.id,
         },
         create: {
@@ -122,7 +130,6 @@ export async function closeJob(req: Request, res: Response) {
           payments: Array.isArray(payments) ? payments : [],
           totalAmount: Number(totalAmount) || 0,
           totalCcFee: Number(totalCcFee) || 0,
-          ccFeePercentAvg,
           techParts: Number(techParts) || 0,
           leadParts: Number(leadParts) || 0,
           companyParts: Number(companyParts) || 0,
@@ -143,12 +150,11 @@ export async function closeJob(req: Request, res: Response) {
           leadBalance: Number(leadBalance) || 0,
           companyBalance: Number(companyBalance) || 0,
           sumCheck: Number(sumCheck) || 0,
-          // NEW PAYMENT TOTALS
           cashTotal,
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: isFinalClose ? new Date() : undefined,
+          closedAt: new Date(),
           closedByUserId: user.id,
         },
       });

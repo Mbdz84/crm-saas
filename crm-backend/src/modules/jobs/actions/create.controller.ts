@@ -3,6 +3,9 @@ import prisma from "../../../prisma/client";
 import { generateUniqueShortId } from "../utils/shortId";
 import { sendTechSms } from "./sms.controller";
 
+/* ============================================================
+   MANUAL CREATE JOB
+============================================================ */
 export async function createJob(req: Request, res: Response) {
   try {
     const {
@@ -10,6 +13,7 @@ export async function createJob(req: Request, res: Response) {
       description,
       customerName,
       customerPhone,
+      customerPhone2,      // ⭐ NEW FIELD
       customerAddress,
       jobTypeId,
       technicianId,
@@ -22,7 +26,8 @@ export async function createJob(req: Request, res: Response) {
     const shortId = await generateUniqueShortId();
 
     const jtName = jobTypeId
-      ? await prisma.jobType.findUnique({ where: { id: jobTypeId } })
+      ? await prisma.jobType
+          .findUnique({ where: { id: jobTypeId } })
           .then((jt: any) => jt?.name || "")
       : "";
 
@@ -39,6 +44,7 @@ export async function createJob(req: Request, res: Response) {
         description,
         customerName,
         customerPhone,
+        customerPhone2: customerPhone2 || null,   // ⭐ SAVE FIELD
         customerAddress,
         jobTypeId: jobTypeId || null,
         technicianId: technicianId || null,
@@ -66,16 +72,20 @@ export async function createJob(req: Request, res: Response) {
   }
 }
 
-// AI-created jobs
+/* ============================================================
+   AI–PARSED JOB
+============================================================ */
 export async function createJobFromParsed(req: Request, res: Response) {
   try {
     const {
       customerName,
       customerPhone,
+      customerPhone2,          // ⭐ NEW FIELD
       customerAddress,
       jobType,
       description,
       source,
+      technicianId,            // ⭐ TECH SELECT SUPPORT
     } = req.body;
 
     const user = req.user;
@@ -86,7 +96,9 @@ export async function createJobFromParsed(req: Request, res: Response) {
 
     const shortId = await generateUniqueShortId();
 
-    // Job type lookup
+    /* -----------------------------
+       Job type lookup
+    ------------------------------ */
     let jobTypeId: string | null = null;
     if (jobType) {
       const jt = await prisma.jobType.findFirst({
@@ -95,35 +107,46 @@ export async function createJobFromParsed(req: Request, res: Response) {
       jobTypeId = jt?.id || null;
     }
 
-    // Lead source lookup
+    /* -----------------------------
+       Lead source lookup
+    ------------------------------ */
     let sourceId: string | null = null;
     if (source) {
       const ls = await prisma.leadSource.findFirst({
         where: { name: source.trim(), companyId },
       });
-      sourceId = ls?.id || (
-        await prisma.leadSource.create({
-          data: { name: source.trim(), companyId },
-        })
-      ).id;
+      sourceId =
+        ls?.id ||
+        (
+          await prisma.leadSource.create({
+            data: { name: source.trim(), companyId },
+          })
+        ).id;
     }
 
+    /* -----------------------------
+       Title generation
+    ------------------------------ */
     const title =
       customerName && jobType
         ? `${customerName} - ${jobType}`
         : customerName || jobType || "New Job";
 
+    /* -----------------------------
+       CREATE JOB
+    ------------------------------ */
     const job = await prisma.job.create({
       data: {
         shortId,
         title,
         customerName: customerName || null,
         customerPhone: customerPhone || null,
+        customerPhone2: customerPhone2 || null,   // ⭐ SAVE SECOND PHONE
         customerAddress: customerAddress || null,
         description: description || null,
         jobTypeId,
         sourceId,
-        technicianId: null,
+        technicianId: technicianId || null,       // ⭐ ASSIGN TECH IF SELECTED
         scheduledAt: null,
         status: "Accepted",
         companyId,
@@ -136,6 +159,9 @@ export async function createJobFromParsed(req: Request, res: Response) {
       },
     });
 
+    /* -----------------------------
+       Save raw SMS text as log
+    ------------------------------ */
     if (req.body.__rawText) {
       await prisma.jobLog.create({
         data: {

@@ -200,7 +200,7 @@ const [showColumns, setShowColumns] = useState(false);
               />
             ))}
 
-            <TotalsRow totals={totals} visible={visible} />
+            <TotalsRow rows={rows} visible={visible} />
           </tbody>
         </table>
       </div>

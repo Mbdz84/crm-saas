@@ -1,43 +1,42 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
-import {
-  startOfDay,
-  endOfDay,
-  parseISO,
-} from "date-fns";
+import { startOfDay, endOfDay, parseISO } from "date-fns";
 
 /* ============================================================
    /reports?from=2025-01-01&to=2025-01-31&status=closed
 ============================================================ */
 export async function getReports(req: Request, res: Response) {
   try {
-    const { from, to, tech, jobType, source, groupBy, status } = req.query;
+    const { from, to, tech, jobType, source, groupBy } = req.query;
+
+    // Known status buckets
+    const CLOSED_STATUSES = ["Closed"];
+    const CANCELLED_STATUSES = ["Canceled", "Cancelled", "Cancel"];
 
     /* --------------------------------------------------------
-       SAFE COMPANY ID (do NOT force req.user)
+       SAFE COMPANY ID
     -------------------------------------------------------- */
     const companyId = req.user?.companyId || null;
 
     /* --------------------------------------------------------
-       DATE FILTER
+       DATE FILTER (by closedAt)
     -------------------------------------------------------- */
     const dateFilter: any = {};
     if (from) dateFilter.gte = startOfDay(parseISO(from as string));
     if (to) dateFilter.lte = endOfDay(parseISO(to as string));
 
     /* --------------------------------------------------------
-       WHERE CLAUSE
+       WHERE CLAUSE (do NOT use isClosingLocked)
     -------------------------------------------------------- */
     const where: any = {
       ...(companyId && { companyId }),
-      isClosingLocked: true,
     };
 
-    if (tech) where.technicianId = tech;
-    if (jobType) where.jobTypeId = jobType;
-    if (source) where.sourceId = source;
+    if (tech) where.technicianId = tech as string;
+    if (jobType) where.jobTypeId = jobType as string;
+    if (source) where.sourceId = source as string;
 
-    // closedAt date filter
+    // Only jobs that have a closedAt in the range if dates provided
     if (from || to) where.closedAt = dateFilter;
 
     /* --------------------------------------------------------
@@ -55,15 +54,25 @@ export async function getReports(req: Request, res: Response) {
       orderBy: { closedAt: "desc" },
     });
 
+    // Helper to get normalized status name
+    function getStatusName(job: any): string {
+      return (job.jobStatus?.name || job.status || "").trim();
+    }
+
+    // Jobs that are really CLOSED (used for money + table rows)
+    const closedJobs = jobs.filter((job: any) =>
+      CLOSED_STATUSES.includes(getStatusName(job))
+    );
+
     /* --------------------------------------------------------
-       AGGREGATE TOTALS
+       AGGREGATE TOTALS (ONLY CLOSED JOBS WITH CLOSING DATA)
     ------------------------------------------------------------ */
     let totalRevenue = 0;
     let totalTechProfit = 0;
     let totalLeadProfit = 0;
     let totalCompanyProfit = 0;
 
-    jobs.forEach((job: any) => {
+    closedJobs.forEach((job: any) => {
       if (!job.closing) return;
 
       totalRevenue += Number(job.closing.totalAmount || 0);
@@ -73,21 +82,21 @@ export async function getReports(req: Request, res: Response) {
     });
 
     const summary = {
-      count: jobs.length,
+      count: closedJobs.length,
       totalRevenue,
-      avgJobValue: jobs.length ? totalRevenue / jobs.length : 0,
+      avgJobValue: closedJobs.length ? totalRevenue / closedJobs.length : 0,
       totalTechProfit,
       totalLeadProfit,
       totalCompanyProfit,
     };
 
     /* --------------------------------------------------------
-       OPTIONAL GROUPING
+       OPTIONAL GROUPING (on closed jobs)
     ------------------------------------------------------------ */
     let grouped: any = {};
 
     if (groupBy === "day") {
-      jobs.forEach((job: any) => {
+      closedJobs.forEach((job: any) => {
         const key = job.closedAt?.toISOString().split("T")[0] || "Unknown";
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(job);
@@ -95,7 +104,7 @@ export async function getReports(req: Request, res: Response) {
     }
 
     if (groupBy === "month") {
-      jobs.forEach((job: any) => {
+      closedJobs.forEach((job: any) => {
         const d = job.closedAt ? new Date(job.closedAt) : null;
         const key = d
           ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
@@ -106,7 +115,7 @@ export async function getReports(req: Request, res: Response) {
     }
 
     if (groupBy === "technician") {
-      jobs.forEach((job: any) => {
+      closedJobs.forEach((job: any) => {
         const key = job.technician?.name || "Unassigned";
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(job);
@@ -114,13 +123,16 @@ export async function getReports(req: Request, res: Response) {
     }
 
     /* --------------------------------------------
-       TECHNICIAN SUMMARY
+       TECHNICIAN SUMMARY  (uses ALL jobs)
     ---------------------------------------------*/
-    const techSummary: any = {};
+    const techSummary: Record<
+      string,
+      { name: string; total: number; closed: number; cancelled: number }
+    > = {};
 
     jobs.forEach((job: any) => {
       const techName = job.technician?.name || "Unassigned";
-      const status = job.jobStatus?.name;  // <-- real status
+      const status = getStatusName(job);
 
       if (!techSummary[techName]) {
         techSummary[techName] = {
@@ -133,21 +145,23 @@ export async function getReports(req: Request, res: Response) {
 
       techSummary[techName].total++;
 
-      if (status === "Closed") techSummary[techName].closed++;
-      if (status === "Canceled" || status === "Cancelled")
-        techSummary[techName].cancelled++;
+      if (CLOSED_STATUSES.includes(status)) techSummary[techName].closed++;
+      if (CANCELLED_STATUSES.includes(status)) techSummary[techName].cancelled++;
     });
 
     const technicianSummary = Object.values(techSummary);
 
     /* --------------------------------------------
-       LEAD SOURCE SUMMARY
+       LEAD SOURCE SUMMARY (uses ALL jobs)
     ---------------------------------------------*/
-    const leadSourceMap: any = {};
+    const leadSourceMap: Record<
+      string,
+      { name: string; total: number; closed: number; cancelled: number }
+    > = {};
 
     jobs.forEach((job: any) => {
       const sourceName = job.source?.name || "Unknown Source";
-      const status = job.jobStatus?.name || job.status || "Unknown";
+      const status = getStatusName(job);
 
       if (!leadSourceMap[sourceName]) {
         leadSourceMap[sourceName] = {
@@ -160,24 +174,27 @@ export async function getReports(req: Request, res: Response) {
 
       leadSourceMap[sourceName].total++;
 
-      if (status === "Closed") {
+      if (CLOSED_STATUSES.includes(status)) {
         leadSourceMap[sourceName].closed++;
       }
 
-      if (status === "Canceled" || status === "Cancelled") {
+      if (CANCELLED_STATUSES.includes(status)) {
         leadSourceMap[sourceName].cancelled++;
       }
     });
 
     const leadSourceSummary = Object.values(leadSourceMap);
 
-    //// ends
-
+    /* --------------------------------------------------------
+       RESPONSE
+       - jobs / rows → ONLY CLOSED JOBS (for tables & amounts)
+       - summaries → computed from all jobs where needed
+    ------------------------------------------------------------ */
     return res.json({
       summary,
       grouped,
-      jobs,
-      rows: jobs,
+      jobs: closedJobs,
+      rows: closedJobs,
       technicianSummary: technicianSummary ?? [],
       leadSourceSummary,
     });

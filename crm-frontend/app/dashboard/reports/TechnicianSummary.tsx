@@ -20,9 +20,9 @@ export default function TechnicianSummary({
     setExpanded(expanded === name ? null : name);
   }
 
-  /* ------------------------------------------
-     GET TOTALS FOR EACH TECH
-  ------------------------------------------ */
+  /* --------------------------------------------------
+     SAFE TOTALS FOR EACH TECH
+  -------------------------------------------------- */
   function getTechTotals(techName: string) {
     const techJobs = jobs.filter((j) => j.technician?.name === techName);
 
@@ -37,19 +37,19 @@ export default function TechnicianSummary({
     return { totalAmount, techBalance };
   }
 
-  /* ------------------------------------------
-     GRAND TOTAL ROW
-  ------------------------------------------ */
+  /* --------------------------------------------------
+     GRAND TOTALS (SAFE)
+  -------------------------------------------------- */
   const grand = {
-    totalJobs: data.reduce((s, r) => s + r.total, 0),
-    closed: data.reduce((s, r) => s + r.closed, 0),
-    cancelled: data.reduce((s, r) => s + r.cancelled, 0),
+    totalJobs: data.reduce((s, r) => s + Number(r.total || 0), 0),
+    closed: data.reduce((s, r) => s + Number(r.closed || 0), 0),
+    cancelled: data.reduce((s, r) => s + Number(r.cancelled || 0), 0),
     totalAmount: data.reduce(
-      (s, r) => s + getTechTotals(r.name).totalAmount,
+      (s, r) => s + Number(getTechTotals(r.name).totalAmount || 0),
       0
     ),
     balance: data.reduce(
-      (s, r) => s + getTechTotals(r.name).techBalance,
+      (s, r) => s + Number(getTechTotals(r.name).techBalance || 0),
       0
     ),
   };
@@ -74,13 +74,17 @@ export default function TechnicianSummary({
 
         <tbody>
           {data.map((t: any) => {
+            const totals = getTechTotals(t.name);
+
             const closingPct =
-              t.total > 0 ? ((t.closed / t.total) * 100).toFixed(1) : "0";
+              Number(t.total || 0) > 0
+                ? ((Number(t.closed || 0) / Number(t.total || 0)) * 100).toFixed(1)
+                : "0";
 
             const cancelPct =
-              t.total > 0 ? ((t.cancelled / t.total) * 100).toFixed(1) : "0";
-
-            const totals = getTechTotals(t.name);
+              Number(t.total || 0) > 0
+                ? ((Number(t.cancelled || 0) / Number(t.total || 0)) * 100).toFixed(1)
+                : "0";
 
             return (
               <React.Fragment key={t.name}>
@@ -92,9 +96,10 @@ export default function TechnicianSummary({
                     {expanded === t.name && "▲"} {t.name}
                   </td>
 
-                  <td className="border px-2 py-1 text-center">{t.total}</td>
-                  <td className="border px-2 py-1 text-center">{t.closed}</td>
-                  <td className="border px-2 py-1 text-center">{t.cancelled}</td>
+                  <td className="border px-2 py-1 text-center">{Number(t.total || 0)}</td>
+                  <td className="border px-2 py-1 text-center">{Number(t.closed || 0)}</td>
+                  <td className="border px-2 py-1 text-center">{Number(t.cancelled || 0)}</td>
+
                   <td className="border px-2 py-1 text-center">{closingPct}%</td>
                   <td className="border px-2 py-1 text-center">{cancelPct}%</td>
 
@@ -109,31 +114,42 @@ export default function TechnicianSummary({
                 {expanded === t.name && (
                   <tr>
                     <td colSpan={8} className="p-0 bg-white">
-  <div 
-    className="overflow-x-auto overflow-y-auto transition-all duration-300"
-    style={{ maxHeight: "500px", maxWidth: "100%" }}
-  >
-    <div 
-      className="border rounded-b bg-gray-50 shadow-inner"
-      style={{ width: "500px", minWidth: "100%" }}
-    >
-      <div className="p-3">
-        <ReportsTable
-          rows={jobs.filter((j) => j.technician?.name === t.name)}
-          from={from}
-          to={to}
-          expandedTechName={t.name}
-          expandedSourceName={null}
-          defaultVisibleKeys={[
-            "invoice", "jobId", "date", "address", "type",
-            "total", "tech", "techParts", "cc", "addFee",
-            "tech%", "techProfit", "techBal", "leadBal"
-          ]}
-        />
-      </div>
-    </div>
-  </div>
-</td>
+                      <div
+                        className="overflow-x-auto overflow-y-auto transition-all duration-300"
+                        style={{ maxHeight: "500px", maxWidth: "100%" }}
+                      >
+                        <div
+                          className="border rounded-b bg-gray-50 shadow-inner"
+                          style={{ width: "500px", minWidth: "100%" }}
+                        >
+                          <div className="p-3">
+                            <ReportsTable
+                              rows={jobs.filter((j) => j.technician?.name === t.name)}
+                              from={from}
+                              to={to}
+                              expandedTechName={t.name}
+                              expandedSourceName={null}
+                              defaultVisibleKeys={[
+                                "invoice",
+                                "jobId",
+                                "date",
+                                "address",
+                                "type",
+                                "total",
+                                "tech",
+                                "techParts",
+                                "cc",
+                                "addFee",
+                                "tech%",
+                                "techProfit",
+                                "techBal",
+                                "leadBal",
+                              ]}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 )}
               </React.Fragment>
@@ -144,6 +160,7 @@ export default function TechnicianSummary({
         <tfoot className="bg-gray-200 font-semibold">
           <tr>
             <td className="border px-2 py-1">TOTAL</td>
+
             <td className="border px-2 py-1 text-center">{grand.totalJobs}</td>
             <td className="border px-2 py-1 text-center">{grand.closed}</td>
             <td className="border px-2 py-1 text-center">{grand.cancelled}</td>

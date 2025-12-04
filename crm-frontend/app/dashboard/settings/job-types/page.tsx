@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 
 export default function JobTypesSettingsPage() {
@@ -33,7 +34,7 @@ export default function JobTypesSettingsPage() {
       setNewName("");
       loadTypes();
     } else {
-      alert("Failed to create job type");
+      toast.error("Failed to create job type");
     }
   };
 
@@ -51,7 +52,7 @@ export default function JobTypesSettingsPage() {
     if (res.ok) {
       loadTypes();
     } else {
-      alert("Failed to update job type");
+      toast.error("Failed to update job type");
     }
   };
 
@@ -68,7 +69,7 @@ export default function JobTypesSettingsPage() {
     if (res.ok) {
       loadTypes();
     } else {
-      alert("Failed to delete job type");
+      toast.error("Failed to delete job type");
     }
   };
 

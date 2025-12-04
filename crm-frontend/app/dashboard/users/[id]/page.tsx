@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { toast } from "sonner";
 
 export default function UserProfilePage() {
   const { id } = useParams();
@@ -30,7 +31,7 @@ export default function UserProfilePage() {
       body: JSON.stringify(user),
     });
 
-    alert("User updated!");
+    toast.success("User updated!");
   };
 
   if (loading) return <p className="p-6">Loading...</p>;

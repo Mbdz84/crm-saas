@@ -44,6 +44,7 @@ export default function CreateJobPage() {
     description: "",
     customerName: "",
     customerPhone: "",
+    customerPhone2: "",
     customerAddress: "",
     jobTypeId: "",
     technicianId: "",
@@ -135,24 +136,25 @@ export default function CreateJobPage() {
 
       // Build payload for backend createJob
       const payload: any = {
-        title:
-          form.title ||
-          `${form.customerName}${
-            form.jobTypeId
-              ? " - " +
-                (jobTypes.find((jt: any) => jt.id === form.jobTypeId)?.name || "")
-              : ""
-          }`,
-        description: form.description,
-        customerName: form.customerName,
-        customerPhone: form.customerPhone,
-        customerAddress: form.customerAddress,
-        jobTypeId: form.jobTypeId || null,
-        technicianId: form.technicianId || null,
-        scheduledAt: form.scheduledAt || null,
-        sendSmsToTech: form.sendSmsToTech,
-        sourceId: form.sourceId || null,
-      };
+  title:
+    form.title ||
+    `${form.customerName}${
+      form.jobTypeId
+        ? " - " +
+          (jobTypes.find((jt: any) => jt.id === form.jobTypeId)?.name || "")
+        : ""
+    }`,
+  description: form.description,
+  customerName: form.customerName,
+  customerPhone: form.customerPhone,
+  customerPhone2: form.customerPhone2 || null,   // ⭐ NEW
+  customerAddress: form.customerAddress,
+  jobTypeId: form.jobTypeId || null,
+  technicianId: form.technicianId || null,
+  scheduledAt: form.scheduledAt || null,
+  sendSmsToTech: form.sendSmsToTech,
+  sourceId: form.sourceId || null,
+};
 
       const res = await fetch(`${base}/jobs`, {
         method: "POST",
@@ -234,16 +236,29 @@ export default function CreateJobPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium">Phone *</label>
-                <input
-                  name="customerPhone"
-                  className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
-                  value={form.customerPhone}
-                  onChange={handleChange}
-                  placeholder="e.g. 3125551212"
-                />
-              </div>
+              {/* PHONE 1 */}
+<div>
+  <label className="block text-sm font-medium">Phone *</label>
+  <input
+    name="customerPhone"
+    className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
+    value={form.customerPhone}
+    onChange={handleChange}
+    placeholder="Primary phone (required)"
+  />
+</div>
+
+{/* PHONE 2 */}
+<div>
+  <label className="block text-sm font-medium">Second Phone (optional)</label>
+  <input
+    name="customerPhone2"
+    className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
+    value={form.customerPhone2 || ""}
+    onChange={handleChange}
+    placeholder="Optional secondary phone"
+  />
+</div>
 
               <div>
                 <label className="block text-sm font-medium">

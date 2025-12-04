@@ -11,6 +11,9 @@ import Editable from "./Editable";
    MAIN OVERVIEW TAB
 ----------------------------------------------------------- */
 export default function OverviewTab() {
+  const userRole =
+    typeof window !== "undefined" ? localStorage.getItem("role") : null;
+  const techRole = userRole;
   const router = useRouter();
   const jobCtx = useJob();
   const {
@@ -37,6 +40,9 @@ export default function OverviewTab() {
     base,
     shortId,
   } = jobCtx;
+
+  // ✅ always safe array
+  const techList = Array.isArray(techs) ? techs : [];
 
   const {
     setField,
@@ -78,6 +84,23 @@ export default function OverviewTab() {
 
   const editingLocked = job.isClosingLocked === true;
 
+  // 🔢 Masked dial helpers (for phone 1 + phone 2)
+  const extension = job.callSessions?.[0]?.extension;
+
+  const maskedDial1 =
+    editableJob.customerPhone && extension
+      ? `${(editableJob.customerPhone || "")
+          .replace(/^\+1/, "")
+          .replace(/[^\d]/g, "")},${extension}`
+      : null;
+
+  const maskedDial2 =
+    (editableJob as any).customerPhone2 && extension
+      ? `${((editableJob as any).customerPhone2 || "")
+          .replace(/^\+1/, "")
+          .replace(/[^\d]/g, "")},${extension}`
+      : null;
+
   function getCollectorOptions(payment: "cash" | "credit" | "check" | "zelle") {
     switch (payment) {
       case "cash":
@@ -103,52 +126,52 @@ export default function OverviewTab() {
           </p>
         </div>
 
-<div className="flex justify-start items-center gap-3">
-  {/* Back */}
-  <button
-    onClick={() => router.back()}
-    className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded"
-  >
-    Back
-  </button>
+        <div className="flex justify-start items-center gap-3">
+          {/* Back */}
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded"
+          >
+            Back
+          </button>
 
-  {/* Save */}
-  <button
-    onClick={saveChanges}
-    className="px-4 py-2 rounded shadow text-white bg-blue-600"
-  >
-    Save Changes
-  </button>
+          {/* Save */}
+          <button
+            onClick={saveChanges}
+            className="px-4 py-2 rounded shadow text-white bg-blue-600"
+          >
+            Save Changes
+          </button>
 
-  {/* ALWAYS SHOW DELETE BUTTON */}
-  <button
-    onClick={async () => {
-      if (!confirm("Delete this job permanently?")) return;
+          {/* ALWAYS SHOW DELETE BUTTON */}
+          <button
+            onClick={async () => {
+              if (!confirm("Delete this job permanently?")) return;
 
-      try {
-        const res = await fetch(`${base}/jobs/${job.shortId}`, {
-          method: "DELETE",
-          credentials: "include",
-        });
+              try {
+                const res = await fetch(`${base}/jobs/${job.shortId}`, {
+                  method: "DELETE",
+                  credentials: "include",
+                });
 
-        const data = await res.json().catch(() => null);
+                const data = await res.json().catch(() => null);
 
-        if (!res.ok) {
-          throw new Error(data?.error || "Failed to delete job");
-        }
+                if (!res.ok) {
+                  throw new Error(data?.error || "Failed to delete job");
+                }
 
-        toast.success("Job deleted");
-        router.push("/dashboard/jobs");
-      } catch (err: any) {
-        console.error("DELETE JOB ERROR", err);
-        toast.error(err?.message || "Delete failed");
-      }
-    }}
-    className="px-4 py-2 bg-red-600 text-white rounded"
-  >
-    Delete
-  </button>
-</div>
+                toast.success("Job deleted");
+                router.push("/dashboard/jobs");
+              } catch (err: any) {
+                console.error("DELETE JOB ERROR", err);
+                toast.error(err?.message || "Delete failed");
+              }
+            }}
+            className="px-4 py-2 bg-red-600 text-white rounded"
+          >
+            Delete
+          </button>
+        </div>
       </div>
 
       {/* =============================================== */}
@@ -158,34 +181,53 @@ export default function OverviewTab() {
         <div className="border rounded p-4 space-y-3 bg-gray-50 dark:bg-gray-900">
           <h2 className="font-semibold text-lg mb-2">Customer Information</h2>
 
-          <Editable
-            label="Name"
-            value={editableJob.customerName || ""}
-            onChange={(v) => setField("customerName", v)}
-          />
+{/* NAME */}
+<Editable
+  label="Name"
+  value={editableJob.customerName || ""}
+  onChange={(v) => setField("customerName", v)}
+/>
 
-          <Editable
-            label="Phone"
-            value={editableJob.customerPhone || ""}
-            onChange={(v) => setField("customerPhone", v)}
-          />
+{/* PHONE 1 */}
+<Editable
+  label="Phone"
+  value={editableJob.customerPhone || ""}
+  onChange={(v) => setField("customerPhone", v)}
+/>
 
-          {job.callSessions && job.callSessions.length > 0 && (
+{/* PHONE 2 */}
+<Editable
+  label="Phone 2"
+  value={(editableJob as any).customerPhone2 || ""}
+  onChange={(v) => setField("customerPhone2", v)}
+/>
+
+          {/* MASKED DIALS */}
+          {extension && (
             <div className="mt-2 flex items-center flex-wrap gap-4 text-s text-gray-500">
               <span>
-                Tech Extension: <b>{job.callSessions[0].extension}</b>
+                Tech Extension: <b>{extension}</b>
               </span>
 
-              <span className="text-gray-400">|</span>
+              {maskedDial1 && (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <span>
+                    Masked Dial:{" "}
+                    <span className="font-mono">{maskedDial1}</span>
+                  </span>
+                </>
+              )}
 
-              <span>
-                Masked Dial:{" "}
-                <span className="font-mono">
-                  {`${(editableJob.customerPhone || "")
-                    .replace(/^\+1/, "")
-                    .replace(/[^\d]/g, "")},${job.callSessions[0].extension}`}
-                </span>
-              </span>
+              {maskedDial2 && (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <span>
+                    Masked Dial 2:{" "}
+                    <span className="font-mono">{maskedDial2}</span>
+                  </span>
+                </>
+              )}
 
               <span className="text-gray-400">—</span>
 
@@ -262,7 +304,7 @@ export default function OverviewTab() {
                 onChange={(e) => setField("technicianId", e.target.value)}
               >
                 <option value="">Unassigned</option>
-                {techs.map((t: any) => (
+                {techList.map((t: any) => (
                   <option key={t.id} value={t.id}>
                     {t.name} {t.phone ? `(${t.phone})` : ""}
                   </option>
@@ -275,9 +317,7 @@ export default function OverviewTab() {
                     `${base}/jobs/${job.shortId}/resend-sms`,
                     { method: "POST", credentials: "include" }
                   );
-                  res.ok
-                    ? toast.success("SMS sent")
-                    : toast.error("Failed");
+                  res.ok ? toast.success("SMS sent") : toast.error("Failed");
                 }}
                 className="px-4 py-2 bg-blue-600 text-white rounded"
               >
@@ -295,11 +335,17 @@ export default function OverviewTab() {
               onChange={(e) => setField("statusId", e.target.value)}
             >
               <option value="">Select Status</option>
-              {statuses.map((s: any) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
+              {statuses
+                .filter((s: any) => {
+                  if (techRole === "technician" && s.name === "Closed")
+                    return false;
+                  return true;
+                })
+                .map((s: any) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -328,6 +374,7 @@ export default function OverviewTab() {
             currentStatusName={currentStatusName}
             editingLocked={editingLocked}
             payments={jobCtx.payments}
+            userRole={techRole}
             getCollectorOptions={getCollectorOptions}
             techPercent={techPercent}
             leadPercent={leadPercent}
@@ -369,7 +416,7 @@ export default function OverviewTab() {
 }
 
 /* -----------------------------------------------------------
-   CLOSING PANEL (left unchanged except formatting)
+   CLOSING PANEL
 ----------------------------------------------------------- */
 function ClosingPanel(props: any) {
   const {
@@ -408,6 +455,7 @@ function ClosingPanel(props: any) {
     calculateSplit,
     closeJob,
     base,
+    userRole,
     shortId,
   } = props;
 
@@ -432,7 +480,7 @@ function ClosingPanel(props: any) {
         )}
       </div>
 
-      {editingLocked && (
+      {editingLocked && userRole !== "technician" && (
         <button
           onClick={async () => {
             const res = await fetch(`${base}/jobs/${shortId}/reopen`, {
@@ -440,7 +488,8 @@ function ClosingPanel(props: any) {
               credentials: "include",
             });
             const data = await res.json();
-            if (!res.ok) return toast.error(data.error || "Failed to reopen");
+            if (!res.ok)
+              return toast.error(data.error || "Failed to reopen job");
             toast.success("Job reopened");
             router.refresh();
           }}
@@ -535,7 +584,7 @@ function ClosingPanel(props: any) {
                         </>
                       ) : (
                         <div className="text-[10px] text-gray-400 mt-4">
-                          Cash → Technician
+                          No choice – Cash → Technician
                         </div>
                       )}
                     </div>
@@ -633,9 +682,7 @@ function ClosingPanel(props: any) {
                 <input
                   type="checkbox"
                   checked={disableAutoAdjust}
-                  onChange={(e) =>
-                    setDisableAutoAdjust(e.target.checked)
-                  }
+                  onChange={(e) => setDisableAutoAdjust(e.target.checked)}
                 />
                 Disable auto-adjust
               </label>
@@ -647,9 +694,7 @@ function ClosingPanel(props: any) {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] mb-1">
-                    Tech Parts
-                  </label>
+                  <label className="block text-[10px] mb-1">Tech Parts</label>
                   <input
                     className="border rounded px-1 py-1 w-full text-xs bg-white"
                     value={techParts}
@@ -658,9 +703,7 @@ function ClosingPanel(props: any) {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] mb-1">
-                    Lead Parts
-                  </label>
+                  <label className="block text-[10px] mb-1">Lead Parts</label>
                   <input
                     className="border rounded px-1 py-1 w-full text-xs bg-white"
                     value={leadParts}
@@ -669,15 +712,11 @@ function ClosingPanel(props: any) {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] mb-1">
-                    Company Parts
-                  </label>
+                  <label className="block text-[10px] mb-1">Company Parts</label>
                   <input
                     className="border rounded px-1 py-1 w-full text-xs bg-white"
                     value={companyParts}
-                    onChange={(e) =>
-                      setCompanyParts(e.target.value)
-                    }
+                    onChange={(e) => setCompanyParts(e.target.value)}
                   />
                 </div>
               </div>
@@ -689,9 +728,7 @@ function ClosingPanel(props: any) {
                   <input
                     className="border rounded px-1 py-1 w-full text-xs bg-white"
                     value={leadAdditionalFee}
-                    onChange={(e) =>
-                      setLeadAdditionalFee(e.target.value)
-                    }
+                    onChange={(e) => setLeadAdditionalFee(e.target.value)}
                   />
                 </div>
               </div>
@@ -823,17 +860,19 @@ function ClosingPanel(props: any) {
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  const r = calculateSplit();
-                  if (!r) return toast.error("Run calculation first");
-                  closeJob(r);
-                }}
-                className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
-              >
-                Close Job (Calculate)
-              </button>
+              {userRole !== "technician" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const r = calculateSplit();
+                    if (!r) return toast.error("Run calculation first");
+                    closeJob(r);
+                  }}
+                  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
+                >
+                  Close Job (Admin Only)
+                </button>
+              )}
             </div>
           </div>
         </div>
