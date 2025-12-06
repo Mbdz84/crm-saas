@@ -6,6 +6,7 @@ import GoogleAddressInput from "@/components/GoogleAddressInput";
 import { useJob } from "../state/JobProvider";
 import { useJobActions } from "../state/useJobActions";
 import Editable from "./Editable";
+import { useState } from "react";
 
 /* -----------------------------------------------------------
    MAIN OVERVIEW TAB
@@ -16,6 +17,7 @@ export default function OverviewTab() {
   const techRole = userRole;
   const router = useRouter();
   const jobCtx = useJob();
+  const [statusNote, setStatusNote] = useState("");
   const {
     job,
     editableJob,
@@ -78,7 +80,15 @@ export default function OverviewTab() {
     editableJob.status ??
     job.jobStatus?.name ??
     job.status;
-
+// ---------------------------------------------
+// Detect if selected status is "Canceled"
+// ---------------------------------------------
+const selectedStatusIsCanceled = (() => {
+  const statusObj = statuses.find((s: any) => s.id === (editableJob.statusId ?? job.statusId));
+  if (!statusObj) return false;
+  const name = statusObj.name.toLowerCase();
+  return ["cancel", "canceled", "cancelled"].includes(name);
+})();
   const showClosingPanel =
     currentStatusName === "Closed" || currentStatusName === "Pending Close";
 
@@ -137,11 +147,11 @@ export default function OverviewTab() {
 
           {/* Save */}
           <button
-            onClick={saveChanges}
-            className="px-4 py-2 rounded shadow text-white bg-blue-600"
-          >
-            Save Changes
-          </button>
+  onClick={() => saveChanges({ statusNote })}
+  className="px-4 py-2 rounded shadow text-white bg-blue-600"
+>
+  Save Changes
+</button>
 
           {/* ALWAYS SHOW DELETE BUTTON */}
           <button
@@ -348,7 +358,47 @@ export default function OverviewTab() {
                 ))}
             </select>
           </div>
+{selectedStatusIsCanceled && (
+  <div className="mt-2 space-y-2">
+    <label className="text-sm font-medium">Cancel Reason</label>
 
+    {/* Suggested Cancel Reasons */}
+    <div className="flex flex-wrap gap-2">
+      {[
+        "Client not answering",
+        "Doesn’t have the money",
+        "Went with different company",
+        "We cant do the job",
+        "Duplicate lead",
+        "Client canceled"
+      ].map((tag) => (
+        <button
+          key={tag}
+          type="button"
+          onClick={() =>
+            setStatusNote((prev) =>
+              prev
+                ? `${prev} | ${tag}` // ✅ APPEND
+                : tag                // first tag
+            )
+          }
+          className="px-2 py-1 text-xs border rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+        >
+          {tag}
+        </button>
+      ))}
+    </div>
+
+    {/* Textarea */}
+    <textarea
+      className="w-full border rounded p-2"
+      rows={4}
+      value={statusNote}
+      onChange={(e) => setStatusNote(e.target.value)}
+      placeholder="Why was this job canceled?"
+    />
+  </div>
+)}
           {/* Appointment */}
           <div>
             <label className="block text-sm font-medium">Appointment</label>
@@ -408,6 +458,7 @@ export default function OverviewTab() {
             base={base}
             shortId={job.shortId}
             isAdmin={isAdmin}
+            statusNote={statusNote}
           />
         )}
       </div>
@@ -457,6 +508,7 @@ function ClosingPanel(props: any) {
     base,
     userRole,
     shortId,
+    statusNote,
   } = props;
 
   const router = useRouter();
@@ -862,16 +914,16 @@ function ClosingPanel(props: any) {
 
               {userRole !== "technician" && (
                 <button
-                  type="button"
-                  onClick={() => {
-                    const r = calculateSplit();
-                    if (!r) return toast.error("Run calculation first");
-                    closeJob(r);
-                  }}
-                  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
-                >
-                  Close Job (Admin Only)
-                </button>
+  type="button"
+  onClick={() => {
+    const r = calculateSplit();
+    if (!r) return toast.error("Run calculation first");
+    closeJob(r, { statusNote });
+  }}
+  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
+>
+  Close Job (Admin Only)
+</button>
               )}
             </div>
           </div>

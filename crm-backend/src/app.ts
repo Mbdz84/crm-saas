@@ -85,7 +85,8 @@ app.use("/technicians", authMiddleware, tenantMiddleware, technicianRoutes);
 app.use("/settings", authMiddleware, tenantMiddleware, settingsRoutes);
 app.use("/job-status", jobStatusRoutes);
 app.use("/job-types", authMiddleware, tenantMiddleware, jobTypeRoutes);
-app.use("/lead-sources", authMiddleware, tenantMiddleware, leadSourceRoutes);
+// PUBLIC (no auth needed)
+app.use("/lead-sources", leadSourceRoutes);
 app.use("/sms-settings", authMiddleware, tenantMiddleware, smsSettingsRouter);
 app.use("/reports", reportsRoutes);
 

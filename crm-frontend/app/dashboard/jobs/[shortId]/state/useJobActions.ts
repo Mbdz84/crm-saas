@@ -47,34 +47,33 @@ export function useJobActions() {
   }
 
   /* ---------------- SAVE CHANGES ---------------- */
-  async function saveChanges() {
-    if (!editableJob) return;
-    if (!base) {
-      toast.error("API base URL is not configured");
-      return;
-    }
-
-    try {
-      // ✅ Use correct backend route
-      const res = await fetch(
-        `${base}/jobs/${editableJob.shortId}`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editableJob),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) return toast.error(data.error || "Save failed");
-
-      toast.success("Saved");
-      reload();
-    } catch {
-      toast.error("Save failed");
-    }
+  async function saveChanges(extra: any = {}) {
+  if (!editableJob) return;
+  if (!base) {
+    toast.error("API base URL is not configured");
+    return;
   }
+
+  try {
+    const res = await fetch(`${base}/jobs/${editableJob.shortId}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...editableJob,
+        ...extra,   // <-- statusNote goes here
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return toast.error(data.error || "Save failed");
+
+    toast.success("Saved");
+    reload();
+  } catch {
+    toast.error("Save failed");
+  }
+}
 
   /* ---------------- REFRESH EXT ---------------- */
   async function refreshExt() {
@@ -357,68 +356,67 @@ export function useJobActions() {
 
   /* ---------------- CLOSE JOB ---------------- */
 
-  async function closeJob(r: any) {
-    if (!job) return;
-    if (!base) {
-      toast.error("API base URL is not configured");
-      return;
-    }
-
-    try {
-      const payload = {
-        invoiceNumber: invoiceNumberState || "",
-        payments: payments,
-
-        totalAmount: r.totalAmount,
-        totalCcFee: r.totalCcFee,
-        techParts: r.techParts,
-        leadParts: r.leadParts,
-        companyParts: r.companyParts,
-        totalParts: r.totalParts,
-        adjustedTotal: r.adjustedTotal,
-
-        techPercent: r.techPercent,
-        leadPercent: r.leadPercent,
-        companyPercent: r.companyPercent,
-
-        excludeTechFromParts,
-        techPaysAdditionalFee,
-        leadAdditionalFee,
-        leadOwnedByCompany,
-        techProfit: r.techProfit,
-        leadProfit: r.leadProfit,
-
-        // ✅ now sending real base & display
-        companyProfitBase: r.companyProfitBase,
-        companyProfitDisplay: r.companyProfit,
-
-        techBalance: r.techBalance,
-        leadBalance: r.leadBalance,
-        companyBalance: r.companyBalance,
-        sumCheck: r.sumCheck,
-
-        statusId: editableJob?.statusId,
-      };
-
-      const res = await fetch(
-        `${base}/jobs/${job.shortId}/close`,
-        {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await res.json();
-      if (!res.ok) return toast.error(data.error || "Close failed");
-
-      toast.success("Job closed");
-      reload();
-    } catch {
-      toast.error("Error closing job");
-    }
+  async function closeJob(r: any, extra: any = {}) {
+  if (!job) return;
+  if (!base) {
+    toast.error("API base URL is not configured");
+    return;
   }
+
+  try {
+    const payload = {
+      invoiceNumber: invoiceNumberState || "",
+      payments: payments,
+
+      totalAmount: r.totalAmount,
+      totalCcFee: r.totalCcFee,
+      techParts: r.techParts,
+      leadParts: r.leadParts,
+      companyParts: r.companyParts,
+      totalParts: r.totalParts,
+      adjustedTotal: r.adjustedTotal,
+
+      techPercent: r.techPercent,
+      leadPercent: r.leadPercent,
+      companyPercent: r.companyPercent,
+
+      excludeTechFromParts,
+      techPaysAdditionalFee,
+      leadAdditionalFee,
+      leadOwnedByCompany,
+      techProfit: r.techProfit,
+      leadProfit: r.leadProfit,
+
+      companyProfitBase: r.companyProfitBase,
+      companyProfitDisplay: r.companyProfit,
+
+      techBalance: r.techBalance,
+      leadBalance: r.leadBalance,
+      companyBalance: r.companyBalance,
+      sumCheck: r.sumCheck,
+
+      statusId: editableJob?.statusId,
+    };
+
+    const res = await fetch(`${base}/jobs/${job.shortId}/close`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...payload,
+        ...extra,   // <-- statusNote works here
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) return toast.error(data.error || "Close failed");
+
+    toast.success("Job closed");
+    reload();
+  } catch {
+    toast.error("Error closing job");
+  }
+}
 
   return {
     setField,

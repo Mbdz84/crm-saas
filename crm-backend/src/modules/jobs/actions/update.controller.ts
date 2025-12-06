@@ -12,18 +12,18 @@ export async function updateJobByShortId(req: Request, res: Response) {
 
     if (!job) return res.status(404).json({ error: "Job not found" });
 
-    // ------------------------------------------------------
-    // 🛑 Detect if new status means CANCELED
-    // ------------------------------------------------------
+    // -----------------------------------------------
+    // 🛑 Detect CANCELED status
+    // -----------------------------------------------
     let isCanceled = false;
 
-    // If frontend sent name
+    // If frontend sends NAME
     if (typeof updates.status === "string") {
       const clean = updates.status.toLowerCase();
       isCanceled = ["canceled", "cancelled", "cancel"].includes(clean);
     }
 
-    // If frontend sent ID
+    // If frontend sends ID
     if (!isCanceled && updates.statusId) {
       const statusRow = await prisma.jobStatus.findUnique({
         where: { id: updates.statusId },
@@ -35,10 +35,15 @@ export async function updateJobByShortId(req: Request, res: Response) {
       }
     }
 
-    // ------------------------------------------------------
-    // UPDATE JOB
-    // ------------------------------------------------------
-    const updated = await prisma.job.update({
+    // -----------------------------------------------
+    // 📝 Extract cancel reason from frontend
+    // -----------------------------------------------
+    const canceledReason = updates.statusNote || null;
+
+    // -----------------------------------------------
+    // MAIN JOB UPDATE
+    // -----------------------------------------------
+    const updatedJob = await prisma.job.update({
       where: { id: job.id },
       data: {
         title: updates.title ?? job.title,
@@ -64,7 +69,6 @@ export async function updateJobByShortId(req: Request, res: Response) {
             : job.jobTypeId,
 
         customerName: updates.customerName ?? job.customerName,
-
         customerPhone: updates.customerPhone ?? job.customerPhone,
 
         customerPhone2:
@@ -84,8 +88,15 @@ export async function updateJobByShortId(req: Request, res: Response) {
             ? updates.statusId || null
             : job.statusId,
 
-        // When canceling → unlock closing UI
-        ...(isCanceled ? { isClosingLocked: false } : {}),
+        // ⭐ Save cancellation info directly on JOB
+        ...(isCanceled
+          ? {
+              canceledReason,
+              canceledAt: new Date(),
+              isClosingLocked: false, // unlock UI
+            }
+          : {}),
+
       },
       include: {
         technician: true,
@@ -95,16 +106,8 @@ export async function updateJobByShortId(req: Request, res: Response) {
       },
     });
 
-    // ------------------------------------------------------
-    // 🧹 DELETE CLOSING IF JOB IS CANCELED
-    // ------------------------------------------------------
-    if (isCanceled) {
-      await prisma.jobClosing
-        .deleteMany({ where: { jobId: job.id } })
-        .catch(() => {});
-    }
+    return res.json({ message: "Job updated", job: updatedJob });
 
-    return res.json({ message: "Job updated", job: updated });
   } catch (err) {
     console.error("updateJobByShortId error:", err);
     return res.status(500).json({ error: "Failed to update job" });

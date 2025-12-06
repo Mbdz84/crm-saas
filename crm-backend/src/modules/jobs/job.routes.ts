@@ -1,5 +1,4 @@
 import { Router } from "express";
-import prisma from "../../prisma/client";
 import {
   ExtensionController,
   ParseController,
@@ -12,6 +11,9 @@ import {
   RecordingsController,
   DeleteController,
 } from "./index";
+import { createJobFromParse } from "./actions/create-from-parse.controller";
+import { authMiddleware } from "../../middleware/auth";
+import { tenantMiddleware } from "../../middleware/tenant";
 
 const router = Router();
 
@@ -27,15 +29,27 @@ router.post("/parse/sms", ParseController.parseJobFromText);
 router.post("/parse", ParseController.parseJobFromText);
 
 /* ------------ CREATE FROM PARSED (PRIMARY ROUTE) ----------- */
-router.post("/create/from-parsed", CreateController.createJobFromParsed);
+/* Used by frontend: POST /jobs/create-from-parse */
+router.post(
+  "/create-from-parse",
+  authMiddleware,
+  tenantMiddleware,
+  createJobFromParse
+);
 
-/* ------------ ALIAS TO MATCH FRONTEND ---------------------- */
-router.post("/create-from-parse", CreateController.createJobFromParsed);
+/* ------------ OPTIONAL ALIAS ------------------------------- */
+/* If anything still calls /jobs/create/from-parsed, it will work too */
+router.post(
+  "/create/from-parsed",
+  authMiddleware,
+  tenantMiddleware,
+  createJobFromParse
+);
 
 /* --------------- GET ALL JOBS ------------------------------ */
 router.get("/", GetController.getJobs);
 
-/* --------------- CREATE JOB -------------------------------- */
+/* --------------- CREATE JOB (manual form) ------------------ */
 router.post("/", CreateController.createJob);
 
 /* --------------- EXTENSIONS -------------------------------- */
@@ -55,13 +69,7 @@ router.get("/:shortId/recordings", RecordingsController.getJobRecordings);
 router.get("/:shortId", GetController.getJobByShortId);
 router.put("/:shortId", UpdateController.updateJobByShortId);
 
-/* --------------- GET / UPDATE SINGLE JOB -------------------- */
-router.get("/:shortId", GetController.getJobByShortId);
-router.put("/:shortId", UpdateController.updateJobByShortId);
-
-/* --------------- DELETE JOB -------------------- */
+/* --------------- DELETE JOB -------------------------------- */
 router.delete("/:shortId", DeleteController.deleteJob);
-
-
 
 export default router;

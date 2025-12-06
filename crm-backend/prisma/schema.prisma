@@ -154,6 +154,10 @@ model Job {
   logs         JobLog[]
   callSessions JobCallSession[]
   records      JobRecord[]
+
+    // cancel job note
+  canceledReason   String?   // text note when job is canceled
+  canceledAt       DateTime? // when it was canceled
 }
 
 //
