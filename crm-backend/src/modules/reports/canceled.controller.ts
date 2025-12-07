@@ -36,6 +36,7 @@ export async function getCanceledJobs(req: Request, res: Response) {
         customerPhone: true,
         customerPhone2: true,
         customerAddress: true,
+        description: true,
         createdAt: true,
 
         canceledReason: true,

@@ -17,6 +17,19 @@ export default function CanceledReportsPage() {
   const [groupByTech, setGroupByTech] = useState(false);
   const [groupBySource, setGroupBySource] = useState(false);
 
+  // COLUMN VISIBILITY STATE
+const [columnsVisible, setColumnsVisible] = useState<Record<string, boolean>>({
+  date: true,
+  jobId: true,
+  customer: true,
+  phones: true,
+  address: true,
+  technician: true,
+  leadSource: true,
+  canceledReason: true,
+  description: true,
+});
+
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
   async function loadReport(f = from, t = to) {
@@ -111,7 +124,7 @@ export default function CanceledReportsPage() {
               <h2 className="text-lg font-bold mb-2 text-blue-600">
                 Technician: {tech}
               </h2>
-              <CanceledTable rows={rows} />
+              <CanceledTable rows={rows} visible={columnsVisible} />
             </div>
           ))}
         </div>
@@ -134,7 +147,7 @@ export default function CanceledReportsPage() {
               <h2 className="text-lg font-bold mb-2 text-purple-600">
                 Lead Source: {src}
               </h2>
-              <CanceledTable rows={rows} />
+              <CanceledTable rows={rows} visible={columnsVisible} />
             </div>
           ))}
         </div>
@@ -142,7 +155,7 @@ export default function CanceledReportsPage() {
     }
 
     // Normal flat table (no grouping)
-    return <CanceledTable rows={filteredRows} />;
+    return <CanceledTable rows={filteredRows} visible={columnsVisible} />;
   }
 
   /* ============================================================ */
@@ -296,6 +309,28 @@ export default function CanceledReportsPage() {
       Clear Filters
     </button>
   </div>
+
+   {/* COLUMN VISIBILITY BUTTONS */}
+<div className="border rounded p-3 bg-gray-50 mt-4">
+  <h3 className="font-semibold mb-2 text-sm">Show / Hide Columns</h3>
+  <div className="flex flex-wrap gap-4">
+    {Object.keys(columnsVisible).map((key) => (
+      <label key={key} className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={columnsVisible[key]}
+          onChange={() =>
+            setColumnsVisible({
+              ...columnsVisible,
+              [key]: !columnsVisible[key],
+            })
+          }
+        />
+        {key}
+      </label>
+    ))}
+  </div>
+</div>
 
         {/* Dropdowns */}
         <div className="flex gap-6">

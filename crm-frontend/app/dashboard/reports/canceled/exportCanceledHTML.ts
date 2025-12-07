@@ -24,6 +24,7 @@ export function exportCanceledHTML(rows: any[]) {
           <td>${job.customerName || ""}</td>
           <td>${phones}</td>
           <td>${job.customerAddress || ""}</td>
+          <td>${job.description || ""}</td>
           <td>${job.technician?.name || "—"}</td>
           <td>${job.source?.name || "—"}</td>
           <td>${job.canceledReason || "—"}</td>
