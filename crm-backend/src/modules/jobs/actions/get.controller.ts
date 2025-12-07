@@ -10,7 +10,16 @@ export async function getJobs(req: Request, res: Response) {
         technician: true,
         jobType: true,
         source: true,
-        jobStatus: true,
+        jobStatus: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            active: true,
+            locked: true,
+          },
+        },
       },
     });
 
@@ -32,7 +41,16 @@ export async function getJobByShortId(req: Request, res: Response) {
         technician: true,
         jobType: true,
         source: true,
-        jobStatus: true,
+        jobStatus: {
+          select: {
+            id: true,
+            name: true,
+            color: true,
+            order: true,
+            active: true,
+            locked: true,
+          },
+        },
         closing: true,
 
         logs: {

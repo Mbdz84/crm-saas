@@ -1,7 +1,27 @@
+// crm-frontend/app/dashboard/jobs/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+
+interface JobStatusMeta {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  active: boolean;
+  locked: boolean;
+}
+
+interface Technician {
+  id: string;
+  name: string;
+}
+
+interface LeadSource {
+  id?: string;
+  name: string;
+}
 
 interface Job {
   id: string;
@@ -10,20 +30,57 @@ interface Job {
   customerName?: string | null;
   customerPhone?: string | null;
   customerAddress?: string | null;
+  scheduledAt?: string | null;
 
-  // FIX → jobStatus exists (returned by backend)
-  status: string; 
-  jobStatus?: { id: string; name: string } | null;
+  status: string;
+  jobStatus?: JobStatusMeta | null;
 
-  technician?: { id: string; name: string } | null;
+  technician?: Technician | null;
+  source?: LeadSource | null;
+
   createdAt: string;
+  closedAt?: string | null;
+  canceledAt?: string | null;
 }
+
+/* ------------------------------------------------------------
+   COLUMN VISIBILITY TYPES
+------------------------------------------------------------ */
+type ColumnKey =
+  | "shortId"
+  | "customer"
+  | "phone"
+  | "address"
+  | "technician"
+  | "status"
+  | "source"
+  | "appointment"
+  | "createdAt"
+  | "quick";
+
+type ColumnVisibility = Record<ColumnKey, boolean>;
+
+const BOARD_HIDE_MS = 45 * 60 * 1000; // 45 minutes
 
 export default function JobsPage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+
+  const [columnsVisible, setColumnsVisible] = useState<ColumnVisibility>({
+    shortId: true,
+    customer: true,
+    phone: true,
+    address: true,
+    technician: true,
+    status: true,
+    source: true,
+    appointment: true,
+    createdAt: false,
+    quick: true,
+  });
 
   const base = process.env.NEXT_PUBLIC_API_URL;
 
@@ -32,14 +89,14 @@ export default function JobsPage() {
       try {
         const res = await fetch(`${base}/jobs`, { credentials: "include" });
 
-if (!res.ok) {
-  console.warn("JWT expired → redirecting to login");
-  router.push("/login");
-  return;
-}
+        if (!res.ok) {
+          console.warn("JWT expired → redirecting to login");
+          router.push("/login");
+          return;
+        }
 
-const data = await res.json();
-setJobs(data);
+        const data = await res.json();
+        setJobs(data);
       } catch (err) {
         console.error("LOAD JOBS ERROR", err);
       } finally {
@@ -50,50 +107,132 @@ setJobs(data);
     load();
   }, []);
 
-  const filtered = jobs.filter((job) => {
-    const text = (
-      (job.shortId || "") +
-      " " +
-      job.title +
-      " " +
-      (job.customerName || "") +
-      " " +
-      (job.customerPhone || "") +
-      " " +
-      (job.customerAddress || "")
-    )
-      .toLowerCase()
-      .trim();
+  /* ------------------------------------------------------------
+     FILTER + HIDE CLOSED/CANCELED OLDER THAN 45 MIN
+  ------------------------------------------------------------ */
+  const filteredJobs = useMemo(() => {
+    const now = Date.now();
 
-    return text.includes(search.toLowerCase().trim());
-  });
+    return jobs
+      .filter((job) => {
+        // Hide closed/canceled jobs after 45 minutes
+        const statusName = job.jobStatus?.name || job.status || "Unknown";
+
+        if (["Closed", "Canceled", "Cancelled"].includes(statusName)) {
+          const ts = job.closedAt || job.canceledAt;
+          if (ts) {
+            const age = now - new Date(ts).getTime();
+            if (age > BOARD_HIDE_MS) return false;
+          }
+        }
+
+        // Text search
+        const text = (
+          (job.shortId || "") +
+          " " +
+          job.title +
+          " " +
+          (job.customerName || "") +
+          " " +
+          (job.customerPhone || "") +
+          " " +
+          (job.customerAddress || "") +
+          " " +
+          (job.source?.name || "")
+        )
+          .toLowerCase()
+          .trim();
+
+        return text.includes(search.toLowerCase().trim());
+      })
+      .sort((a, b) => {
+        // Sort primarily by status order, then createdAt desc
+        const aOrder = a.jobStatus?.order ?? 999;
+        const bOrder = b.jobStatus?.order ?? 999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      });
+  }, [jobs, search]);
+
+  /* ------------------------------------------------------------
+     GROUP BY STATUS
+  ------------------------------------------------------------ */
+  const groupedByStatus = useMemo(() => {
+    const groups: Record<
+      string,
+      { statusName: string; color: string; order: number; jobs: Job[] }
+    > = {};
+
+    filteredJobs.forEach((job) => {
+      const meta = job.jobStatus;
+      const statusName = meta?.name || job.status || "Unknown";
+      const color = meta?.color || "#e5e7eb";
+      const order = meta?.order ?? 999;
+
+      if (!groups[statusName]) {
+        groups[statusName] = { statusName, color, order, jobs: [] };
+      }
+
+      groups[statusName].jobs.push(job);
+    });
+
+    return Object.values(groups).sort((a, b) => a.order - b.order);
+  }, [filteredJobs]);
 
   if (loading) return <div className="p-6">Loading jobs...</div>;
 
+  const columnKeysInOrder: ColumnKey[] = [
+    "shortId",
+    "customer",
+    "phone",
+    "address",
+    "technician",
+    "status",
+    "source",
+    "appointment",
+    "createdAt",
+    "quick",
+  ];
+
   return (
-    <div className="p-6 space-y-4">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-4">
+      {/* HEADER + ACTIONS */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Jobs</h1>
+          <h1 className="text-2xl font-semibold">Job Board</h1>
           <p className="text-gray-500 text-sm">
-            Click a row to open job details. Short ID is used everywhere (SMS, search, job page).
+            Live jobs grouped by status. Closed and canceled jobs disappear from
+            this board 45 minutes after they are completed.
           </p>
         </div>
 
-        <button
-          onClick={() => router.push("/dashboard/jobs/new")}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
-        >
-          + New Job
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() =>
+              setShowColumnPicker((prev) => !prev)
+            }
+            className="px-3 py-2 border rounded text-sm bg-white hover:bg-gray-50"
+          >
+            Columns
+          </button>
+
+          <button
+            onClick={() => router.push("/dashboard/jobs/new")}
+            className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+          >
+            + New Job
+          </button>
+        </div>
       </div>
 
-      {/* SEARCH */}
-      <div className="flex gap-3 items-center">
+      {/* SEARCH BAR */}
+      <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
         <input
-          className="border rounded px-3 py-2 w-full max-w-md dark:bg-gray-900"
-          placeholder="Search by ID, name, phone, address..."
+          className="border rounded px-3 py-2 w-full md:max-w-md dark:bg-gray-900"
+          placeholder="Search by ID, name, phone, address, lead source..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -102,60 +241,336 @@ setJobs(data);
         </span>
       </div>
 
-      {/* TABLE */}
-      <div className="border rounded bg-white dark:bg-gray-900 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-800">
-            <tr>
-              <th className="p-2 text-left">Job ID</th>
-              <th className="p-2 text-left">Customer</th>
-              <th className="p-2 text-left">Phone</th>
-              <th className="p-2 text-left">Address</th>
-              <th className="p-2 text-left">Tech</th>
-              <th className="p-2 text-left">Status</th>
-              <th className="p-2 text-left">Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((job) => {
-              const short = job.shortId || job.id.slice(0, 5);
+      {/* COLUMN VISIBILITY PANEL */}
+      {showColumnPicker && (
+        <div className="border rounded p-3 bg-gray-50">
+          <h3 className="font-semibold mb-2 text-sm">Show / Hide Columns</h3>
+          <div className="flex flex-wrap gap-4 text-sm">
+            {columnKeysInOrder.map((key) => (
+              <label key={key} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={columnsVisible[key]}
+                  onChange={() =>
+                    setColumnsVisible((prev) => ({
+                      ...prev,
+                      [key]: !prev[key],
+                    }))
+                  }
+                />
+                {labelForColumn(key)}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
-              // FIX — always use jobStatus.name
+      {/* NO JOBS */}
+      {groupedByStatus.length === 0 && (
+        <div className="border rounded p-4 text-center text-gray-500">
+          No active jobs on the board. Closed/canceled jobs older than 45
+          minutes are hidden here but still available in Reports.
+        </div>
+      )}
+
+      {/* GROUPS BY STATUS */}
+      {groupedByStatus.map((group) => (
+        <section key={group.statusName} className="space-y-2">
+          {/* STATUS HEADER */}
+          <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center gap-3">
+              <span
+                className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                style={{
+                  backgroundColor: group.color || "#e5e7eb",
+                  color: "#111827",
+                }}
+              >
+                {group.statusName}
+              </span>
+              <span className="text-xs text-gray-500">
+                {group.jobs.length} job
+                {group.jobs.length === 1 ? "" : "s"}
+              </span>
+            </div>
+          </div>
+
+          {/* DESKTOP TABLE */}
+          <div className="hidden md:block border rounded bg-white dark:bg-gray-900 overflow-auto">
+            <table className="w-full text-sm min-w-[900px]">
+              <thead className="bg-gray-100 dark:bg-gray-800">
+                <tr>
+                  {columnsVisible.shortId && (
+                    <th className="p-2 text-left">Job ID</th>
+                  )}
+                  {columnsVisible.customer && (
+                    <th className="p-2 text-left">Customer</th>
+                  )}
+                  {columnsVisible.phone && (
+                    <th className="p-2 text-left">Phone</th>
+                  )}
+                  {columnsVisible.address && (
+                    <th className="p-2 text-left">Address</th>
+                  )}
+                  {columnsVisible.technician && (
+                    <th className="p-2 text-left">Tech</th>
+                  )}
+                  {columnsVisible.status && (
+                    <th className="p-2 text-left">Status</th>
+                  )}
+                  {columnsVisible.source && (
+                    <th className="p-2 text-left">Lead Source</th>
+                  )}
+                  {columnsVisible.appointment && (
+                    <th className="p-2 text-left">Appt Time</th>
+                  )}
+                  {columnsVisible.createdAt && (
+                    <th className="p-2 text-left">Created</th>
+                  )}
+                  {/* Quick actions column */}
+                  {columnsVisible.quick && (
+  <th className="p-2 text-right w-[150px]">Quick</th>
+)}
+                </tr>
+              </thead>
+              <tbody>
+                {group.jobs.map((job) => {
+                  const short = job.shortId || job.id.slice(0, 5);
+                  const statusName =
+                    job.jobStatus?.name || job.status || "Unknown";
+
+                  return (
+                    <tr
+                      key={job.id}
+                      className="border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      onClick={(e) => {
+                        // prevent row click when clicking on actions
+                        const target = e.target as HTMLElement;
+                        if (
+                          target.closest("[data-action-btn]") ||
+                          target.tagName.toLowerCase() === "button" ||
+                          target.tagName.toLowerCase() === "a"
+                        ) {
+                          return;
+                        }
+                        router.push(`/dashboard/jobs/${short}`);
+                      }}
+                    >
+                      {columnsVisible.shortId && (
+                        <td className="p-2 font-mono text-xs">{short}</td>
+                      )}
+                      {columnsVisible.customer && (
+                        <td className="p-2">{job.customerName || "-"}</td>
+                      )}
+                      {columnsVisible.phone && (
+                        <td className="p-2">{job.customerPhone || "-"}</td>
+                      )}
+                      {columnsVisible.address && (
+                        <td className="p-2">{job.customerAddress || "-"}</td>
+                      )}
+                      {columnsVisible.technician && (
+                        <td className="p-2">{job.technician?.name || "-"}</td>
+                      )}
+                      {columnsVisible.status && (
+                        <td className="p-2">{statusName}</td>
+                      )}
+                      {columnsVisible.source && (
+                        <td className="p-2">{job.source?.name || "-"}</td>
+                      )}
+                      {columnsVisible.appointment && (
+                        <td className="p-2">
+                          {job.scheduledAt
+                            ? new Date(job.scheduledAt).toLocaleString()
+                            : "-"}
+                        </td>
+                      )}
+                      {columnsVisible.createdAt && (
+                        <td className="p-2">
+                          {new Date(job.createdAt).toLocaleString()}
+                        </td>
+                      )}
+
+                      {/* QUICK ACTIONS */}
+                      {columnsVisible.quick && (
+                      <td className="p-2">
+                        <div className="flex justify-end gap-2 text-lg">
+                          {/* Call */}
+                          <button
+                            data-action-btn
+                            title="Call customer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!job.customerPhone) return;
+                              window.location.href = `tel:${job.customerPhone}`;
+                            }}
+                            className="hover:text-blue-600"
+                          >
+                            📞
+                          </button>
+
+                          {/* Directions */}
+                          <button
+                            data-action-btn
+                            title="Directions"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!job.customerAddress) return;
+                              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                job.customerAddress
+                              )}`;
+                              window.open(url, "_blank");
+                            }}
+                            className="hover:text-green-600"
+                          >
+                            📍
+                          </button>
+
+                          {/* ===================== */}
+                          {/* add extra buttons.... */}
+                          {/* ===================== */}
+
+                        </div>
+                      </td>
+                      )}
+                    </tr>
+                  );
+                })}
+
+                {group.jobs.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="p-4 text-center text-gray-500"
+                    >
+                      No jobs in this status.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* MOBILE CARDS */}
+          <div className="md:hidden space-y-2">
+            {group.jobs.map((job) => {
+              const short = job.shortId || job.id.slice(0, 5);
               const statusName =
                 job.jobStatus?.name || job.status || "Unknown";
 
               return (
-                <tr
+                <div
                   key={job.id}
-                  className="border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                  className="border rounded bg-white dark:bg-gray-900 p-3 shadow-sm"
                   onClick={() => router.push(`/dashboard/jobs/${short}`)}
                 >
-                  <td className="p-2 font-mono text-xs">{short}</td>
-                  <td className="p-2">{job.customerName || "-"}</td>
-                  <td className="p-2">{job.customerPhone || "-"}</td>
-                  <td className="p-2">{job.customerAddress || "-"}</td>
-                  <td className="p-2">{job.technician?.name || "-"}</td>
+                  <div className="flex justify-between items-center mb-1">
+                    <div className="font-mono text-xs font-semibold">
+                      #{short}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(job.createdAt).toLocaleTimeString()}
+                    </div>
+                  </div>
 
-                  {/* FIXED STATUS */}
-                  <td className="p-2">{statusName}</td>
+                  <div className="text-sm font-semibold">
+                    {job.customerName || "No name"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {job.customerPhone || "-"}
+                  </div>
 
-                  <td className="p-2">
-                    {new Date(job.createdAt).toLocaleString()}
-                  </td>
-                </tr>
+                  {job.customerAddress && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      {job.customerAddress}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center mt-2 text-xs text-gray-600">
+                    <span>{job.technician?.name || "No tech"}</span>
+                    <span>{job.source?.name || "No source"}</span>
+                  </div>
+
+                  {job.scheduledAt && (
+                    <div className="mt-1 text-xs text-blue-600">
+                      Appt:{" "}
+                      {new Date(job.scheduledAt).toLocaleString(undefined, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </div>
+                  )}
+
+                  {/* QUICK ACTIONS (BIG TOUCH TARGETS) */}
+                  <div
+                    className="flex justify-between mt-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      className="flex-1 mr-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
+                      onClick={() => {
+                        if (!job.customerPhone) return;
+                        window.location.href = `tel:${job.customerPhone}`;
+                      }}
+                    >
+                      📞 Call
+                    </button>
+                    <button
+                      className="flex-1 mx-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
+                      onClick={() => {
+                        if (!job.customerAddress) return;
+                        const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          job.customerAddress
+                        )}`;
+                        window.open(url, "_blank");
+                      }}
+                    >
+                      📍 Directions
+                    </button>
+                    <button
+                      className="flex-1 ml-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
+                      onClick={() => router.push(`/dashboard/jobs/${short}`)}
+                    >
+                      📝 Job
+                    </button>
+                  </div>
+                </div>
               );
             })}
-
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="p-4 text-center text-gray-500">
-                  No jobs found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </section>
+      ))}
     </div>
   );
+}
+
+/* ------------------------------------------------------------
+   LABEL HELPER
+------------------------------------------------------------ */
+function labelForColumn(key: ColumnKey): string {
+  switch (key) {
+    case "shortId":
+      return "Job ID";
+    case "customer":
+      return "Customer";
+    case "phone":
+      return "Phone";
+    case "address":
+      return "Address";
+    case "technician":
+      return "Tech";
+    case "status":
+      return "Status";
+    case "source":
+      return "Lead Source";
+    case "appointment":
+      return "Appt Time";
+    case "createdAt":
+      return "Created";
+    case "quick":
+      return "Quick Actions";
+    default:
+      return key;
+  }
 }
