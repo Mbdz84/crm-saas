@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import TechnicianSummary from "./TechnicianSummary";
 import LeadSourceSummary from "./LeadSourceSummary";
 import ReportsTable from "./ReportsTable";
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -173,6 +175,14 @@ export default function ReportsPage() {
         >
           {loading ? "Loading…" : "Load Report"}
         </button>
+        <div className="mt-4">
+  <button
+    onClick={() => router.push("/dashboard/reports/canceled")}
+    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700 "
+  >
+    Go to Canceled Jobs Report
+  </button>
+</div>
       </div>
 
 
