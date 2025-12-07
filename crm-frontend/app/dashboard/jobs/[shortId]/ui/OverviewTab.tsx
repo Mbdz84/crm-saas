@@ -6,6 +6,7 @@ import GoogleAddressInput from "@/components/GoogleAddressInput";
 import { useJob } from "../state/JobProvider";
 import { useJobActions } from "../state/useJobActions";
 import Editable from "./Editable";
+import AppointmentPicker from "./AppointmentPicker";
 import { useState } from "react";
 
 /* -----------------------------------------------------------
@@ -400,19 +401,13 @@ const selectedStatusIsCanceled = (() => {
   </div>
 )}
           {/* Appointment */}
-          <div>
-            <label className="block text-sm font-medium">Appointment</label>
-            <input
-              type="datetime-local"
-              className="mt-1 w-full border rounded p-2"
-              value={
-                editableJob.scheduledAt
-                  ? editableJob.scheduledAt.slice(0, 16)
-                  : ""
-              }
-              onChange={(e) => setField("scheduledAt", e.target.value)}
-            />
-          </div>
+<div>
+  <label className="block text-sm font-medium">Appointment</label>
+  <AppointmentPicker
+  value={editableJob.scheduledAt || ""}
+  onChange={(v: string) => setField("scheduledAt", v)}
+/>
+</div>
         </div>
 <button
   onClick={() => saveChanges({ statusNote: cancelReason })}

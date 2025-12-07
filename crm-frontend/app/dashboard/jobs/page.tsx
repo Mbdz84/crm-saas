@@ -182,6 +182,40 @@ export default function JobsPage() {
     return Object.values(groups).sort((a, b) => a.order - b.order);
   }, [filteredJobs]);
 
+  /* ------------------------------------------------------------
+     APPOINTMENT RANGE FORMATTER
+  ------------------------------------------------------------ */
+  function formatApptRange(iso?: string | null): string {
+    if (!iso) return "-";
+
+    const start = new Date(iso);
+    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+
+    const fmt = (d: Date) =>
+      d.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+
+    return `${fmt(start)} → ${fmt(end)}`;
+  }
+function formatAddress(addr?: string | null) {
+  if (!addr) return "-";
+  const parts = addr.split(",");
+  if (parts.length < 2) return addr;
+
+  const line1 = parts[0].trim();
+  const line2 = parts.slice(1).join(",").trim();
+
+  return (
+    <>
+      {line1}
+      <br />
+      {line2}
+    </>
+  );
+}
   if (loading) return <div className="p-6">Loading jobs...</div>;
 
   const columnKeysInOrder: ColumnKey[] = [
@@ -297,42 +331,38 @@ export default function JobsPage() {
 
           {/* DESKTOP TABLE */}
           <div className="hidden md:block border rounded bg-white dark:bg-gray-900 overflow-auto">
-            <table className="w-full text-sm min-w-[900px]">
+            <table className="w-full text-sm table-fixed min-w-[1100px]">
               <thead className="bg-gray-100 dark:bg-gray-800">
-                <tr>
-                  {columnsVisible.shortId && (
-                    <th className="p-2 text-left">Job ID</th>
-                  )}
-                  {columnsVisible.customer && (
-                    <th className="p-2 text-left">Customer</th>
-                  )}
-                  {columnsVisible.phone && (
-                    <th className="p-2 text-left">Phone</th>
-                  )}
-                  {columnsVisible.address && (
-                    <th className="p-2 text-left">Address</th>
-                  )}
-                  {columnsVisible.technician && (
-                    <th className="p-2 text-left">Tech</th>
-                  )}
-                  {columnsVisible.status && (
-                    <th className="p-2 text-left">Status</th>
-                  )}
-                  {columnsVisible.source && (
-                    <th className="p-2 text-left">Lead Source</th>
-                  )}
-                  {columnsVisible.appointment && (
-                    <th className="p-2 text-left">Appt Time</th>
-                  )}
-                  {columnsVisible.createdAt && (
-                    <th className="p-2 text-left">Created</th>
-                  )}
-                  {/* Quick actions column */}
-                  {columnsVisible.quick && (
-  <th className="p-2 text-right w-[150px]">Quick</th>
-)}
-                </tr>
-              </thead>
+  <tr>
+    {columnsVisible.shortId && (
+      <th className="p-2 text-left w-20">Job ID</th>
+    )}
+    {columnsVisible.customer && (
+      <th className="p-2 text-left w-32">Customer</th>
+    )}
+    {columnsVisible.phone && (
+      <th className="p-2 text-left w-32">Phone</th>
+    )}
+    {columnsVisible.address && (
+      <th className="p-2 text-left w-64">Address</th>
+    )}
+    {columnsVisible.technician && (
+      <th className="p-2 text-left w-28">Tech</th>
+    )}
+    {columnsVisible.status && (
+      <th className="p-2 text-left w-28">Status</th>
+    )}
+    {columnsVisible.source && (
+      <th className="p-2 text-left w-32">Lead Source</th>
+    )}
+    {columnsVisible.appointment && (
+      <th className="p-2 text-left w-40">Appt Time</th>
+    )}
+    {columnsVisible.quick && (
+      <th className="p-2 text-right w-24">Quick</th>
+    )}
+  </tr>
+</thead>
               <tbody>
                 {group.jobs.map((job) => {
                   const short = job.shortId || job.id.slice(0, 5);
@@ -366,8 +396,10 @@ export default function JobsPage() {
                         <td className="p-2">{job.customerPhone || "-"}</td>
                       )}
                       {columnsVisible.address && (
-                        <td className="p-2">{job.customerAddress || "-"}</td>
-                      )}
+  <td className="p-2 whitespace-pre-line">
+    {formatAddress(job.customerAddress)}
+  </td>
+)}
                       {columnsVisible.technician && (
                         <td className="p-2">{job.technician?.name || "-"}</td>
                       )}
@@ -378,12 +410,10 @@ export default function JobsPage() {
                         <td className="p-2">{job.source?.name || "-"}</td>
                       )}
                       {columnsVisible.appointment && (
-                        <td className="p-2">
-                          {job.scheduledAt
-                            ? new Date(job.scheduledAt).toLocaleString()
-                            : "-"}
-                        </td>
-                      )}
+  <td className="p-2">
+    {formatApptRange(job.scheduledAt)}
+  </td>
+)}
                       {columnsVisible.createdAt && (
                         <td className="p-2">
                           {new Date(job.createdAt).toLocaleString()}
@@ -491,16 +521,12 @@ export default function JobsPage() {
                   </div>
 
                   {job.scheduledAt && (
-                    <div className="mt-1 text-xs text-blue-600">
-                      Appt:{" "}
-                      {new Date(job.scheduledAt).toLocaleString(undefined, {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </div>
-                  )}
+  <div className="mt-1 text-xs text-blue-600 font-semibold">
+    🕒 {formatApptRange(job.scheduledAt)}
+  </div>
+)}
+
+
 
                   {/* QUICK ACTIONS (BIG TOUCH TARGETS) */}
                   <div
