@@ -113,6 +113,23 @@ model LeadSource {
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
+  // ─────────────────────────────────────
+  // Profile / behavior
+  // ─────────────────────────────────────
+  color   String  @default("#6b7280") // tag color for UI
+  active  Boolean @default(true)      // can be selected for new jobs
+  locked  Boolean @default(false)     // protect from edits/deletes
+
+  // ─────────────────────────────────────
+  // Financial defaults
+  // (all optional – if null, do nothing)
+  // ─────────────────────────────────────
+  defaultLeadPercent      Decimal? @db.Decimal(5, 2)   // e.g. 35.00
+  defaultAdditionalFee    Decimal? @db.Decimal(10, 2)  // flat fee $
+  defaultCcFeePercent     Decimal? @db.Decimal(5, 2)   // CC fee %
+  defaultCheckFeePercent  Decimal? @db.Decimal(5, 2)   // Check fee %
+  autoApplyFinancialRules Boolean  @default(false)     // auto fill in closing panel
+
   jobs Job[]
 }
 
