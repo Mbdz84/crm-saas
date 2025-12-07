@@ -43,9 +43,17 @@ if (typeof window !== "undefined") {
 
 if (saved) {
   try {
-    baseVisibility = JSON.parse(saved);
+    const stored = JSON.parse(saved);
+
+    // Merge new keys (such as "phones") with default = true
+    columnDefs.forEach((c) => {
+      if (stored[c.key] === undefined) {
+        stored[c.key] = true;
+      }
+    });
+
+    baseVisibility = stored;
   } catch {
-    // corrupted saved layout → fallback
     columnDefs.forEach((c) => (baseVisibility[c.key] = true));
   }
 }
@@ -80,43 +88,55 @@ const [showColumns, setShowColumns] = useState(false);
      VALUE EXTRACTOR INCLUDING NEW PAYMENT FIELDS
   ----------------------------------------- */
   function extractValue(job: any, field: string) {
-    const closing = job.closing || {};
+  const c = job.closing || {};
 
-    const map: Record<string, any> = {
-      invoice: closing.invoiceNumber,
-      jobId: job.shortId,
-      name: job.customerName,
-      address: job.customerAddress,
-      date: job.closedAt,
-      type: job.jobType?.name,
-      tech: job.technician?.name,
-      totalAmount: closing.totalAmount,
+  const map: Record<string, any> = {
+    invoice: c.invoiceNumber,
+    jobId: job.shortId,
 
-      // NEW PAYMENT COLUMNS
-      cashTotal: closing.cashTotal,
-      creditTotal: closing.creditTotal,
-      checkTotal: closing.checkTotal,
-      zelleTotal: closing.zelleTotal,
+    // ✅ FIXED (must match columnDefs)
+    customerName: job.customerName,
 
-      techParts: closing.techParts,
-      leadParts: closing.leadParts,
-      companyParts: closing.companyParts,
-      totalParts: closing.totalParts,
-      ccFee: closing.totalCcFee,
-      addFee: closing.leadAdditionalFee,
-      adjustedTotal: closing.adjustedTotal,
-      techBalance: closing.techBalance,
-      leadBalance: closing.leadBalance,
-      compBalance: closing.companyBalance,
-      sumCheck: closing.sumCheck,
-    };
+    // ⭐ NEW PHONES FIELD
+    phones: `${job.customerPhone || ""}${job.customerPhone2 ? " | " + job.customerPhone2 : ""}`,
 
-    let value = map[field];
-    if (value == null) return 0;
+    address: job.customerAddress,
+    date: job.closedAt,
+    jobType: job.jobType?.name,
+    collectedBy: job.technician?.name,
+    totalAmount: c.totalAmount,
 
-    if (field === "date") return new Date(value).getTime();
-    return Number(value) || value;
-  }
+    cashTotal: c.cashTotal,
+    creditTotal: c.creditTotal,
+    checkTotal: c.checkTotal,
+    zelleTotal: c.zelleTotal,
+
+    techParts: c.techParts,
+    leadParts: c.leadParts,
+    companyParts: c.companyParts,
+    totalParts: c.totalParts,
+    ccFee: c.totalCcFee,
+    addFee: c.leadAdditionalFee,
+    adjustedTotal: c.adjustedTotal,
+    techPercent: c.techPercent,
+    techProfit: c.techProfit,
+    leadPercent: c.leadPercent,
+    leadProfit: c.leadProfit,
+    companyPercent: c.companyPercent,
+    companyProfit: c.companyProfitDisplay,
+
+    techBalance: c.techBalance,
+    leadBalance: c.leadBalance,
+    companyBalance: c.companyBalance,
+    sumCheck: c.sumCheck,
+  };
+
+  let value = map[field];
+  if (value == null) return 0;
+
+  if (field === "date") return new Date(value).getTime();
+  return Number(value) || value;
+}
 
   const sortedRows = useMemo(() => {
     const arr = [...rows];

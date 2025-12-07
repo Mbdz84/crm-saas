@@ -88,6 +88,14 @@ export default function TableRow({
         <td className="border px-2 py-1">{job.customerName}</td>
       )}
 
+      {visible.phones && (
+  <td className="border px-2 py-1 whitespace-pre-line">
+    {(job.customerPhone || "") +
+      (job.customerPhone2 ? "\n" + job.customerPhone2 : "") ||
+      "-"}
+  </td>
+)}
+
       {visible.address && (
         <td className="border px-2 py-1">{job.customerAddress}</td>
       )}

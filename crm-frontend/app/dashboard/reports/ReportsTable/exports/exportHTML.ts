@@ -59,6 +59,9 @@ function extract(job: any, key: string): any {
     invoice: c.invoiceNumber,
     jobId: job.shortId,
     name: job.customerName,
+    phones:
+  (job.customerPhone || "") +
+  (job.customerPhone2 ? " | " + job.customerPhone2 : ""),
     address: job.customerAddress,
     date: job.closedAt ? new Date(job.closedAt).toLocaleDateString() : "",
     type: job.jobType?.name,
