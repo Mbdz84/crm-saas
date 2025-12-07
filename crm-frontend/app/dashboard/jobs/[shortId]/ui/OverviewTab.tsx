@@ -154,7 +154,33 @@ const selectedStatusIsCanceled = (() => {
 >
   Save Changes
 </button>
+{/* Duplicate → New Job */}
+  <button
+    onClick={async () => {
+      try {
+        const res = await fetch(`${base}/jobs/${job.shortId}/duplicate`, {
+          method: "POST",
+          credentials: "include",
+        });
 
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error(data?.error || "Failed to duplicate job");
+        }
+
+        toast.success("Job duplicated");
+        // ✅ Go back to the job board instead of opening /undefined
+        router.push("/dashboard/jobs");
+      } catch (err: any) {
+        console.error("DUPLICATE JOB ERROR", err);
+        toast.error(err?.message || "Duplicate failed");
+      }
+    }}
+    className="px-4 py-2 bg-blue-500 text-white rounded"
+  >
+    Duplicate → New Job
+  </button>
           {/* ALWAYS SHOW DELETE BUTTON */}
           <button
             onClick={async () => {

@@ -9,6 +9,8 @@ import * as SmsController from "./actions/sms.controller";
 import * as RecordingsController from "./actions/recordings.controller";
 import { DeleteController } from "./actions/delete.controller";
 
+import * as DuplicateController from "./actions/duplicate.controller";
+
 export {
   ExtensionController,
   ParseController,
@@ -20,4 +22,5 @@ export {
   SmsController,
   RecordingsController,
   DeleteController,
+  DuplicateController,
 };

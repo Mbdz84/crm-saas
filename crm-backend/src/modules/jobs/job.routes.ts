@@ -10,6 +10,7 @@ import {
   SmsController,
   RecordingsController,
   DeleteController,
+  DuplicateController,
 } from "./index";
 import { createJobFromParse } from "./actions/create-from-parse.controller";
 import { authMiddleware } from "../../middleware/auth";
@@ -64,6 +65,9 @@ router.post("/:shortId/resend-sms", SmsController.resendJobSms);
 
 /* --------------- RECORDINGS --------------------------------- */
 router.get("/:shortId/recordings", RecordingsController.getJobRecordings);
+
+/* --------------- DUPLICATE JOB BUTTON ----------------------- */
+router.post("/:shortId/duplicate", DuplicateController.duplicateJob);
 
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);
