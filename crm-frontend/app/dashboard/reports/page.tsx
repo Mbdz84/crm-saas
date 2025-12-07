@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import TechnicianSummary from "./TechnicianSummary";
 import LeadSourceSummary from "./LeadSourceSummary";
+import ReportsTable from "./ReportsTable";
 
 export default function ReportsPage() {
   const [from, setFrom] = useState("");
@@ -214,20 +215,39 @@ export default function ReportsPage() {
 
 
       {/* TECHNICIAN SUMMARY */}
-<TechnicianSummary
-  data={data?.technicianSummary ?? []}
-  jobs={data?.jobs ?? []}
-  from={from}
-  to={to}
-/>
+      <TechnicianSummary
+        data={data?.technicianSummary ?? []}
+        jobs={data?.jobs ?? []}
+        from={from}
+        to={to}
+      />
 
       {/* LEAD SOURCE SUMMARY */}
       <LeadSourceSummary
-  data={data?.leadSourceSummary ?? []}
-  jobs={data?.jobs ?? []}
-  from={from}
-  to={to}
-/>
+        data={data?.leadSourceSummary ?? []}
+        jobs={data?.jobs ?? []}
+        from={from}
+        to={to}
+      />
+
+      {/* FULL REPORTS TABLE */}
+      {data?.jobs?.length > 0 && (
+        <ReportsTable
+          rows={data.jobs}
+          from={from}
+          to={to}
+          expandedTechName={null}
+          expandedSourceName={null}
+          defaultVisibleKeys={[
+            "invoice",
+            "jobId",
+            "name",
+            "date",
+            "totalAmount",
+            "companyProfit",
+          ]}
+        />
+      )}
 
     </div>
   );

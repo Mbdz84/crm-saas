@@ -149,7 +149,7 @@ const selectedStatusIsCanceled = (() => {
           {/* Save */}
           <button
   onClick={() => saveChanges({ statusNote: cancelReason })}
-  className="px-4 py-2 rounded shadow text-white bg-blue-600"
+  className="px-4 py-2 rounded shadow text-white bg-green-600"
 >
   Save Changes
 </button>
@@ -371,6 +371,7 @@ const selectedStatusIsCanceled = (() => {
         "Went with different company",
         "We cant do the job",
         "Duplicate lead",
+        "Don't have the key for it",
         "Client canceled"
       ].map((tag) => (
         <button
@@ -413,7 +414,12 @@ const selectedStatusIsCanceled = (() => {
             />
           </div>
         </div>
-
+<button
+  onClick={() => saveChanges({ statusNote: cancelReason })}
+  className="px-4 py-2 rounded shadow text-white bg-green-600"
+>
+  Save Changes
+</button>
         {/* =============================================== */}
         {/* CLOSING PANEL */}
         {/* =============================================== */}
