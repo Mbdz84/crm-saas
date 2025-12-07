@@ -99,6 +99,7 @@ export function JobProvider({
       setEditableJob(data);
       setDirty(false);
 
+      
       /* HYDRATE CANCEL FIELDS
    Try multiple keys to be safe:
    - canceledReason  (most likely DB column)
@@ -239,6 +240,84 @@ setCanceledAt(data.canceledAt ?? null);
     const interval = setInterval(() => loadRecordings(), 5_000_000);
     return () => clearInterval(interval);
   }, [base, shortId]);
+
+  /* NEW SMART AUTO-APPLY BLOCK — final version */
+useEffect(() => {
+  if (!editableJob || job?.closing) return;
+
+  const tech = techs.find((t: any) => t.id === editableJob.technicianId);
+  const source = leadSources.find((s: any) => s.id === editableJob.sourceId);
+
+  let changed = false;
+
+  let newTechPct = techPercent;
+  let newLeadPct = leadPercent;
+  let newCompanyPct = companyPercent;
+  let newLeadFee = leadAdditionalFee;
+
+  if (tech) {
+    if (tech.defaultTechPercent != null) {
+      newTechPct = String(tech.defaultTechPercent);
+      changed = true;
+    }
+
+    if (tech.defaultTechPaysExtraFee != null) {
+      setTechPaysAdditionalFee(Boolean(tech.defaultTechPaysExtraFee));
+      changed = true;
+    }
+
+    if (tech.defaultCcFeePercent != null) {
+      setPayments((prev: any[]) =>
+        prev.map((p: any) =>
+          p.payment === "credit"
+            ? { ...p, ccFeePct: String(tech.defaultCcFeePercent) }
+            : p
+        )
+      );
+      changed = true;
+    }
+
+    if (tech.defaultCheckFeePercent != null) {
+      setPayments((prev: any[]) =>
+        prev.map((p: any) =>
+          p.payment === "check"
+            ? { ...p, ccFeePct: String(tech.defaultCheckFeePercent) }
+            : p
+        )
+      );
+      changed = true;
+    }
+  }
+
+  if (source) {
+    if (source.defaultLeadPercent != null) {
+      newLeadPct = String(source.defaultLeadPercent);
+      changed = true;
+    }
+
+    if (source.defaultAdditionalFee != null) {
+      newLeadFee = String(source.defaultAdditionalFee);
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+
+  const t = Number(newTechPct) || 0;
+  const l = Number(newLeadPct) || 0;
+  const c = Math.max(0, 100 - t - l);
+
+  setTechPercent(String(t));
+  setLeadPercent(String(l));
+  setCompanyPercent(String(c));
+  setLeadAdditionalFee(String(newLeadFee));
+
+}, [
+  editableJob?.technicianId,
+  editableJob?.sourceId,
+  techs,
+  leadSources
+]);
 
   return (
     <JobContext.Provider
