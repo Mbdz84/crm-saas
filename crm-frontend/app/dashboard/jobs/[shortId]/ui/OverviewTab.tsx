@@ -17,7 +17,6 @@ export default function OverviewTab() {
   const techRole = userRole;
   const router = useRouter();
   const jobCtx = useJob();
-  const [statusNote, setStatusNote] = useState("");
   const {
     job,
     editableJob,
@@ -41,6 +40,8 @@ export default function OverviewTab() {
     invoiceNumberState,
     base,
     shortId,
+    cancelReason,
+    setCancelReason,
   } = jobCtx;
 
   // ✅ always safe array
@@ -147,7 +148,7 @@ const selectedStatusIsCanceled = (() => {
 
           {/* Save */}
           <button
-  onClick={() => saveChanges({ statusNote })}
+  onClick={() => saveChanges({ statusNote: cancelReason })}
   className="px-4 py-2 rounded shadow text-white bg-blue-600"
 >
   Save Changes
@@ -376,12 +377,10 @@ const selectedStatusIsCanceled = (() => {
           key={tag}
           type="button"
           onClick={() =>
-            setStatusNote((prev) =>
-              prev
-                ? `${prev} | ${tag}` // ✅ APPEND
-                : tag                // first tag
-            )
-          }
+  setCancelReason((prev: string) =>
+    prev ? `${prev} | ${tag}` : tag
+  )
+}
           className="px-2 py-1 text-xs border rounded bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
         >
           {tag}
@@ -391,12 +390,12 @@ const selectedStatusIsCanceled = (() => {
 
     {/* Textarea */}
     <textarea
-      className="w-full border rounded p-2"
-      rows={4}
-      value={statusNote}
-      onChange={(e) => setStatusNote(e.target.value)}
-      placeholder="Why was this job canceled?"
-    />
+  className="w-full border rounded p-2"
+  rows={4}
+  value={cancelReason}
+  onChange={(e) => setCancelReason(e.target.value)}
+  placeholder="Why was this job canceled?"
+/>
   </div>
 )}
           {/* Appointment */}
@@ -458,7 +457,7 @@ const selectedStatusIsCanceled = (() => {
             base={base}
             shortId={job.shortId}
             isAdmin={isAdmin}
-            statusNote={statusNote}
+            cancelReason={cancelReason}
           />
         )}
       </div>
@@ -508,7 +507,7 @@ function ClosingPanel(props: any) {
     base,
     userRole,
     shortId,
-    statusNote,
+    cancelReason,
   } = props;
 
   const router = useRouter();
@@ -918,7 +917,7 @@ function ClosingPanel(props: any) {
   onClick={() => {
     const r = calculateSplit();
     if (!r) return toast.error("Run calculation first");
-    closeJob(r, { statusNote });
+    closeJob(r, { statusNote: cancelReason });
   }}
   className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
 >

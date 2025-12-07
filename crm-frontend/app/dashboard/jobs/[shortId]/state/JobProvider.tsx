@@ -27,6 +27,10 @@ export function JobProvider({
   const [tab, setTab] =
     useState<"overview" | "log" | "recordings">("overview");
 
+  /* CANCEL FIELDS */
+  const [cancelReason, setCancelReason] = useState("");
+  const [canceledAt, setCanceledAt] = useState<any>(null);
+
   /* LOOKUP DATA */
   const [jobTypes, setJobTypes] = useState<any[]>([]);
   const [statuses, setStatuses] = useState<any[]>([]);
@@ -95,6 +99,20 @@ export function JobProvider({
       setEditableJob(data);
       setDirty(false);
 
+      /* HYDRATE CANCEL FIELDS
+   Try multiple keys to be safe:
+   - canceledReason  (most likely DB column)
+   - cancelReason    (if API used this key)
+   - statusNote      (if backend still names it that way)
+*/
+setCancelReason(
+  data.canceledReason ??
+  data.cancelReason ??
+  data.statusNote ??
+  ""
+);
+setCanceledAt(data.canceledAt ?? null);
+
       // Hydrate closing block into front-end state
       if (data.closing) {
         const c = data.closing;
@@ -153,9 +171,7 @@ export function JobProvider({
         credentials: "include",
       });
       if (res.ok) setStatuses(await res.json());
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async function loadJobTypes() {
@@ -165,9 +181,7 @@ export function JobProvider({
         credentials: "include",
       });
       if (res.ok) setJobTypes(await res.json());
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async function loadLeadSources() {
@@ -177,9 +191,7 @@ export function JobProvider({
         credentials: "include",
       });
       if (res.ok) setLeadSources(await res.json());
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async function loadTechs() {
@@ -189,30 +201,26 @@ export function JobProvider({
         credentials: "include",
       });
       if (res.ok) setTechs(await res.json());
-    } catch {
-      /* ignore */
-    }
+    } catch {}
   }
 
   async function loadRecordings() {
-  if (!base || !shortId) return;
-  try {
-    const res = await fetch(`${base}/jobs/${shortId}/recordings`, {
-      credentials: "include",
-    });
+    if (!base || !shortId) return;
+    try {
+      const res = await fetch(`${base}/jobs/${shortId}/recordings`, {
+        credentials: "include",
+      });
 
-    if (!res.ok) return;
+      if (!res.ok) return;
 
-    const data = await res.json();
+      const data = await res.json();
 
-    setJob((prev: any) => ({
-      ...(prev || {}),
-      recordings: data,
-    }));
-  } catch {
-    /* ignore */
+      setJob((prev: any) => ({
+        ...(prev || {}),
+        recordings: data,
+      }));
+    } catch {}
   }
-}
 
   /* ----------------- INITIAL LOAD ----------------- */
   useEffect(() => {
@@ -225,13 +233,10 @@ export function JobProvider({
     loadRecordings();
   }, [base, shortId]);
 
-  /* OPTIONAL: AUTO-REFRESH RECORDINGS (same behavior as before) */
+  /* AUTO-REFRESH RECORDINGS */
   useEffect(() => {
     if (!base || !shortId) return;
-    const interval = setInterval(
-      () => loadRecordings(),
-      5_000_000 // ~83 minutes, same as old code
-    );
+    const interval = setInterval(() => loadRecordings(), 5_000_000);
     return () => clearInterval(interval);
   }, [base, shortId]);
 
@@ -248,6 +253,12 @@ export function JobProvider({
 
         tab,
         setTab,
+
+        /* cancel fields */
+        cancelReason,
+        setCancelReason,
+        canceledAt,
+        setCanceledAt,
 
         /* lookups */
         jobTypes,

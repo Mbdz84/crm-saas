@@ -77,6 +77,34 @@ res.cookie("token", token, {
   }
 }
 
+/* --------------------------------------------------------
+   AUTH ME (RETURN FULL USER DATA)
+-------------------------------------------------------- */
 export async function me(req: Request, res: Response) {
-  res.json({ user: req.user });
+  try {
+    // req.user.id comes from authMiddleware
+    if (!req.user?.id) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        companyId: true,
+      },
+    });
+
+    if (!fullUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.json({ user: fullUser });
+  } catch (err) {
+    console.error("me() error:", err);
+    res.status(500).json({ error: "Failed to load user" });
+  }
 }

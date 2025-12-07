@@ -7,25 +7,39 @@ import { useRouter } from "next/navigation";
 
 export default function Topbar() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
   const { theme, toggleTheme } = useTheme();
   const [company, setCompany] = useState<any>(null);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/companies/me`,
-          { credentials: "include" }
-        );
-        const data = await res.json();
-        setCompany(data);
-      } catch (err) {
-        console.error("Failed to load company");
-      }
-    };
+  const load = async () => {
+    try {
+      // Load company
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/companies/me`,
+        { credentials: "include" }
+      );
+      const companyData = await res.json();
+      setCompany(companyData);
 
-    load();
-  }, []);
+      // Load logged-in user (CORRECT ENDPOINT)
+      const userRes = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/me`,
+        { credentials: "include" }
+      );
+      const userData = await userRes.json();
+      console.log("USER DATA:", userData);
+
+      // `me()` returns: { user: {...} }
+      setUser(userData.user);
+
+    } catch (err) {
+      console.error("Failed to load company or user", err);
+    }
+  };
+
+  load();
+}, []);
 
   return (
     <div className="w-full h-16 border-b flex items-center justify-between px-6 bg-white dark:bg-gray-900">
@@ -48,9 +62,7 @@ export default function Topbar() {
         <button
           onClick={() => router.push("/dashboard/jobs/add")}
           className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-        >
-          + Extract SMS
-        </button>
+        >+ SMS Extract</button>
       </div>
 
       {/* RIGHT SIDE — Theme toggle + Company */}
@@ -78,7 +90,12 @@ export default function Topbar() {
             alt="Company logo"
           />
         )}
-
+ {/* User Info */}
+        <div className="flex items-center gap-2">
+          <span className="font-medium">
+            {user?.name} ({user?.role})
+          </span>
+        </div>
         {/* Company Name */}
         <span className="font-medium">{company?.name}</span>
       </div>
