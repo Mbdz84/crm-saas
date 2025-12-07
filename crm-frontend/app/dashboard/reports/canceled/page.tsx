@@ -153,6 +153,99 @@ export default function CanceledReportsPage() {
 
       {/* Date Range */}
       <div className="flex flex-wrap gap-4 items-end bg-gray-50 p-4 rounded border">
+
+        {/* DATE PRESETS */}
+<div className="flex flex-col">
+  <label className="text-sm mb-1">Date Presets</label>
+  <select
+    onChange={(e) => {
+      const preset = e.target.value;
+      const today = new Date();
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+      const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+      let f = "";
+      let t = "";
+
+      switch (preset) {
+        case "today":
+          f = t = today.toISOString().split("T")[0];
+          break;
+
+        case "yesterday":
+          f = t = y.toISOString().split("T")[0];
+          break;
+
+        case "this-week": {
+          const d = new Date();
+          const monday = new Date(d);
+          monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          f = monday.toISOString().split("T")[0];
+          t = today.toISOString().split("T")[0];
+          break;
+        }
+
+        case "last-week": {
+          const d = new Date();
+          d.setDate(d.getDate() - 7);
+          const monday = new Date(d);
+          monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          f = monday.toISOString().split("T")[0];
+          t = sunday.toISOString().split("T")[0];
+          break;
+        }
+
+        case "two-weeks-ago": {
+          const d = new Date();
+          d.setDate(d.getDate() - 14);
+          const monday = new Date(d);
+          monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          f = monday.toISOString().split("T")[0];
+          t = sunday.toISOString().split("T")[0];
+          break;
+        }
+
+        case "this-month":
+          f = monthStart.toISOString().split("T")[0];
+          t = today.toISOString().split("T")[0];
+          break;
+
+        case "last-month":
+          f = prevMonthStart.toISOString().split("T")[0];
+          t = prevMonthEnd.toISOString().split("T")[0];
+          break;
+
+        default:
+          return;
+      }
+
+      setFrom(f);
+      setTo(t);
+      loadReport(f, t);
+    }}
+    className="border rounded px-2 py-1"
+  >
+    <option value="">Select…</option>
+    <option value="today">Today</option>
+    <option value="yesterday">Yesterday</option>
+    <option value="this-week">This Week</option>
+    <option value="last-week">Last Week</option>
+    <option value="two-weeks-ago">Two Weeks Ago</option>
+    <option value="this-month">This Month to Date</option>
+    <option value="last-month">Last Month</option>
+  </select>
+</div>
+
+
+
         <div className="flex flex-col">
           <label className="text-sm mb-1">From</label>
           <input

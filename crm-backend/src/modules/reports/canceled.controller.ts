@@ -6,21 +6,27 @@ const CANCELLED_STATUSES = ["Canceled", "Cancelled", "Cancel"];
 
 export async function getCanceledJobs(req: Request, res: Response) {
   try {
-    const { from, to } = req.query;
+    const { from, to, tech, source } = req.query;
 
-    const companyId = req.user?.companyId;
+    const companyId = req.user?.companyId || null;
 
+    // Date filter
     const dateFilter: any = {};
     if (from) dateFilter.gte = startOfDay(parseISO(from as string));
     if (to) dateFilter.lte = endOfDay(parseISO(to as string));
 
     const where: any = {
       ...(companyId && { companyId }),
-      jobStatus: { name: { in: CANCELLED_STATUSES } }
+      jobStatus: {
+        name: { in: CANCELLED_STATUSES },
+      },
     };
 
     if (from || to) where.createdAt = dateFilter;
+    if (tech) where.technicianId = tech as string;
+    if (source) where.sourceId = source as string;
 
+    // Fetch jobs (including cancel reason)
     const jobs = await prisma.job.findMany({
       where,
       select: {
@@ -31,46 +37,75 @@ export async function getCanceledJobs(req: Request, res: Response) {
         customerPhone2: true,
         customerAddress: true,
         createdAt: true,
+
         canceledReason: true,
+        canceledAt: true,
 
         technician: { select: { name: true } },
         source: { select: { name: true } },
-        jobStatus: { select: { name: true } }
+        jobStatus: { select: { name: true } },
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     });
 
-    // summary per tech
-    const techSummaryMap: any = {};
-    jobs.forEach(job => {
-      const name = job.technician?.name || "Unassigned";
-      if (!techSummaryMap[name]) techSummaryMap[name] = { name, total: 0, cancelled: 0 };
-      techSummaryMap[name].total++;
-      techSummaryMap[name].cancelled++;
+    // -------- Technician Summary --------
+    const techSummary: Record<
+      string,
+      { name: string; total: number; closed: number; cancelled: number }
+    > = {};
+
+    jobs.forEach((job: any) => {
+      const techName = job.technician?.name || "Unassigned";
+
+      if (!techSummary[techName]) {
+        techSummary[techName] = {
+          name: techName,
+          total: 0,
+          closed: 0,
+          cancelled: 0,
+        };
+      }
+
+      techSummary[techName].total += 1;
+      techSummary[techName].cancelled += 1;
     });
 
-    const technicianSummary = Object.values(techSummaryMap);
+    const technicianSummary = Object.values(techSummary);
 
-    // summary per source
-    const sourceMap: any = {};
-    jobs.forEach(job => {
-      const name = job.source?.name || "Unknown Source";
-      if (!sourceMap[name]) sourceMap[name] = { name, total: 0, cancelled: 0 };
-      sourceMap[name].total++;
-      sourceMap[name].cancelled++;
+    // -------- Lead Source Summary --------
+    const leadSourceMap: Record<
+      string,
+      { name: string; total: number; closed: number; cancelled: number }
+    > = {};
+
+    jobs.forEach((job: any) => {
+      const sourceName = job.source?.name || "Unknown Source";
+
+      if (!leadSourceMap[sourceName]) {
+        leadSourceMap[sourceName] = {
+          name: sourceName,
+          total: 0,
+          closed: 0,
+          cancelled: 0,
+        };
+      }
+
+      leadSourceMap[sourceName].total += 1;
+      leadSourceMap[sourceName].cancelled += 1;
     });
 
-    const leadSourceSummary = Object.values(sourceMap);
+    const leadSourceSummary = Object.values(leadSourceMap);
 
     return res.json({
-      summary: { count: jobs.length },
+      summary: {
+        count: jobs.length,
+      },
       jobs,
       technicianSummary,
-      leadSourceSummary
+      leadSourceSummary,
     });
-
   } catch (err) {
-    console.error("🔥 CANCEL REPORT ERROR:", err);
+    console.error("🔥 CANCELED REPORT ERROR:", err);
     return res.status(500).json({ error: "Failed to load canceled jobs" });
   }
 }
