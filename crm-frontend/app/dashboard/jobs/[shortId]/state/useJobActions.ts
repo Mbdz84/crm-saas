@@ -103,17 +103,26 @@ export function useJobActions() {
   /* ---------------- PAYMENT FUNCTIONS ---------------- */
 
   function addPaymentRow() {
-    setPayments((prev: any[]) => [
-      ...prev,
-      {
-        id: prev.length ? prev[prev.length - 1].id + 1 : 1,
-        payment: "cash",
-        collectedBy: "tech",
-        amount: "",
-        ccFeePct: "0",
-      },
-    ]);
-  }
+  const sourceDefaults = (() => {
+    const src = job?.source;
+    return {
+      cc: src?.defaultCcFeePercent != null ? String(src.defaultCcFeePercent) : "0",
+      check: src?.defaultCheckFeePercent != null ? String(src.defaultCheckFeePercent) : "0",
+    };
+  })();
+
+  setPayments((prev: any[]) => [
+    ...prev,
+    {
+      id: prev.length ? prev[prev.length - 1].id + 1 : 1,
+      payment: "cash",
+      collectedBy: "tech",
+      amount: "",
+      ccFeePct: sourceDefaults.cc,
+      checkFeePct: sourceDefaults.check,
+    },
+  ]);
+}
 
   function removePaymentRow(id: number) {
     setPayments((prev: any[]) => prev.filter((p) => p.id !== id));
@@ -132,12 +141,16 @@ export function useJobActions() {
               [field]: value,
               ...(field === "payment"
                 ? {
-                    collectedBy:
-                      value === "cash" ? "tech" : p.collectedBy,
-                    ccFeePct:
-                      value === "credit" ? p.ccFeePct : "0",
-                  }
-                : {}),
+      collectedBy:
+        value === "cash" ? "tech" : p.collectedBy,
+
+      // Credit → keep cc fee, otherwise reset
+      ccFeePct: value === "credit" ? p.ccFeePct : "0",
+
+      // Check → keep check fee, otherwise reset
+      checkFeePct: value === "check" ? p.checkFeePct : "0",
+    }
+  : {}),
             }
           : p
       )
@@ -252,6 +265,11 @@ export function useJobActions() {
           const pct = Number(p.ccFeePct) || 0;
           totalCcFee += (amt * pct) / 100;
         }
+        // CHECK FEE %
+if (p.payment === "check") {
+  const pct = Number(p.checkFeePct) || 0;
+  totalCcFee += (amt * pct) / 100;   // we treat ALL fees under totalCcFee bucket
+}
       });
 
       const techP = Number(techParts) || 0;
@@ -281,6 +299,19 @@ export function useJobActions() {
         else if (p.collectedBy === "lead") leadProfit += fee;
         else companyProfit += fee;
       });
+
+// Add CHECK fee to whoever collected check payments
+payments.forEach((p: any) => {
+  if (p.payment !== "check") return;
+
+  const amt = Number(p.amount) || 0;
+  const pct = Number(p.checkFeePct) || 0;
+  const fee = (amt * pct) / 100;
+
+  if (p.collectedBy === "tech") techProfit += fee;
+  else if (p.collectedBy === "lead") leadProfit += fee;
+  else companyProfit += fee;
+});
 
       // Additional fee (leadAdditionalFee)
       const addFee = Number(leadAdditionalFee) || 0;

@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
-import { Prisma } from "@prisma/client";
 
-// GET all lead sources
+/* ============================================================
+   GET ALL LEAD SOURCES
+============================================================ */
 export async function getLeadSources(req: Request, res: Response) {
   try {
     const sources = await prisma.leadSource.findMany({
-      where: {
-        companyId: req.user!.companyId,
-      },
+      where: { companyId: req.user!.companyId },
       orderBy: { name: "asc" },
     });
 
@@ -19,7 +18,9 @@ export async function getLeadSources(req: Request, res: Response) {
   }
 }
 
-// GET one lead source by ID
+/* ============================================================
+   GET ONE LEAD SOURCE
+============================================================ */
 export async function getLeadSourceById(req: Request, res: Response) {
   try {
     const source = await prisma.leadSource.findFirst({
@@ -38,57 +39,60 @@ export async function getLeadSourceById(req: Request, res: Response) {
   }
 }
 
-// CREATE
+/* ============================================================
+   CREATE LEAD SOURCE
+============================================================ */
 export async function createLeadSource(req: Request, res: Response) {
   try {
     const {
-  name,
-  color,
-  active,
-  locked,
-  defaultLeadPercent,
-  defaultAdditionalFee,
-  defaultCcFeePercent,
-  defaultCheckFeePercent,
-  autoApplyFinancialRules,
-} = req.body;
+      name,
+      color,
+      active,
+      locked,
+      defaultLeadPercent,
+      defaultAdditionalFee,
+      defaultCcFeePercent,
+      defaultCheckFeePercent,
+      autoApplyFinancialRules,
+    } = req.body;
 
-if (!name || !name.trim()) {
-  return res.status(400).json({ error: "Name is required" });
-}
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: "Name is required" });
+    }
 
-const source = await prisma.leadSource.create({
-  data: {
-    name: name.trim(),
-    companyId: req.user!.companyId,
+    const source = await prisma.leadSource.create({
+      data: {
+        name: name.trim(),
+        companyId: req.user!.companyId,
 
-    color: color ?? "#6b7280",
-    active: active ?? true,
-    locked: locked ?? false,
+        color: color ?? "#6b7280",
+        active: active ?? true,
+        locked: locked ?? false,
 
-    defaultLeadPercent:
-      defaultLeadPercent !== undefined && defaultLeadPercent !== null
-        ? new Prisma.Decimal(defaultLeadPercent)
-        : undefined,
+        /* Convert to number instead of Prisma.Decimal */
+        defaultLeadPercent:
+          defaultLeadPercent !== undefined && defaultLeadPercent !== null
+            ? Number(defaultLeadPercent)
+            : undefined,
 
-    defaultAdditionalFee:
-      defaultAdditionalFee !== undefined && defaultAdditionalFee !== null
-        ? new Prisma.Decimal(defaultAdditionalFee)
-        : undefined,
+        defaultAdditionalFee:
+          defaultAdditionalFee !== undefined && defaultAdditionalFee !== null
+            ? Number(defaultAdditionalFee)
+            : undefined,
 
-    defaultCcFeePercent:
-      defaultCcFeePercent !== undefined && defaultCcFeePercent !== null
-        ? new Prisma.Decimal(defaultCcFeePercent)
-        : undefined,
+        defaultCcFeePercent:
+          defaultCcFeePercent !== undefined && defaultCcFeePercent !== null
+            ? Number(defaultCcFeePercent)
+            : undefined,
 
-    defaultCheckFeePercent:
-      defaultCheckFeePercent !== undefined && defaultCheckFeePercent !== null
-        ? new Prisma.Decimal(defaultCheckFeePercent)
-        : undefined,
+        defaultCheckFeePercent:
+          defaultCheckFeePercent !== undefined && defaultCheckFeePercent !== null
+            ? Number(defaultCheckFeePercent)
+            : undefined,
 
-    autoApplyFinancialRules: autoApplyFinancialRules ?? false,
-  },
-});
+        autoApplyFinancialRules: autoApplyFinancialRules ?? false,
+      },
+    });
 
     res.json(source);
   } catch (err) {
@@ -97,75 +101,69 @@ const source = await prisma.leadSource.create({
   }
 }
 
-// UPDATE
+/* ============================================================
+   UPDATE LEAD SOURCE
+============================================================ */
 export async function updateLeadSource(req: Request, res: Response) {
   try {
     const { id } = req.params;
-const {
-  name,
-  color,
-  active,
-  locked,
-  defaultLeadPercent,
-  defaultAdditionalFee,
-  defaultCcFeePercent,
-  defaultCheckFeePercent,
-  autoApplyFinancialRules,
-} = req.body;
+    const {
+      name,
+      color,
+      active,
+      locked,
+      defaultLeadPercent,
+      defaultAdditionalFee,
+      defaultCcFeePercent,
+      defaultCheckFeePercent,
+      autoApplyFinancialRules,
+    } = req.body;
 
-const data: any = {};
+    const data: any = {};
 
-if (name !== undefined) data.name = name.trim();
-if (color !== undefined) data.color = color;
-if (active !== undefined) data.active = active;
-if (locked !== undefined) data.locked = locked;
-if (autoApplyFinancialRules !== undefined)
-  data.autoApplyFinancialRules = autoApplyFinancialRules;
+    if (name !== undefined) data.name = name.trim();
+    if (color !== undefined) data.color = color;
+    if (active !== undefined) data.active = active;
+    if (locked !== undefined) data.locked = locked;
+    if (autoApplyFinancialRules !== undefined)
+      data.autoApplyFinancialRules = autoApplyFinancialRules;
 
-if (defaultLeadPercent !== undefined) {
-  data.defaultLeadPercent =
-    defaultLeadPercent === null
-      ? null
-      : new Prisma.Decimal(defaultLeadPercent);
-}
-if (defaultAdditionalFee !== undefined) {
-  data.defaultAdditionalFee =
-    defaultAdditionalFee === null
-      ? null
-      : new Prisma.Decimal(defaultAdditionalFee);
-}
-if (defaultCcFeePercent !== undefined) {
-  data.defaultCcFeePercent =
-    defaultCcFeePercent === null
-      ? null
-      : new Prisma.Decimal(defaultCcFeePercent);
-}
-if (defaultCheckFeePercent !== undefined) {
-  data.defaultCheckFeePercent =
-    defaultCheckFeePercent === null
-      ? null
-      : new Prisma.Decimal(defaultCheckFeePercent);
-}
+    // 🟦 Convert all decimals to plain numbers
+    if (defaultLeadPercent !== undefined) {
+      data.defaultLeadPercent =
+        defaultLeadPercent === null ? null : Number(defaultLeadPercent);
+    }
 
-const source = await prisma.leadSource.update({
-  where: {
-    id,
-    // optional safety:
-    // companyId: req.user!.companyId
-  },
-  data,
-});
+    if (defaultAdditionalFee !== undefined) {
+      data.defaultAdditionalFee =
+        defaultAdditionalFee === null ? null : Number(defaultAdditionalFee);
+    }
 
-return res.json({ message: "Updated", source });
+    if (defaultCcFeePercent !== undefined) {
+      data.defaultCcFeePercent =
+        defaultCcFeePercent === null ? null : Number(defaultCcFeePercent);
+    }
 
-    res.json(source);
+    if (defaultCheckFeePercent !== undefined) {
+      data.defaultCheckFeePercent =
+        defaultCheckFeePercent === null ? null : Number(defaultCheckFeePercent);
+    }
+
+    const source = await prisma.leadSource.update({
+      where: { id },
+      data,
+    });
+
+    return res.json({ message: "Updated", source });
   } catch (err) {
     console.error("🔥 UPDATE LEAD SOURCE ERROR:", err);
     res.status(500).json({ error: "Failed to update lead source" });
   }
 }
 
-// DELETE
+/* ============================================================
+   DELETE LEAD SOURCE
+============================================================ */
 export async function deleteLeadSource(req: Request, res: Response) {
   try {
     await prisma.leadSource.delete({

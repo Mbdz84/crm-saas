@@ -681,27 +681,40 @@ function ClosingPanel(props: any) {
                       />
                     </div>
 
-                    {/* CC Fee */}
-                    <div>
-                      {p.payment === "credit" ? (
-                        <>
-                          <label className="block text-[10px] mb-1">
-                            CC Fee %
-                          </label>
-                          <input
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
-                            value={p.ccFeePct}
-                            onChange={(e) =>
-                              updatePayment(p.id, "ccFeePct", e.target.value)
-                            }
-                          />
-                        </>
-                      ) : (
-                        <div className="text-[10px] text-gray-400 mt-4">
-                          No CC Fee
-                        </div>
-                      )}
-                    </div>
+                    {/* Fee Column */}
+<div className="min-w-[70px]">
+  {p.payment === "credit" && (
+    <>
+      <label className="block text-[10px] mb-1">CC Fee %</label>
+      <input
+        className="border rounded px-1 py-1 w-full text-xs bg-white"
+        value={p.ccFeePct}
+        onChange={(e) =>
+          updatePayment(p.id, "ccFeePct", e.target.value)
+        }
+      />
+    </>
+  )}
+
+  {p.payment === "check" && (
+    <>
+      <label className="block text-[10px] mb-1">Check Fee %</label>
+      <input
+        className="border rounded px-1 py-1 w-full text-xs bg-white"
+        value={p.checkFeePct}
+        onChange={(e) =>
+          updatePayment(p.id, "checkFeePct", e.target.value)
+        }
+      />
+    </>
+  )}
+
+  {(p.payment === "cash" || p.payment === "zelle") && (
+    <div className="text-[10px] text-gray-400 mt-4">
+      No Fee
+    </div>
+  )}
+</div>
 
                     <div className="text-[10px] text-gray-400 flex items-center">
                       Payment #{p.id}

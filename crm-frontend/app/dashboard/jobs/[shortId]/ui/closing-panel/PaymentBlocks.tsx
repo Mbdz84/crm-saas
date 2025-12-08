@@ -24,9 +24,8 @@ export default function PaymentBlocks() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">
-          Payment Blocks (Multi-Payment)
-        </h3>
+        <h3 className="text-sm font-semibold">Payment Blocks (Multi-Payment)</h3>
+
         <button
           type="button"
           onClick={addPaymentRow}
@@ -60,9 +59,7 @@ export default function PaymentBlocks() {
                 <select
                   className="border rounded px-1 py-1 w-full text-xs bg-white"
                   value={p.payment}
-                  onChange={(e) =>
-                    updatePayment(p.id, "payment", e.target.value)
-                  }
+                  onChange={(e) => updatePayment(p.id, "payment", e.target.value)}
                 >
                   <option value="cash">Cash</option>
                   <option value="credit">Credit</option>
@@ -75,18 +72,12 @@ export default function PaymentBlocks() {
               <div>
                 {p.payment !== "cash" ? (
                   <>
-                    <label className="block text-[10px] mb-1">
-                      Collected By
-                    </label>
+                    <label className="block text-[10px] mb-1">Collected By</label>
                     <select
                       className="border rounded px-1 py-1 w-full text-xs bg-white"
                       value={p.collectedBy}
                       onChange={(e) =>
-                        updatePayment(
-                          p.id,
-                          "collectedBy",
-                          e.target.value
-                        )
+                        updatePayment(p.id, "collectedBy", e.target.value)
                       }
                     >
                       {collectors.map((c) => (
@@ -101,9 +92,7 @@ export default function PaymentBlocks() {
                     </select>
                   </>
                 ) : (
-                  <div className="text-[10px] text-gray-400 mt-4">
-                    Cash → Technician
-                  </div>
+                  <div className="text-[10px] text-gray-400 mt-4">Cash → Technician</div>
                 )}
               </div>
 
@@ -113,15 +102,13 @@ export default function PaymentBlocks() {
                 <input
                   className="border rounded px-1 py-1 w-full text-xs bg-white"
                   value={p.amount}
-                  onChange={(e) =>
-                    updatePayment(p.id, "amount", e.target.value)
-                  }
+                  onChange={(e) => updatePayment(p.id, "amount", e.target.value)}
                 />
               </div>
 
-              {/* CC Fee */}
-              <div>
-                {p.payment === "credit" ? (
+              {/* Fee Column (Credit → CC Fee) (Check → Check Fee) */}
+              <div className="min-w-[90px]">
+                {p.payment === "credit" && (
                   <>
                     <label className="block text-[10px] mb-1">CC Fee %</label>
                     <input
@@ -132,13 +119,27 @@ export default function PaymentBlocks() {
                       }
                     />
                   </>
-                ) : (
-                  <div className="text-[10px] text-gray-400 mt-4">
-                    No CC Fee
-                  </div>
+                )}
+
+                {p.payment === "check" && (
+                  <>
+                    <label className="block text-[10px] mb-1">Check Fee %</label>
+                    <input
+                      className="border rounded px-1 py-1 w-full text-xs bg-white"
+                      value={p.checkFeePct}
+                      onChange={(e) =>
+                        updatePayment(p.id, "checkFeePct", e.target.value)
+                      }
+                    />
+                  </>
+                )}
+
+                {(p.payment === "cash" || p.payment === "zelle") && (
+                  <div className="text-[10px] text-gray-400 mt-4">No Fee</div>
                 )}
               </div>
 
+              {/* Payment ID */}
               <div className="text-[10px] text-gray-400 flex items-center">
                 Payment #{p.id}
               </div>

@@ -45,6 +45,7 @@ export function JobProvider({
       collectedBy: "tech",
       amount: "",
       ccFeePct: "0",
+      checkFeePct: "0",
     },
   ]);
 
@@ -113,7 +114,20 @@ setCancelReason(
   ""
 );
 setCanceledAt(data.canceledAt ?? null);
+/* APPLY DEFAULT CC FEE FOR NEW JOBS */
+if (!data.closing) {
+  const source = data.source;
 
+  if (source?.defaultCcFeePercent != null) {
+    setPayments((prev) =>
+      prev.map((p: any) =>
+        p.payment === "credit"
+          ? { ...p, ccFeePct: String(source.defaultCcFeePercent) }
+          : p
+      )
+    );
+  }
+}
       // Hydrate closing block into front-end state
       if (data.closing) {
         const c = data.closing;
@@ -252,7 +266,6 @@ useEffect(() => {
 
   let newTechPct = techPercent;
   let newLeadPct = leadPercent;
-  let newCompanyPct = companyPercent;
   let newLeadFee = leadAdditionalFee;
 
   if (tech) {
@@ -281,7 +294,7 @@ useEffect(() => {
       setPayments((prev: any[]) =>
         prev.map((p: any) =>
           p.payment === "check"
-            ? { ...p, ccFeePct: String(tech.defaultCheckFeePercent) }
+            ? { ...p, checkFeePct: String(tech.defaultCheckFeePercent) }
             : p
         )
       );
@@ -299,6 +312,27 @@ useEffect(() => {
       newLeadFee = String(source.defaultAdditionalFee);
       changed = true;
     }
+    // LEAD SOURCE DEFAULT CHECK FEE %
+if (source?.defaultCheckFeePercent != null) {
+  setPayments(prev =>
+    prev.map(p =>
+      p.payment === "check"
+        ? { ...p, checkFeePct: String(source.defaultCheckFeePercent) }
+        : p
+    )
+  );
+}
+    // DEFAULT CC FEE
+if (source?.defaultCcFeePercent != null) {
+  setPayments((prev) =>
+    prev.map((p: any) =>
+      p.payment === "credit"
+        ? { ...p, ccFeePct: String(source.defaultCcFeePercent) }
+        : p
+    )
+  );
+  changed = true;
+}
   }
 
   if (!changed) return;
