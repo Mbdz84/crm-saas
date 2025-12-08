@@ -32,7 +32,7 @@ export default function LeadSourceProfile() {
 
   const base = process.env.NEXT_PUBLIC_API_URL;
 
-  // Load lead source
+  // Load lead source.
   const load = async () => {
     setLoading(true);
     try {
