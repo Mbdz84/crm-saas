@@ -399,6 +399,7 @@ const selectedStatusIsCanceled = (() => {
         "We cant do the job",
         "Duplicate lead",
         "Don't have the key for it",
+        "cx found the keys",
         "Client canceled"
       ].map((tag) => (
         <button
@@ -539,6 +540,23 @@ function ClosingPanel(props: any) {
 
   const router = useRouter();
 
+  // 🕒 Closed-at override (default = existing closedAt OR now)
+  function formatForInput(dt?: string | Date | null) {
+    if (!dt) return new Date().toISOString().slice(0, 16);
+    const d = typeof dt === "string" ? new Date(dt) : dt;
+    // datetime-local expects "YYYY-MM-DDTHH:MM"
+    return d.toISOString().slice(0, 16);
+  }
+
+  const [closedAtOverride, setClosedAtOverride] = useState<string>(
+    () =>
+      formatForInput(
+        (job as any)?.closing?.closedAt ||
+          (job as any)?.closedAt ||
+          new Date()
+      )
+  );
+
   return (
     <div className="border rounded p-4 bg-white space-y-4">
       <div className="flex items-center justify-between">
@@ -575,6 +593,24 @@ function ClosingPanel(props: any) {
         >
           Reopen Job
         </button>
+      )}
+
+      {/* 🕒 Closed At picker (under Reopen button) */}
+      {userRole !== "technician" && (
+        <div className="mt-2 max-w-xs">
+          <label className="block text-xs font-semibold mb-1">
+            Closed At (override)
+          </label>
+          <input
+            type="datetime-local"
+            className="border rounded px-2 py-1 w-full text-xs"
+            value={closedAtOverride}
+            onChange={(e) => setClosedAtOverride(e.target.value)}
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Default is now. Change if the job was actually closed earlier.
+          </p>
+        </div>
       )}
 
       {/* Disabled UI when job is locked */}
@@ -682,39 +718,51 @@ function ClosingPanel(props: any) {
                     </div>
 
                     {/* Fee Column */}
-<div className="min-w-[70px]">
-  {p.payment === "credit" && (
-    <>
-      <label className="block text-[10px] mb-1">CC Fee %</label>
-      <input
-        className="border rounded px-1 py-1 w-full text-xs bg-white"
-        value={p.ccFeePct}
-        onChange={(e) =>
-          updatePayment(p.id, "ccFeePct", e.target.value)
-        }
-      />
-    </>
-  )}
+                    <div className="min-w-[70px]">
+                      {p.payment === "credit" && (
+                        <>
+                          <label className="block text-[10px] mb-1">
+                            CC Fee %
+                          </label>
+                          <input
+                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            value={p.ccFeePct}
+                            onChange={(e) =>
+                              updatePayment(
+                                p.id,
+                                "ccFeePct",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </>
+                      )}
 
-  {p.payment === "check" && (
-    <>
-      <label className="block text-[10px] mb-1">Check Fee %</label>
-      <input
-        className="border rounded px-1 py-1 w-full text-xs bg-white"
-        value={p.checkFeePct}
-        onChange={(e) =>
-          updatePayment(p.id, "checkFeePct", e.target.value)
-        }
-      />
-    </>
-  )}
+                      {p.payment === "check" && (
+                        <>
+                          <label className="block text-[10px] mb-1">
+                            Check Fee %
+                          </label>
+                          <input
+                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            value={p.checkFeePct}
+                            onChange={(e) =>
+                              updatePayment(
+                                p.id,
+                                "checkFeePct",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </>
+                      )}
 
-  {(p.payment === "cash" || p.payment === "zelle") && (
-    <div className="text-[10px] text-gray-400 mt-4">
-      No Fee
-    </div>
-  )}
-</div>
+                      {(p.payment === "cash" || p.payment === "zelle") && (
+                        <div className="text-[10px] text-gray-400 mt-4">
+                          No Fee
+                        </div>
+                      )}
+                    </div>
 
                     <div className="text-[10px] text-gray-400 flex items-center">
                       Payment #{p.id}
@@ -953,16 +1001,24 @@ function ClosingPanel(props: any) {
 
               {userRole !== "technician" && (
                 <button
-  type="button"
-  onClick={() => {
-    const r = calculateSplit();
-    if (!r) return toast.error("Run calculation first");
-    closeJob(r, { statusNote: cancelReason });
-  }}
-  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
->
-  Close Job (Admin Only)
-</button>
+                  type="button"
+                  onClick={() => {
+                    const r = calculateSplit();
+                    if (!r) return toast.error("Run calculation first");
+
+                    const closedAtIso = closedAtOverride
+                      ? new Date(closedAtOverride).toISOString()
+                      : undefined;
+
+                    closeJob(r, {
+                      statusNote: cancelReason,
+                      closedAt: closedAtIso,
+                    });
+                  }}
+                  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
+                >
+                  Close Job (Admin Only)
+                </button>
               )}
             </div>
           </div>
