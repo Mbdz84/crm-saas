@@ -15,6 +15,7 @@ import {
 import { createJobFromParse } from "./actions/create-from-parse.controller";
 import { authMiddleware } from "../../middleware/auth";
 import { tenantMiddleware } from "../../middleware/tenant";
+import { searchJobs } from "./actions/search.controller";
 
 const router = Router();
 
@@ -68,6 +69,9 @@ router.get("/:shortId/recordings", RecordingsController.getJobRecordings);
 
 /* --------------- DUPLICATE JOB BUTTON ----------------------- */
 router.post("/:shortId/duplicate", DuplicateController.duplicateJob);
+
+// GET /jobs/search?q=&from=&to=
+router.get("/search", searchJobs);
 
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);

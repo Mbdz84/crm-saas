@@ -72,8 +72,16 @@ export default function Sidebar() {
             label="Calendar"
             icon={<Calendar size={18} />}
             collapsed={collapsed}
+          /><SidebarLink
+            href="/dashboard/jobs/search"
+            label="Search"
+            icon={<Settings size={18} />}
+            collapsed={collapsed}
           />
         </SidebarSection>
+
+
+        
 
         <SidebarSection title="Company" collapsed={collapsed}>
           <SidebarLink
