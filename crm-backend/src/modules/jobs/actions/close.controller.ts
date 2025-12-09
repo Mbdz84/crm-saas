@@ -58,7 +58,10 @@ export async function closeJob(req: Request, res: Response) {
       leadBalance,
       companyBalance,
       sumCheck,
+      closedAt: closedAtRaw,
     } = body;
+
+    const closedAtDate = closedAtRaw ? new Date(closedAtRaw) : new Date();
 
     const { cashTotal, creditTotal, checkTotal, zelleTotal } =
       calcPaymentTotals(payments);
@@ -79,7 +82,7 @@ export async function closeJob(req: Request, res: Response) {
         where: { id: job.id },
         data: {
           isClosingLocked: true,
-          closedAt: new Date(),
+          closedAt: closedAtDate,
           statusId: newStatusId,
         },
       });
@@ -121,7 +124,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: new Date(),
+          closedAt: closedAtDate,
           closedByUserId: user.id,
         },
         create: {
@@ -154,7 +157,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: new Date(),
+          closedAt: closedAtDate,
           closedByUserId: user.id,
         },
       });

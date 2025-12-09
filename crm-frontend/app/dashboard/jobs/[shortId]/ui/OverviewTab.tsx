@@ -133,9 +133,20 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold">Job #{displayId}</h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-green-500 text-sm">
             Created: {new Date(job.createdAt).toLocaleString()}
           </p>
+          {job.closedAt && (
+  <p className="text-red-500 text-sm">
+    Closed: {new Date(job.closedAt).toLocaleString()}
+  </p>
+)}
+
+{job.canceledAt && (
+  <p className="text-red-500 text-sm">
+    Canceled: {new Date(job.canceledAt).toLocaleString()}
+  </p>
+)}
         </div>
 
         <div className="flex justify-start items-center gap-3">
@@ -433,14 +444,17 @@ const selectedStatusIsCanceled = (() => {
   <AppointmentPicker
   value={editableJob.scheduledAt || ""}
   onChange={(v: string) => setField("scheduledAt", v)}
-/>
+  />
 </div>
-        </div>
+</div>
 <button
-  onClick={() => saveChanges({ statusNote: cancelReason })}
+  onClick={async () => {
+    await saveChanges({ statusNote: cancelReason });
+    router.push("/dashboard/jobs");
+  }}
   className="px-4 py-2 rounded shadow text-white bg-green-600"
 >
-  Save Changes
+  Save & Exit
 </button>
         {/* =============================================== */}
         {/* CLOSING PANEL */}
@@ -448,6 +462,8 @@ const selectedStatusIsCanceled = (() => {
         {showClosingPanel && (
           <ClosingPanel
             job={job}
+            editableJob={editableJob} 
+            setField={setField}      
             currentStatusName={currentStatusName}
             editingLocked={editingLocked}
             payments={jobCtx.payments}
@@ -499,6 +515,8 @@ const selectedStatusIsCanceled = (() => {
 function ClosingPanel(props: any) {
   const {
     job,
+    editableJob,   
+    setField,      
     currentStatusName,
     editingLocked,
     payments,
@@ -540,23 +558,6 @@ function ClosingPanel(props: any) {
 
   const router = useRouter();
 
-  // 🕒 Closed-at override (default = existing closedAt OR now)
-  function formatForInput(dt?: string | Date | null) {
-    if (!dt) return new Date().toISOString().slice(0, 16);
-    const d = typeof dt === "string" ? new Date(dt) : dt;
-    // datetime-local expects "YYYY-MM-DDTHH:MM"
-    return d.toISOString().slice(0, 16);
-  }
-
-  const [closedAtOverride, setClosedAtOverride] = useState<string>(
-    () =>
-      formatForInput(
-        (job as any)?.closing?.closedAt ||
-          (job as any)?.closedAt ||
-          new Date()
-      )
-  );
-
   return (
     <div className="border rounded p-4 bg-white space-y-4">
       <div className="flex items-center justify-between">
@@ -595,20 +596,22 @@ function ClosingPanel(props: any) {
         </button>
       )}
 
-      {/* 🕒 Closed At picker (under Reopen button) */}
+          {/* EDITABLE CLOSED DATE – inside Closing Panel */}
       {userRole !== "technician" && (
-        <div className="mt-2 max-w-xs">
-          <label className="block text-xs font-semibold mb-1">
-            Closed At (override)
-          </label>
+        <div className="mt-4 max-w-xs">
+          <label className="block text-sm font-medium">Closed At</label>
           <input
             type="datetime-local"
-            className="border rounded px-2 py-1 w-full text-xs"
-            value={closedAtOverride}
-            onChange={(e) => setClosedAtOverride(e.target.value)}
+            value={
+              editableJob.closedAt
+                ? new Date(editableJob.closedAt).toISOString().slice(0, 16)
+                : new Date().toISOString().slice(0, 16)
+            }
+            onChange={(e) => setField("closedAt", e.target.value)}
+            className="border rounded p-2 mt-1 w-full text-xs"
           />
           <p className="text-[11px] text-gray-500 mt-1">
-            Default is now. Change if the job was actually closed earlier.
+            Change if the job was actually closed on a different date/time.
           </p>
         </div>
       )}
@@ -1000,26 +1003,24 @@ function ClosingPanel(props: any) {
               )}
 
               {userRole !== "technician" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const r = calculateSplit();
-                    if (!r) return toast.error("Run calculation first");
+  <button
+    type="button"
+    onClick={() => {
+      const r = calculateSplit();
+      if (!r) return toast.error("Run calculation first");
 
-                    const closedAtIso = closedAtOverride
-                      ? new Date(closedAtOverride).toISOString()
-                      : undefined;
-
-                    closeJob(r, {
-                      statusNote: cancelReason,
-                      closedAt: closedAtIso,
-                    });
-                  }}
-                  className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
-                >
-                  Close Job (Admin Only)
-                </button>
-              )}
+      closeJob(r, {
+        statusNote: cancelReason,
+        closedAt: editableJob.closedAt
+          ? new Date(editableJob.closedAt).toISOString()
+          : null,
+      });
+    }}
+    className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
+  >
+    Close Job (Admin Only)
+  </button>
+)}
             </div>
           </div>
         </div>

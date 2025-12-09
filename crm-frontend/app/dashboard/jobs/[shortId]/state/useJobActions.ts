@@ -60,9 +60,10 @@ export function useJobActions() {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        ...editableJob,
-        ...extra,   // <-- statusNote goes here
-      }),
+  ...editableJob,
+  closedAt: editableJob.closedAt ? new Date(editableJob.closedAt) : null, // ✅ add this line
+  ...extra,
+}),
     });
 
     const data = await res.json();

@@ -97,6 +97,14 @@ export async function updateJobByShortId(req: Request, res: Response) {
             }
           : {}),
 
+        // ⭐ Allow manual editing of closedAt (admin or UI Save Changes)
+        ...(updates.closedAt
+          ? {
+              closedAt: new Date(updates.closedAt),
+              // Keep status locked only if job already closed
+              isClosingLocked: true,
+            }
+          : {}),
       },
       include: {
         technician: true,
@@ -107,7 +115,6 @@ export async function updateJobByShortId(req: Request, res: Response) {
     });
 
     return res.json({ message: "Job updated", job: updatedJob });
-
   } catch (err) {
     console.error("updateJobByShortId error:", err);
     return res.status(500).json({ error: "Failed to update job" });

@@ -97,8 +97,10 @@ export function JobProvider({
       }
 
       setJob(data);
-      setEditableJob(data);
-      setDirty(false);
+setEditableJob({
+  ...data,
+  closedAt: data.closedAt ?? null, // <-- add this line
+});      setDirty(false);
 
       
       /* HYDRATE CANCEL FIELDS
@@ -352,7 +354,12 @@ if (source?.defaultCcFeePercent != null) {
   techs,
   leadSources
 ]);
-
+function setField(field: string, value: any) {
+  setEditableJob((prev: any) => {
+    if (!prev) return prev;
+    return { ...prev, [field]: value };
+  });
+}
   return (
     <JobContext.Provider
       value={{
@@ -363,6 +370,8 @@ if (source?.defaultCcFeePercent != null) {
         setEditableJob,
         dirty,
         setDirty,
+
+        setField,
 
         tab,
         setTab,
