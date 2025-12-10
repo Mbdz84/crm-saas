@@ -39,7 +39,17 @@ export default function TechniciansPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-semibold mb-6">Technicians</h1>
+      {/* HEADER + Create Button */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-semibold">Technicians</h1>
+
+        <button
+          onClick={() => router.push("/dashboard/technicians/new")}
+          className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500"
+        >
+          + New Technician
+        </button>
+      </div>
 
       <table className="w-full border">
         <thead className="bg-gray-200">

@@ -17,6 +17,22 @@ interface SearchJob {
   technician?: { name: string | null } | null;
 }
 
+// Format phone numbers to (630) 555-1234
+function formatPhone(num: string | null | undefined): string {
+  if (!num) return "";
+
+  const digits = num.replace(/[^\d]/g, ""); // keep digits only
+  if (digits.length < 10) return num; // not enough to format
+
+  const last10 = digits.slice(-10); // always take last 10 digits
+
+  const area = last10.slice(0, 3);
+  const prefix = last10.slice(3, 6);
+  const line = last10.slice(6);
+
+  return `(${area}) ${prefix}-${line}`;
+}
+
 export default function JobSearchPage() {
   const router = useRouter();
   const base = process.env.NEXT_PUBLIC_API_URL;
@@ -177,10 +193,10 @@ export default function JobSearchPage() {
                       {job.customerName || "-"}
                     </td>
                     <td className="px-3 py-2">
-                      {job.customerPhone ||
-                        job.customerPhone2 ||
-                        "-"}
-                    </td>
+  {formatPhone(job.customerPhone) ||
+    formatPhone(job.customerPhone2) ||
+    "-"}
+</td>
                     <td className="px-3 py-2 truncate max-w-xs">
                       {job.customerAddress || "-"}
                     </td>

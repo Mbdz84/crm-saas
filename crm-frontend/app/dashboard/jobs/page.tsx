@@ -62,6 +62,21 @@ type ColumnVisibility = Record<ColumnKey, boolean>;
 
 const BOARD_HIDE_MS = 45 * 60 * 1000; // 45 minutes
 
+// Format phone numbers like (630) 697-8143
+function formatPhone(raw?: string | null): string {
+  if (!raw) return "-";
+
+  const digits = raw.replace(/\D/g, ""); // keep only digits
+  if (digits.length < 10) return raw;
+
+  const last10 = digits.slice(-10);
+  const area = last10.slice(0, 3);
+  const pre = last10.slice(3, 6);
+  const line = last10.slice(6);
+
+  return `(${area}) ${pre}-${line}`;
+}
+
 export default function JobsPage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -135,6 +150,7 @@ export default function JobsPage() {
           (job.customerName || "") +
           " " +
           (job.customerPhone || "") +
+(job.customerPhone?.replace(/\D/g, "") || "") +  // normalized digits
           " " +
           (job.customerAddress || "") +
           " " +
@@ -393,7 +409,7 @@ function formatAddress(addr?: string | null) {
                         <td className="p-2">{job.customerName || "-"}</td>
                       )}
                       {columnsVisible.phone && (
-                        <td className="p-2">{job.customerPhone || "-"}</td>
+                        <td className="p-2">{formatPhone(job.customerPhone)}</td>
                       )}
                       {columnsVisible.address && (
   <td className="p-2 whitespace-pre-line">
@@ -506,8 +522,8 @@ function formatAddress(addr?: string | null) {
                     {job.customerName || "No name"}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {job.customerPhone || "-"}
-                  </div>
+  {formatPhone(job.customerPhone)}
+</div>
 
                   {job.customerAddress && (
                     <div className="text-xs text-gray-500 mt-1">
