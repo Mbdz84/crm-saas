@@ -14,6 +14,7 @@ import {
   UserCog,
   GitBranch,
   CheckCircle,
+  Search,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -75,7 +76,7 @@ export default function Sidebar() {
           /><SidebarLink
             href="/dashboard/jobs/search"
             label="Search"
-            icon={<Settings size={18} />}
+            icon={<Search size={18} />}
             collapsed={collapsed}
           />
         </SidebarSection>
