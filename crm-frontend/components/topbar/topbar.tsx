@@ -68,9 +68,7 @@ export default function Topbar() {
       {/* RIGHT SIDE — Theme toggle + Company */}
       <div className="flex items-center gap-3">
 
-        {/* logout Toggle */}
-           <button onClick={() => router.push("/logout")}className="px-3 py-1.5 bg-red-500 text-white rounded hover:bg-orange-700 transition text-sm">Logout</button>
-        {/* Theme Toggle */}
+                {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition"

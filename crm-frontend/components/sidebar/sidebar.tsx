@@ -15,7 +15,7 @@ import {
   GitBranch,
   CheckCircle,
   Search,
-} from "lucide-react";
+  } from "lucide-react";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -145,7 +145,12 @@ export default function Sidebar() {
 />
         </SidebarSection>
       </nav>
-
+<SidebarLink
+  href="/logout"
+  label="Logout"
+  icon={<Settings size={18} />}
+  collapsed={collapsed}
+/>
       {!collapsed && (
         <div className="px-4 text-xs text-gray-500 mt-auto py-4">
           © {new Date().getFullYear()} CRM Platform
