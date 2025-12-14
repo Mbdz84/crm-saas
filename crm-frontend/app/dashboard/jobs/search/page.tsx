@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 interface SearchJob {
   id: string;
   shortId: string;
-  title: string | null;
   customerName: string | null;
   customerPhone: string | null;
   customerPhone2?: string | null;
@@ -15,22 +14,46 @@ interface SearchJob {
   canceledReason?: string | null;
   jobStatus?: { name: string } | null;
   technician?: { name: string | null } | null;
+  closing?: {
+    totalAmount?: number | string | null;
+  };
+}
+function statusClass(status?: string | null) {
+  if (!status) return "";
+
+  const s = status.toLowerCase();
+  if (s === "canceled" || s === "cancelled") {
+    return "text-red-600 font-semibold";
+  }
+  if (s === "closed") {
+    return "text-green-600 font-semibold";
+  }
+  return "";
+}
+/* -------------------------------
+   Helpers
+-------------------------------- */
+function formatPhone(num?: string | null) {
+  if (!num) return "";
+  const d = num.replace(/[^\d]/g, "");
+  if (d.length < 10) return num;
+  const n = d.slice(-10);
+  return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
 }
 
-// Format phone numbers to (630) 555-1234
-function formatPhone(num: string | null | undefined): string {
-  if (!num) return "";
-
-  const digits = num.replace(/[^\d]/g, ""); // keep digits only
-  if (digits.length < 10) return num; // not enough to format
-
-  const last10 = digits.slice(-10); // always take last 10 digits
-
-  const area = last10.slice(0, 3);
-  const prefix = last10.slice(3, 6);
-  const line = last10.slice(6);
-
-  return `(${area}) ${prefix}-${line}`;
+function getValue(job: SearchJob, key: string) {
+  switch (key) {
+    case "totalAmount":
+      return Number(job.closing?.totalAmount ?? 0);
+    case "status":
+      return job.jobStatus?.name ?? "";
+    case "tech":
+      return job.technician?.name ?? "";
+    case "createdAt":
+      return new Date(job.createdAt).getTime();
+    default:
+      return (job as any)[key] ?? "";
+  }
 }
 
 export default function JobSearchPage() {
@@ -44,181 +67,174 @@ export default function JobSearchPage() {
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState(false);
 
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function sortBy(key: string) {
+    const dir =
+      sortKey === key && sortDir === "asc" ? "desc" : "asc";
+
+    setSortKey(key);
+    setSortDir(dir);
+
+    setResults((prev) =>
+      [...prev].sort((a, b) => {
+        const av = getValue(a, key);
+        const bv = getValue(b, key);
+
+        if (typeof av === "number" && typeof bv === "number") {
+          return dir === "asc" ? av - bv : bv - av;
+        }
+
+        return dir === "asc"
+          ? String(av).localeCompare(String(bv))
+          : String(bv).localeCompare(String(av));
+      })
+    );
+  }
+
   async function runSearch(e?: React.FormEvent) {
     e?.preventDefault();
     setTouched(true);
-
-    if (!base) {
-      alert("API base URL is not configured");
-      return;
-    }
+    if (!base) return alert("API base URL missing");
 
     try {
       setLoading(true);
-
       const params = new URLSearchParams();
-      if (q.trim()) params.set("q", q.trim());
+      if (q) params.set("q", q);
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
 
-      const res = await fetch(`${base}/jobs/search?` + params.toString(), {
+      const res = await fetch(`${base}/jobs/search?${params}`, {
         credentials: "include",
-      })
-      ;
+      });
 
       const data = await res.json();
-      if (!res.ok) {
-        console.error("SEARCH ERROR", data);
-        alert(data.error || "Search failed");
-        return;
-      }
-
+      if (!res.ok) return alert(data.error || "Search failed");
       setResults(data.results || []);
-    } catch (err) {
-      console.error(err);
-      alert("Search failed");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-4">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold">Search Jobs</h1>
         <button
           onClick={() => router.push("/dashboard/jobs")}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded"
+          className="px-4 py-2 bg-gray-200 rounded"
         >
-          Back to Jobs
+          Back
         </button>
       </div>
 
-      {/* SEARCH FORM */}
+      {/* SEARCH */}
       <form
         onSubmit={runSearch}
-        className="border rounded p-4 bg-white dark:bg-gray-900 space-y-3"
+        className="border rounded p-4 bg-white space-y-3"
       >
-        <div>
-          <label className="block text-sm font-medium mb-1">
-            Search term
-          </label>
-          <input
-            type="text"
-            className="w-full border rounded px-3 py-2"
-            placeholder="Name, job #, phone, address, notes, cancel reason..."
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-        </div>
+        <input
+          className="w-full border rounded px-3 py-2"
+          placeholder="Name, job #, phone, address, notes…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              From date (created)
-            </label>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">
-              To date (created)
-            </label>
-            <input
-              type="date"
-              className="w-full border rounded px-3 py-2"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold"
-            >
-              {loading ? "Searching..." : "Search"}
-            </button>
-          </div>
+        <div className="grid grid-cols-3 gap-3">
+          <input type="date" className="border px-3 py-2 rounded" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <input type="date" className="border px-3 py-2 rounded" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          <button className="bg-blue-600 text-white rounded font-semibold">
+            {loading ? "Searching…" : "Search"}
+          </button>
         </div>
       </form>
 
-      {/* RESULTS */}
-      <div className="border rounded bg-white dark:bg-gray-900">
-        {loading && (
-          <p className="p-4 text-sm text-gray-500">Searching…</p>
-        )}
+      {/* RESULT COUNT */}
+      {touched && (
+        <div className="text-sm text-gray-600 px-1">
+          <b>{results.length}</b> job{results.length !== 1 && "s"} found
+        </div>
+      )}
 
-        {!loading && touched && results.length === 0 && (
-          <p className="p-4 text-sm text-gray-500">
-            No jobs found. Try a different keyword or date.
-          </p>
-        )}
+      {/* TABLE */}
+      {results.length > 0 && (
+        <div className="border rounded bg-white overflow-x-auto">
+          <table className="min-w-full text-sm table-fixed">
+            <thead className="bg-gray-100">
+              <tr>
+                <th onClick={() => sortBy("shortId")} className="px-3 py-2 cursor-pointer">Job #</th>
+                <th onClick={() => sortBy("customerName")} className="px-3 py-2 cursor-pointer">Customer</th>
+                <th onClick={() => sortBy("customerPhone")} className="px-3 py-2 cursor-pointer">Phone</th>
+                <th onClick={() => sortBy("customerAddress")} className="px-3 py-2 cursor-pointer">Address</th>
+                <th onClick={() => sortBy("status")} className="px-3 py-2 cursor-pointer">Status</th>
+                <th onClick={() => sortBy("totalAmount")} className="px-3 py-2 cursor-pointer text-right">Total $</th>
+                <th onClick={() => sortBy("tech")} className="px-3 py-2 cursor-pointer">Tech</th>
+                <th onClick={() => sortBy("createdAt")} className="px-3 py-2 cursor-pointer">Created</th>
+                <th onClick={() => sortBy("canceledReason")} className="px-3 py-2 cursor-pointer">Cancel Reason</th>
+              </tr>
+            </thead>
 
-        {!loading && results.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="bg-gray-100 dark:bg-gray-800">
-                  <th className="px-3 py-2 text-left">Job #</th>
-                  <th className="px-3 py-2 text-left">Customer</th>
-                  <th className="px-3 py-2 text-left">Phone</th>
-                  <th className="px-3 py-2 text-left">Address</th>
-                  <th className="px-3 py-2 text-left">Status</th>
-                  <th className="px-3 py-2 text-left">Tech</th>
-                  <th className="px-3 py-2 text-left">Created</th>
-                  <th className="px-3 py-2 text-left">Cancel Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
-                    onClick={() =>
-                      router.push(`/dashboard/jobs/${job.shortId}`)
-                    }
-                  >
-                    <td className="px-3 py-2 font-mono">
-                      {job.shortId || job.id.slice(0, 8)}
-                    </td>
-                    <td className="px-3 py-2">
-                      {job.customerName || "-"}
-                    </td>
-                    <td className="px-3 py-2">
-  {formatPhone(job.customerPhone) ||
-    formatPhone(job.customerPhone2) ||
-    "-"}
+            <tbody>
+              {results.map((job) => (
+                <tr
+                  key={job.id}
+                  className="border-t hover:bg-gray-50 cursor-pointer"
+                  onClick={() => router.push(`/dashboard/jobs/${job.shortId}`)}
+                >
+                  <td className="px-3 py-2 font-mono">{job.shortId}</td>
+                  <td className="px-3 py-2">{job.customerName || "—"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    {formatPhone(job.customerPhone) ||
+                      formatPhone(job.customerPhone2) ||
+                      "—"}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+  {job.customerAddress ? (
+    (() => {
+      const parts = job.customerAddress.split(",");
+      const line1 = parts.shift(); // street
+      const line2 = parts.join(",").trim(); // city, state, zip
+
+      return (
+        <>
+          <div>{line1},</div>
+          <div className="text-xs text-gray-500">{line2}</div>
+        </>
+      );
+    })()
+  ) : (
+    "-"
+  )}
 </td>
-                    <td className="px-3 py-2 truncate max-w-xs">
-                      {job.customerAddress || "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {job.jobStatus?.name || "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {job.technician?.name || "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {new Date(job.createdAt).toLocaleString()}
-                    </td>
-                    <td className="px-3 py-2 truncate max-w-xs">
-                      {job.canceledReason || ""}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                  <td className={`px-3 py-2 ${statusClass(job.jobStatus?.name)}`}>{job.jobStatus?.name || "—"}</td>
+                  <td className="px-3 py-2 text-right font-mono">
+                    {job.closing?.totalAmount != null
+                      ? `$${Number(job.closing.totalAmount).toFixed(2)}`
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">{job.technician?.name || "—"}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+  {(() => {
+    const d = new Date(job.createdAt);
+    return (
+      <>
+        <div>{d.toLocaleDateString()}</div>
+        <div className="text-xs text-gray-500">
+          {d.toLocaleTimeString()}
+        </div>
+      </>
+    );
+  })()}
+</td>
+                  <td className="px-3 py-2">{job.canceledReason || ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

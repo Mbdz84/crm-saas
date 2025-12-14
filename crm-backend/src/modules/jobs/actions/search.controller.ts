@@ -79,14 +79,19 @@ export async function searchJobs(req: Request, res: Response) {
        RUN SEARCH
     ----------------------------------------- */
     const results = await prisma.job.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      include: {
-        jobStatus: true,
-        technician: true,
+  where,
+  orderBy: { createdAt: "desc" },
+  take: 100,
+  include: {
+    jobStatus: true,
+    technician: true,
+    closing: {
+      select: {
+        totalAmount: true,
       },
-    });
+    },
+  },
+});
 
     return res.json({ results });
   } catch (err) {

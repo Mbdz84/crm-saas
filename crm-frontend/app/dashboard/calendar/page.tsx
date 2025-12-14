@@ -17,18 +17,19 @@ export default function CalendarPage() {
           `${process.env.NEXT_PUBLIC_API_URL}/jobs/calendar`,
           { credentials: "include" }
         );
-        const data = await res.json();
+        const json = await res.json();
+const jobs = Array.isArray(json) ? json : json.jobs ?? [];
 
-        setEvents(
-          data.map((job: any) => ({
-            id: job.id,
-            title: job.title,
-            start: job.scheduledAt,
-            extendedProps: {
-              customer: job.customer,
-            },
-          }))
-        );
+setEvents(
+  jobs.map((job: any) => ({
+    id: job.id,
+    title: job.title,
+    start: job.scheduledAt,
+    extendedProps: {
+      customer: job.customer,
+    },
+  }))
+);
       } catch (err) {
         console.error("Calendar load failed", err);
       }
