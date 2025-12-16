@@ -8,6 +8,7 @@ import { useJobActions } from "../state/useJobActions";
 import Editable from "./Editable";
 import AppointmentPicker from "./AppointmentPicker";
 import { useState } from "react";
+import { useEffect } from "react";
 
 /* -----------------------------------------------------------
    MAIN OVERVIEW TAB
@@ -17,6 +18,7 @@ export default function OverviewTab() {
     typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const techRole = userRole;
   const router = useRouter();
+  const [appointmentKey, setAppointmentKey] = useState(0);
   const jobCtx = useJob();
   const {
     job,
@@ -44,6 +46,30 @@ export default function OverviewTab() {
     cancelReason,
     setCancelReason,
   } = jobCtx;
+
+type Reminder = {
+  id: string;
+  minutes: number;
+  sendSms: boolean;
+  canceled?: boolean;
+  custom?: boolean;
+};
+
+const [reminders, setReminders] = useState<Reminder[]>([]);
+
+useEffect(() => {
+  if (!job?.reminders) return;
+
+  const mapped = job.reminders.map((r: any) => ({
+    id: r.id,
+    minutes: r.minutesBefore,
+    sendSms: !r.canceled,
+    canceled: r.canceled,
+    custom: ![60, 90, 120].includes(r.minutesBefore),
+  }));
+
+  setReminders(mapped);
+}, [job?.reminders]);
 
   // ✅ always safe array
   const techList = Array.isArray(techs) ? techs : [];
@@ -158,13 +184,6 @@ const selectedStatusIsCanceled = (() => {
             Back
           </button>
 
-          {/* Save */}
-          <button
-  onClick={() => saveChanges({ statusNote: cancelReason })}
-  className="px-4 py-2 rounded shadow text-white bg-green-600"
->
-  Save Changes
-</button>
 {/* Duplicate → New Job */}
   <button
     onClick={async () => {
@@ -438,24 +457,215 @@ const selectedStatusIsCanceled = (() => {
 />
   </div>
 )}
-          {/* Appointment */}
+{/* Appointment */}
 <div>
-  <label className="block text-sm font-medium">Appointment</label>
-  <AppointmentPicker
-  value={editableJob.scheduledAt || ""}
-  onChange={(v: string) => setField("scheduledAt", v)}
-  />
+  <label className="block text-sm font-medium mb-1">Appointment</label>
+
+  <div className="flex items-center gap-3">
+    <AppointmentPicker
+      key={appointmentKey}   // 👈 forces full reset
+      value={editableJob.scheduledAt || ""}
+      onChange={(v: string) => setField("scheduledAt", v)}
+    />
+
+    {/* Clear appointment */}
+    <button
+      type="button"
+      onClick={() => {
+        // Clear stored value
+        setField("scheduledAt", "");
+
+        // Force picker to reset hour/min UI
+        setAppointmentKey((k) => k + 1);
+      }}
+      className="px-3 py-2 text-sm border rounded text-gray-600 hover:bg-gray-100"
+    >
+      Clear
+    </button>
+  </div>
+</div>
+{/* Add Reminder */}
+<div className="mt-4">
+  <button
+    type="button"
+    onClick={() =>
+      setReminders((prev) => [
+        ...prev,
+        {
+  id: crypto.randomUUID(),
+  minutes: 60,
+  sendSms: true,
+  canceled: false,
+  custom: false,
+},
+      ])
+    }
+    className="text-blue-600 text-sm font-medium hover:underline"
+  >
+    + Add Reminder
+  </button>
+</div>
+{/* Reminder Rows */}
+<div className="mt-3 space-y-2">
+  {reminders.map((r) => (
+    <div
+      key={r.id}
+      className={`flex flex-wrap items-center gap-3 border rounded p-3 ${
+  r.canceled ? "bg-red-50 opacity-60" : "bg-gray-50"
+}`}
+    >
+      {/* Remove */}
+      <button
+        type="button"
+        onClick={() =>
+  setReminders((prev) =>
+    prev.map((x) =>
+      x.id === r.id
+        ? { ...x, canceled: true, sendSms: false }
+        : x
+    )
+  )
+}
+        className="w-8 h-8 flex items-center justify-center rounded bg-red-50 text-red-600 hover:bg-red-100"
+      >
+        −
+      </button>
+
+      {/* Time Select */}
+      <select
+      disabled={r.canceled}
+        value={r.custom ? "custom" : r.minutes}
+        onChange={(e) => {
+          const val = e.target.value;
+          setReminders((prev) =>
+            prev.map((x) =>
+              x.id === r.id
+                ? val === "custom"
+                  ? { ...x, custom: true, minutes: 30 }
+                  : {
+                      ...x,
+                      custom: false,
+                      minutes: Number(val),
+                    }
+                : x
+            )
+          );
+        }}
+        className="border rounded px-2 py-1"
+      >
+        <option value={60}>1 hour</option>
+        <option value={90}>1.5 hours</option>
+        <option value={120}>2 hours</option>
+        <option value="custom">Custom</option>
+      </select>
+
+      {/* Custom minutes */}
+      {r.custom && (
+        <input
+        disabled={r.canceled}
+          type="number"
+          min={1}
+          className="border rounded px-2 py-1 w-24"
+          value={r.minutes}
+          onChange={(e) =>
+            setReminders((prev) =>
+              prev.map((x) =>
+                x.id === r.id
+                  ? { ...x, minutes: Number(e.target.value) || 0 }
+                  : x
+              )
+            )
+          }
+        />
+      )}
+
+      <span className="text-sm text-gray-600">before appointment</span>
+
+      {/* SMS checkbox */}
+      <div className="ml-auto flex items-center gap-4 text-sm">
+  {/* Send SMS */}
+  <label className="flex items-center gap-2">
+    <input
+      type="checkbox"
+      checked={r.sendSms && !r.canceled}
+      disabled={r.canceled}
+      onChange={(e) =>
+        setReminders((prev) =>
+          prev.map((x) =>
+            x.id === r.id
+              ? { ...x, sendSms: e.target.checked }
+              : x
+          )
+        )
+      }
+    />
+    Send SMS
+  </label>
+
+  {/* Cancel Reminder */}
+  <label className="flex items-center gap-2 text-red-600">
+    <input
+      type="checkbox"
+      checked={r.canceled}
+      onChange={(e) =>
+        setReminders((prev) =>
+          prev.map((x) =>
+            x.id === r.id
+              ? {
+                  ...x,
+                  canceled: e.target.checked,
+                  sendSms: e.target.checked ? false : x.sendSms,
+                }
+              : x
+          )
+        )
+      }
+    />
+    Cancel
+  </label>
+</div>
+    </div>
+  ))}
 </div>
 </div>
-<button
+{/* SAVE ACTIONS */}
+<div className="flex justify-start items-center gap-3 mt-4">
+  <button
+    type="button"
+    onClick={() => {
+      console.log("🟢 FRONTEND REMINDERS SENT:", reminders);
+
+      saveChanges({
+        statusNote: cancelReason,
+        reminders: reminders.map((r) => ({
+  minutesBefore: r.minutes,
+  canceled: r.canceled === true,
+})),
+      });
+    }}
+    className="px-4 py-2 rounded shadow text-white bg-green-600"
+  >
+    Save & Stay
+  </button>
+
+  <button
+  type="button"
   onClick={async () => {
-    await saveChanges({ statusNote: cancelReason });
+    await saveChanges({
+      statusNote: cancelReason,
+      reminders: reminders.map((r) => ({
+        minutesBefore: r.minutes,
+        canceled: r.canceled === true,
+      })),
+    });
+
     router.push("/dashboard/jobs");
   }}
   className="px-4 py-2 rounded shadow text-white bg-green-600"
 >
   Save & Exit
 </button>
+</div>
         {/* =============================================== */}
         {/* CLOSING PANEL */}
         {/* =============================================== */}

@@ -202,20 +202,31 @@ export default function JobsPage() {
      APPOINTMENT RANGE FORMATTER
   ------------------------------------------------------------ */
   function formatApptRange(iso?: string | null): string {
-    if (!iso) return "-";
+  if (!iso) return "-";
 
-    const start = new Date(iso);
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // +2 hours
+  const start = new Date(iso);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
-    const fmt = (d: Date) =>
-      d.toLocaleTimeString([], {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
+  const fmt = (d: Date) =>
+    d.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
 
-    return `${fmt(start)} → ${fmt(end)}`;
-  }
+  return `${fmt(start)} → ${fmt(end)}`;
+}
+
+function formatApptDate(iso?: string | null): string {
+  if (!iso) return "-";
+
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+}
+
 function formatAddress(addr?: string | null) {
   if (!addr) return "-";
   const parts = addr.split(",");
@@ -374,6 +385,9 @@ function formatAddress(addr?: string | null) {
     {columnsVisible.appointment && (
       <th className="p-2 text-left w-40">Appt Time</th>
     )}
+    {columnsVisible.createdAt && (
+      <th className="p-2 text-left w-32">Created</th>
+    )}
     {columnsVisible.quick && (
       <th className="p-2 text-right w-24">Quick</th>
     )}
@@ -426,15 +440,26 @@ function formatAddress(addr?: string | null) {
                         <td className="p-2">{job.source?.name || "-"}</td>
                       )}
                       {columnsVisible.appointment && (
-  <td className="p-2">
-    {formatApptRange(job.scheduledAt)}
+  <td className="p-2 leading-tight">
+    <div className="font-medium">
+      {formatApptRange(job.scheduledAt)}
+    </div>
+    <div className="text-xs text-gray-500">
+      {formatApptDate(job.scheduledAt)}
+    </div>
   </td>
 )}
                       {columnsVisible.createdAt && (
-                        <td className="p-2">
-                          {new Date(job.createdAt).toLocaleString()}
-                        </td>
-                      )}
+  <td className="p-2 leading-tight">
+    <div className="text-sm">
+      {new Date(job.createdAt).toLocaleDateString()}
+    </div>
+    <div className="text-xs text-gray-500">
+      {new Date(job.createdAt).toLocaleTimeString()}
+    </div>
+  </td>
+)}
+                      
 
                       {/* QUICK ACTIONS */}
                       {columnsVisible.quick && (
@@ -509,14 +534,24 @@ function formatAddress(addr?: string | null) {
                   className="border rounded bg-white dark:bg-gray-900 p-3 shadow-sm"
                   onClick={() => router.push(`/dashboard/jobs/${short}`)}
                 >
-                  <div className="flex justify-between items-center mb-1">
-                    <div className="font-mono text-xs font-semibold">
-                      #{short}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(job.createdAt).toLocaleTimeString()}
-                    </div>
-                  </div>
+                  <div className="flex justify-between items-start mb-1">
+  <div className="font-mono text-xs font-semibold">
+    #{short}
+  </div>
+
+  <div className="text-right leading-tight">
+     <div className="text-[11px] text-gray-400">
+      {new Date(job.createdAt).toLocaleDateString(undefined, {
+  month: "short",
+  day: "2-digit",
+  year: "numeric",
+})}
+    </div>
+    <div className="text-xs text-gray-500">
+      {new Date(job.createdAt).toLocaleTimeString()}
+    </div>
+     </div>
+</div>
 
                   <div className="text-sm font-semibold">
                     {job.customerName || "No name"}
@@ -539,6 +574,9 @@ function formatAddress(addr?: string | null) {
                   {job.scheduledAt && (
   <div className="mt-1 text-xs text-blue-600 font-semibold">
     🕒 {formatApptRange(job.scheduledAt)}
+    <div className="text-[11px] text-gray-500 font-normal">
+      {formatApptDate(job.scheduledAt)}
+    </div>
   </div>
 )}
 

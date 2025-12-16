@@ -26,6 +26,8 @@ model Company {
   // JSON settings for technician SMS template
   smsSettings Json? // ← NEW
 
+  timezone String? @default("America/Chicago")
+
   // Relations
   users        User[]
   jobs         Job[]
@@ -64,22 +66,24 @@ model User {
   // 🔽 NEW TECH SETTINGS 🔽
 
   // Notifications / behaviour
-  receiveSms       Boolean   @default(true)
-  payrollEnabled   Boolean   @default(false)
-  canSeeClosing    Boolean   @default(true)   // can see closing panel
-  canViewAllJobs   Boolean   @default(true)   // false → only jobs assigned to this tech
+  receiveSms     Boolean @default(true)
+  payrollEnabled Boolean @default(false)
+  canSeeClosing  Boolean @default(true) // can see closing panel
+  canViewAllJobs Boolean @default(true) // false → only jobs assigned to this tech
 
   // Financial defaults
-  defaultTechPercent        Decimal? @db.Decimal(5, 2)
-  defaultPartsResponsibility String?  // "tech" | "company" | "split" etc.
-  defaultTechPaysExtraFee   Boolean  @default(false)
-  defaultCcFeePercent       Decimal? @db.Decimal(5, 2)
-  defaultCheckFeePercent    Decimal? @db.Decimal(5, 2)
+  defaultTechPercent         Decimal? @db.Decimal(5, 2)
+  defaultPartsResponsibility String? // "tech" | "company" | "split" etc.
+  defaultTechPaysExtraFee    Boolean  @default(false)
+  defaultCcFeePercent        Decimal? @db.Decimal(5, 2)
+  defaultCheckFeePercent     Decimal? @db.Decimal(5, 2)
 
   // Adjustment permissions
   canAdjustPercentages Boolean @default(false)
   canAdjustParts       Boolean @default(false)
   canAdjustFees        Boolean @default(false)
+
+  timezone String? @default("America/Chicago")
 
   // Availability (JSON like { mon:{enabled:true,from:"09:00",to:"17:00"}, ... })
   availability Json?
@@ -91,9 +95,10 @@ model User {
 // ─────────────────────────────────────────────
 //
 model JobType {
-  id     String  @id @default(cuid())
-  name   String
-  active Boolean @default(true)
+  id       String  @id @default(cuid())
+  name     String
+  active   Boolean @default(true)
+  timezone String?
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
@@ -116,19 +121,19 @@ model LeadSource {
   // ─────────────────────────────────────
   // Profile / behavior
   // ─────────────────────────────────────
-  color   String  @default("#6b7280") // tag color for UI
-  active  Boolean @default(true)      // can be selected for new jobs
-  locked  Boolean @default(false)     // protect from edits/deletes
+  color  String  @default("#6b7280") // tag color for UI
+  active Boolean @default(true) // can be selected for new jobs
+  locked Boolean @default(false) // protect from edits/deletes
 
   // ─────────────────────────────────────
   // Financial defaults
   // (all optional – if null, do nothing)
   // ─────────────────────────────────────
-  defaultLeadPercent      Decimal? @db.Decimal(5, 2)   // e.g. 35.00
-  defaultAdditionalFee    Decimal? @db.Decimal(10, 2)  // flat fee $
-  defaultCcFeePercent     Decimal? @db.Decimal(5, 2)   // CC fee %
-  defaultCheckFeePercent  Decimal? @db.Decimal(5, 2)   // Check fee %
-  autoApplyFinancialRules Boolean  @default(false)     // auto fill in closing panel
+  defaultLeadPercent      Decimal? @db.Decimal(5, 2) // e.g. 35.00
+  defaultAdditionalFee    Decimal? @db.Decimal(10, 2) // flat fee $
+  defaultCcFeePercent     Decimal? @db.Decimal(5, 2) // CC fee %
+  defaultCheckFeePercent  Decimal? @db.Decimal(5, 2) // Check fee %
+  autoApplyFinancialRules Boolean  @default(false) // auto fill in closing panel
 
   jobs Job[]
 }
@@ -172,9 +177,11 @@ model Job {
   callSessions JobCallSession[]
   records      JobRecord[]
 
-    // cancel job note
-  canceledReason   String?   // text note when job is canceled
-  canceledAt       DateTime? // when it was canceled
+  timezone  String?
+  reminders JobReminder[]
+
+  canceledReason String? // text note when job is canceled
+  canceledAt     DateTime? // when it was canceled
 }
 
 //
@@ -238,11 +245,11 @@ model JobClosing {
   sumCheck Decimal @db.Decimal(10, 4)
 
   // new payment totals
-  cashTotal   Decimal @db.Decimal(10, 2) @default(0)
-  creditTotal Decimal @db.Decimal(10, 2) @default(0)
-  checkTotal  Decimal @db.Decimal(10, 2) @default(0)
-  zelleTotal  Decimal @db.Decimal(10, 2) @default(0)
-  createdAt DateTime @default(now())
+  cashTotal   Decimal  @default(0) @db.Decimal(10, 2)
+  creditTotal Decimal  @default(0) @db.Decimal(10, 2)
+  checkTotal  Decimal  @default(0) @db.Decimal(10, 2)
+  zelleTotal  Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
 }
 
 //
@@ -314,21 +321,50 @@ model JobCallSession {
 // ─────────────────────────────────────────────
 //
 model JobRecord {
-  id           String   @id @default(cuid())
-  jobId        String
-  callSid      String
-  recordingSid String
-  from         String?
-  to           String?
-  url          String
+  id            String  @id @default(cuid())
+  jobId         String
+  callSid       String
+  recordingSid  String
+  from          String?
+  to            String?
+  url           String
   parentCallSid String?
- 
-  // NEW FIELDS NEEDED FOR UI + TWILIO
-  duration     Int?       // Recording duration
-  status       String?    // completed | busy | failed | no-answer | ringing | queued
-  transcript   String?    // optional text transcript
 
-  createdAt    DateTime @default(now())
+  // NEW FIELDS NEEDED FOR UI + TWILIO
+  duration   Int? // Recording duration
+  status     String? // completed | busy | failed | no-answer | ringing | queued
+  transcript String? // optional text transcript
+
+  createdAt DateTime @default(now())
 
   job Job @relation(fields: [jobId], references: [id])
+}
+
+//
+// ─────────────────────────────────────────────
+// JOB REMINDERS (Appointment SMS)
+// ─────────────────────────────────────────────
+//
+model JobReminder {
+  id    String @id @default(cuid())
+  jobId String
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  // reminder timing
+  minutesBefore Int
+
+  // target
+  sendToTechnician Boolean @default(true)
+
+  // execution
+  scheduledFor DateTime
+  sentAt       DateTime?
+
+  canceled Boolean @default(false)
+  canceledAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@index([scheduledFor])
 }

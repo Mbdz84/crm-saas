@@ -65,14 +65,24 @@ export async function sendTechSms(techId: string, job: any) {
   const jobForSms = { ...job };
   let maskedInfo = "";
 
-  if (maskingEnabled) {
-    const session = await getOrCreateCallSession(job, techId);
+  const phones: string[] = [];
 
-    if (session && TWILIO_NUMBER) {
-      const clean = TWILIO_NUMBER.replace(/^\+1/, "").replace(/[^\d]/g, "");
-      jobForSms.customerPhone = `${clean},${session.extension}`;
-    }
+if (job.customerPhone) phones.push(job.customerPhone);
+if (job.customerPhone2) phones.push(job.customerPhone2);
+
+if (maskingEnabled) {
+  const session = await getOrCreateCallSession(job, techId);
+
+  if (session && TWILIO_NUMBER) {
+    const clean = TWILIO_NUMBER.replace(/^\+1/, "").replace(/[^\d]/g, "");
+
+    jobForSms.customerPhone = phones
+      .map(() => `${clean},${session.extension}`)
+      .join(" / ");
   }
+} else {
+  jobForSms.customerPhone = phones.join(" / ");
+}
 
   const baseText = buildSmsText(jobForSms, settings);
   const finalBody = `${baseText}${maskedInfo}`;
@@ -176,11 +186,16 @@ export function buildSmsText(job: any, settings: any): string {
 
     const value = getVal(key);
 
-    if (settings.showLabel[key]) {
-      lines.push(`${getLabel(key)}: ${value}`);
-    } else {
-      lines.push(value);
-    }
+// ✅ skip empty values entirely
+if (!value || !value.toString().trim()) {
+  continue;
+}
+
+if (settings.showLabel[key]) {
+  lines.push(`${getLabel(key)}: ${value}`);
+} else {
+  lines.push(value);
+}
   }
 
   return lines.join("\n").trim();

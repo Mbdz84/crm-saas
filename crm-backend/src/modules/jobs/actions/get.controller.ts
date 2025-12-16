@@ -64,6 +64,9 @@ export async function getJobByShortId(req: Request, res: Response) {
         records: {
           orderBy: { createdAt: "desc" },
         },
+        reminders: {
+  orderBy: { scheduledFor: "asc" },
+},
       },
     });
 

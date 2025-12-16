@@ -5,44 +5,64 @@ export async function updateJobByShortId(req: Request, res: Response) {
   try {
     const shortId = req.params.shortId.toUpperCase();
     const updates = req.body;
-
+console.log("🔵 UPDATE JOB PAYLOAD:", {
+  shortId,
+  scheduledAt: updates.scheduledAt,
+  reminders: updates.reminders,
+  });
     const job = await prisma.job.findFirst({
       where: { shortId, companyId: req.user!.companyId },
     });
 
-    if (!job) return res.status(404).json({ error: "Job not found" });
-
-    // -----------------------------------------------
-    // 🛑 Detect CANCELED status
-    // -----------------------------------------------
-    let isCanceled = false;
-
-    // If frontend sends NAME
-    if (typeof updates.status === "string") {
-      const clean = updates.status.toLowerCase();
-      isCanceled = ["canceled", "cancelled", "cancel"].includes(clean);
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
     }
 
-    // If frontend sends ID
-    if (!isCanceled && updates.statusId) {
+    /* ======================================================
+       STATUS DETECTION
+    ====================================================== */
+    let isCanceled = false;
+    let isClosed = false;
+
+    if (typeof updates.status === "string") {
+      const clean = updates.status.toLowerCase();
+      isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
+      isClosed = clean === "closed";
+    }
+
+    if (updates.statusId) {
       const statusRow = await prisma.jobStatus.findUnique({
         where: { id: updates.statusId },
       });
 
       if (statusRow) {
         const clean = statusRow.name.toLowerCase();
-        isCanceled = ["canceled", "cancelled", "cancel"].includes(clean);
+        isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
+        isClosed = clean === "closed";
       }
     }
 
-    // -----------------------------------------------
-    // 📝 Extract cancel reason from frontend
-    // -----------------------------------------------
     const canceledReason = updates.statusNote || null;
 
-    // -----------------------------------------------
-    // MAIN JOB UPDATE
-    // -----------------------------------------------
+    /* ======================================================
+       STATE INVALIDATION CHECKS
+    ====================================================== */
+    const appointmentCleared =
+  updates.scheduledAt !== undefined &&
+  (updates.scheduledAt === null || updates.scheduledAt === "");
+    const techRemoved =
+      updates.technicianId !== undefined &&
+      updates.technicianId !== job.technicianId &&
+      !updates.technicianId;
+console.log("🟡 INVALIDATION FLAGS:", {
+  appointmentCleared,
+  isCanceled,
+  isClosed,
+  techRemoved,
+});
+    /* ======================================================
+       MAIN JOB UPDATE
+    ====================================================== */
     const updatedJob = await prisma.job.update({
       where: { id: job.id },
       data: {
@@ -60,8 +80,6 @@ export async function updateJobByShortId(req: Request, res: Response) {
               ? new Date(updates.scheduledAt)
               : null
             : job.scheduledAt,
-
-        status: updates.status ?? job.status,
 
         jobTypeId:
           updates.jobTypeId !== undefined
@@ -83,25 +101,25 @@ export async function updateJobByShortId(req: Request, res: Response) {
             ? updates.sourceId || null
             : job.sourceId,
 
+        status: updates.status ?? job.status,
         statusId:
           updates.statusId !== undefined
             ? updates.statusId || null
             : job.statusId,
 
-        // ⭐ Save cancellation info directly on JOB
         ...(isCanceled
           ? {
               canceledReason,
               canceledAt: new Date(),
-              isClosingLocked: false, // unlock UI
+              isClosingLocked: false,
             }
           : {}),
 
-        // ⭐ Allow manual editing of closedAt (admin or UI Save Changes)
-        ...(updates.closedAt
+        ...(isClosed || updates.closedAt
           ? {
-              closedAt: new Date(updates.closedAt),
-              // Keep status locked only if job already closed
+              closedAt: updates.closedAt
+                ? new Date(updates.closedAt)
+                : new Date(),
               isClosingLocked: true,
             }
           : {}),
@@ -113,6 +131,69 @@ export async function updateJobByShortId(req: Request, res: Response) {
         jobStatus: true,
       },
     });
+
+    /* ======================================================
+       🧹 CANCEL REMINDERS WHEN INVALID
+    ====================================================== */
+    if (appointmentCleared || isCanceled || isClosed || techRemoved) {
+  console.log("🧹 REMINDERS INVALIDATED — CANCELING", { jobId: job.id });
+
+  await prisma.jobReminder.updateMany({
+    where: { jobId: job.id, canceled: false },
+    data: { canceled: true, sendToTechnician: false },
+  });
+}
+
+    /* ======================================================
+       ⏰ PERSIST REMINDERS
+       (ONLY if checkbox was checked)
+    ====================================================== */
+    if (Array.isArray(updates.reminders) && updatedJob.scheduledAt) {
+  const appointmentTime = new Date(updatedJob.scheduledAt);
+
+  console.log("🟢 PERSIST REMINDERS START", {
+    reminders: updates.reminders,
+    scheduledAt: updatedJob.scheduledAt,
+  });
+
+  // 🔁 CANCEL EXISTING REMINDERS FIRST (CRITICAL)
+  await prisma.jobReminder.updateMany({
+    where: { jobId: job.id },
+    data: { canceled: true, sendToTechnician: false },
+  });
+
+  for (const r of updates.reminders) {
+    console.log("🟣 PROCESSING REMINDER:", r);
+
+    if (
+      r.canceled === true ||
+      typeof r.minutesBefore !== "number" ||
+      r.minutesBefore <= 0
+    ) {
+      continue;
+    }
+
+    const scheduledFor = new Date(
+      appointmentTime.getTime() - r.minutesBefore * 60 * 1000
+    );
+
+    console.log("🟢 INSERTING REMINDER:", {
+      jobId: job.id,
+      minutesBefore: r.minutesBefore,
+      scheduledFor,
+    });
+
+    await prisma.jobReminder.create({
+      data: {
+        jobId: job.id,
+        minutesBefore: r.minutesBefore,
+        scheduledFor,
+        canceled: false,
+        sendToTechnician: true,
+      },
+    });
+  }
+}
 
     return res.json({ message: "Job updated", job: updatedJob });
   } catch (err) {
