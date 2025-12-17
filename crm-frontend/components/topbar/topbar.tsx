@@ -48,7 +48,7 @@ export default function Topbar() {
       <div className="flex items-center gap-4">
           <button
           onClick={() => router.push("/dashboard/jobs")}
-          className="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm"
+          className="px-3 py-1.5 bg-orange-500 text-white rounded hover:bg-green-700 transition text-sm"
         >
           Jobs
         </button>
@@ -57,12 +57,12 @@ export default function Topbar() {
           onClick={() => router.push("/dashboard/jobs/new")}
           className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
         >
-          +New Job
+          New Job
         </button>
         <button
           onClick={() => router.push("/dashboard/jobs/add")}
           className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-        >+SMS Parse</button>
+        >SMS Parse</button>
       </div>
 
       {/* RIGHT SIDE — Theme toggle + Company */}
