@@ -1,131 +1,129 @@
 import { money } from "./utils/money";
+import { columnDefs } from "./utils/columnDefs";
 
 type Props = {
-  rows: any[];                          // all jobs shown in the table
-  visible: Record<string, boolean>;     // visibility map for columns
+  rows: any[];
+  visible: Record<string, boolean>;
 };
 
+const MONEY_KEYS = new Set([
+  "total",
+  "cashTotal",
+  "creditTotal",
+  "checkTotal",
+  "zelleTotal",
+  "techParts",
+  "leadParts",
+  "compParts",
+  "partsAmt",
+  "cc",
+  "addFee",
+  "adjusted",
+  "techProfit",
+  "leadProfit",
+  "compProfit",
+  "techBal",
+  "leadBal",
+  "compBal",
+]);
+
+const NUMBER_KEYS = new Set(["check"]);
+
 export default function TotalsRow({ rows, visible }: Props) {
-  // Only sum CLOSED jobs (same as exportHTML)
+  if (!rows.length) return null;
+
+  // ✅ Totals are ONLY for closed jobs
   const closedRows = rows.filter(
     (r) => r.jobStatus?.name === "Closed"
   );
 
-  const sum = (fn: (job: any) => number | null | undefined) =>
-    closedRows.reduce((acc, job) => {
-      const v = fn(job);
-      return acc + (v ? Number(v) : 0);
+    function sum(key: string): number {
+    return closedRows.reduce((acc, job) => {
+      const c = job.closing || {};
+
+      // ✅ same logic as TableRow: derive payment totals from payments[]
+      let cashTotal = 0;
+      let creditTotal = 0;
+      let checkTotal = 0;
+      let zelleTotal = 0;
+
+      if (Array.isArray(c.payments)) {
+        c.payments.forEach((p: any) => {
+          const amt = Number(p.amount) || 0;
+          if (p.payment === "cash") cashTotal += amt;
+          if (p.payment === "credit") creditTotal += amt;
+          if (p.payment === "check") checkTotal += amt;
+          if (p.payment === "zelle") zelleTotal += amt;
+        });
+      } else {
+        // fallback if backend ever sends these
+        cashTotal = Number(c.cashTotal || 0);
+        creditTotal = Number(c.creditTotal || 0);
+        checkTotal = Number(c.checkTotal || 0);
+        zelleTotal = Number(c.zelleTotal || 0);
+      }
+
+      const map: Record<string, any> = {
+        total: c.totalAmount,
+
+        cashTotal,
+        creditTotal,
+        checkTotal,
+        zelleTotal,
+
+        techParts: c.techParts,
+        leadParts: c.leadParts,
+        compParts: c.companyParts,
+        partsAmt: c.totalParts,
+        cc: c.totalCcFee,
+        addFee: c.leadAdditionalFee,
+        adjusted: c.adjustedTotal,
+
+        techProfit: c.techProfit,
+        leadProfit: c.leadProfit,
+        compProfit: c.companyProfitDisplay,
+
+        techBal: c.techBalance,
+        leadBal: c.leadBalance,
+        compBal: c.companyBalance,
+
+        // ⚠️ use sumCheck (your TableRow uses c?.sumCheck)
+        check: c.sumCheck,
+      };
+
+      return acc + Number(map[key] || 0);
     }, 0);
-
-  // Map to JobClosing fields (same as exportHTML rawMap)
-  const total        = sum((j) => j.closing?.totalAmount);
-  const cashTotal    = sum((j) => j.closing?.cashTotal);
-  const creditTotal  = sum((j) => j.closing?.creditTotal);
-  const checkTotal   = sum((j) => j.closing?.checkTotal);
-  const zelleTotal   = sum((j) => j.closing?.zelleTotal);
-
-  const techParts    = sum((j) => j.closing?.techParts);
-  const leadParts    = sum((j) => j.closing?.leadParts);
-  const compParts    = sum((j) => j.closing?.companyParts);
-  const partsAmt     = sum((j) => j.closing?.totalParts);
-
-  const cc           = sum((j) => j.closing?.totalCcFee);
-  const addFee       = sum((j) => j.closing?.leadAdditionalFee);
-  const adjusted     = sum((j) => j.closing?.adjustedTotal);
-
-  const techProfit   = sum((j) => j.closing?.techProfit);
-  const leadProfit   = sum((j) => j.closing?.leadProfit);
-  const compProfit   = sum((j) => j.closing?.companyProfitDisplay);
-
-  const techBal      = sum((j) => j.closing?.techBalance);
-  const leadBal      = sum((j) => j.closing?.leadBalance);
-  const compBal      = sum((j) => j.closing?.companyBalance);
-
-  const sumCheck     = sum((j) => j.closing?.sumCheck);
+  }
 
   return (
     <tr className="bg-gray-200 font-bold border-t-4 border-black">
-      {/* sticky checkbox column */}
-      <td className="px-2 py-2 sticky left-0 bg-gray-200"></td>
+      {/* Sticky checkbox column */}
+      <td className="sticky left-0 bg-gray-200 border px-2 py-2 z-10"></td>
 
-      {visible.invoice && <td className="px-2 py-2">TOTAL</td>}
-      {visible.jobId && <td></td>}
-      {visible.name && <td></td>}
-      {visible.address && <td></td>}
-      {visible.date && <td></td>}
-      {visible.type && <td></td>}
-      {visible.tech && <td></td>}
+      {columnDefs.map((col) => {
+        if (!visible[col.key]) return null;
 
-      {/* amounts */}
-      {visible.total && (
-        <td className="px-2 py-2">{money(total)}</td>
-      )}
+        // 💰 Money totals
+        if (MONEY_KEYS.has(col.key)) {
+          return (
+            <td key={col.key} className="border px-2 py-2">
+              {money(sum(col.key))}
+            </td>
+          );
+        }
 
-      {visible.cashTotal && (
-        <td className="px-2 py-2">{money(cashTotal)}</td>
-      )}
-      {visible.creditTotal && (
-        <td className="px-2 py-2">{money(creditTotal)}</td>
-      )}
-      {visible.checkTotal && (
-        <td className="px-2 py-2">{money(checkTotal)}</td>
-      )}
-      {visible.zelleTotal && (
-        <td className="px-2 py-2">{money(zelleTotal)}</td>
-      )}
+        // 🔢 Numeric (check)
+        if (NUMBER_KEYS.has(col.key)) {
+          return (
+            <td key={col.key} className="border px-2 py-2">
+              {sum(col.key).toFixed(4)}
+            </td>
+          );
+        }
 
-      {visible.techParts && (
-        <td className="px-2 py-2">{money(techParts)}</td>
-      )}
-      {visible.leadParts && (
-        <td className="px-2 py-2">{money(leadParts)}</td>
-      )}
-      {visible.compParts && (
-        <td className="px-2 py-2">{money(compParts)}</td>
-      )}
-      {visible.partsAmt && (
-        <td className="px-2 py-2">{money(partsAmt)}</td>
-      )}
-
-      {visible.cc && (
-        <td className="px-2 py-2">{money(cc)}</td>
-      )}
-      {visible.addFee && (
-        <td className="px-2 py-2">{money(addFee)}</td>
-      )}
-      {visible.adjusted && (
-        <td className="px-2 py-2">{money(adjusted)}</td>
-      )}
-
-      {/* percentages – we don't total them, just leave empty cells */}
-      {visible["tech%"] && <td></td>}
-      {visible.techProfit && (
-        <td className="px-2 py-2">{money(techProfit)}</td>
-      )}
-
-      {visible["lead%"] && <td></td>}
-      {visible.leadProfit && (
-        <td className="px-2 py-2">{money(leadProfit)}</td>
-      )}
-
-      {visible["comp%"] && <td></td>}
-      {visible.compProfit && (
-        <td className="px-2 py-2">{money(compProfit)}</td>
-      )}
-
-      {visible.techBal && (
-        <td className="px-2 py-2">{money(techBal)}</td>
-      )}
-      {visible.leadBal && (
-        <td className="px-2 py-2">{money(leadBal)}</td>
-      )}
-      {visible.compBal && (
-        <td className="px-2 py-2">{money(compBal)}</td>
-      )}
-
-      {visible.check && (
-        <td className="px-2 py-2">{sumCheck.toFixed(4)}</td>
-      )}
+        // ⛔ Everything else → empty cell
+        return <td key={col.key} className="border px-2 py-2"></td>;
+      })}
     </tr>
   );
 }

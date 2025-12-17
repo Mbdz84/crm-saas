@@ -14,7 +14,8 @@ export default function LeadSourceSummary({
   from?: string;
   to?: string;
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+const [expanded, setExpanded] = useState<string | null>(null);
+const [showCancelled, setShowCancelled] = useState(false);
 
   function toggle(name: string) {
     setExpanded(expanded === name ? null : name);
@@ -108,20 +109,49 @@ export default function LeadSourceSummary({
                         className="overflow-x-auto overflow-y-auto transition-all duration-300"
                         style={{ maxHeight: "500px", maxWidth: "100%" }}
                       >
-                        <div
-                          className="border rounded bg-gray-50 shadow-inner"
-                          style={{ width: "500px", minWidth: "100%" }}
-                        >
+                        <div className="border rounded bg-gray-50 shadow-inner w-full">
                           <div className="p-3">
-                            <ReportsTable
-                              rows={jobs
-                                .filter((j) => j.jobStatus?.name === "Closed")
-                                .filter((j) => j.source?.name === row.name)}
-                              from={from}
-                              to={to}
-                              expandedTechName={null}
-                              expandedSourceName={row.name}
-                            />
+                            {/* Show Cancelled Toggle */}
+<div className="flex items-center gap-3 mb-3">
+  <label className="flex items-center gap-2 text-sm cursor-pointer">
+    <input
+      type="checkbox"
+      checked={showCancelled}
+      onChange={(e) => setShowCancelled(e.target.checked)}
+    />
+    Show cancelled jobs
+  </label>
+</div>
+
+<ReportsTable
+  rows={jobs
+  .filter((j) => {
+    const isClosed = j.jobStatus?.name === "Closed";
+    const isCancelled = !!j.canceledAt || !!j.canceledReason;
+
+    return showCancelled ? isClosed || isCancelled : isClosed;
+  })
+  .filter((j) =>
+    row.name === "Unknown Source"
+      ? !j.source || !j.source.name
+      : j.source?.name === row.name
+  )}
+  from={from}
+  to={to}
+  expandedTechName={null}
+  expandedSourceName={row.name}
+  defaultVisibleKeys={[
+    "invoice",
+    "jobId",
+    "date",
+    "address",
+    "type",
+    "total",
+    "leadProfit",
+    "leadBal",
+    ...(showCancelled ? ["cancelReason"] : []),
+  ]}
+/>
                           </div>
                         </div>
                       </div>

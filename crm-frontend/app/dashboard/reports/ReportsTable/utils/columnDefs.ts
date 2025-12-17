@@ -29,4 +29,5 @@ export const columnDefs = [
   { key: "leadBal", label: "Lead Balance" },
   { key: "compBal", label: "Company Balance" },
   { key: "check", label: "Financial Check" },
+  { key: "cancelReason", label: "Cancel Reason",},
 ];

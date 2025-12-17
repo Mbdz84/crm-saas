@@ -13,7 +13,16 @@ export default function TableRow({
   visible: Record<string, boolean>;
 }) {
   const c = job.closing;
-  const bg = highlighted ? "bg-green-100" : "bg-white dark:bg-gray-900";
+
+  const isCancelled =
+  job.jobStatus?.name === "Cancelled" ||
+  job.jobStatus?.name === "Canceled";
+
+const bg = highlighted
+  ? "bg-green-100"
+  : isCancelled
+  ? "bg-red-50 text-red-800"
+  : "bg-white dark:bg-gray-900";
 
   const shortId = job.shortId; // 🔥 always use shortId
 
@@ -63,12 +72,22 @@ export default function TableRow({
 
   return (
     <tr
-      onClick={handleRowClick}
-      className={`${bg} border cursor-pointer hover:bg-blue-50`}
-    >
+  onClick={handleRowClick}
+  className={`cursor-pointer ${
+    highlighted
+      ? "bg-green-100 border border-gray-400"
+      : isCancelled
+      ? "bg-red-50 text-red-800 border border-gray-400 border-l-4 border-l-red-500 hover:bg-red-100"
+      : "bg-white dark:bg-gray-900 border border-gray-300 hover:bg-blue-50"
+  }`}
+>
       <td
-        className={`border border-gray-700 px-2 py-1 text-center sticky left-0 z-10 ${bg}`}
-      >
+  className={`px-2 py-1 text-center sticky left-0 z-10 ${
+    isCancelled
+      ? "border border-gray-400 bg-red-50"
+      : "border border-gray-700 bg-white"
+  }`}
+>
         <input
           type="checkbox"
           checked={highlighted}
@@ -228,6 +247,11 @@ export default function TableRow({
           {c?.sumCheck}
         </td>
       )}
+      {visible.cancelReason && (
+  <td className="border px-2 py-1 text-sm text-red-700">
+    {isCancelled ? job.canceledReason || "—" : "—"}
+  </td>
+)}
     </tr>
   );
 }

@@ -92,6 +92,7 @@ function extract(job: any, key: string): any {
     compBal: c.companyBalance,
 
     check: c.sumCheck,
+    cancelReason: job.canceledReason || "",
   };
 
   return rawMap[key];
@@ -159,6 +160,13 @@ function htmlTotalCell(key: string, total: number | null): string {
   return `<td style="font-weight:bold;">${total}</td>`;
 }
 
+function isCancelled(job: any): boolean {
+  return (
+    job.jobStatus?.name === "Cancelled" ||
+    job.jobStatus?.name === "Canceled"
+  );
+}
+
 /* ---------------------------------------------
    EXPORT HTML
 --------------------------------------------- */
@@ -172,11 +180,11 @@ export function exportHTML(
   console.log("EXPORT TOTALS:", totals);
 
 
-  /* --- Only closed jobs --- */
-  rows = rows.filter((r) => r.jobStatus?.name === "Closed");
-
-  const cols = columnDefs.filter((c) => visible[c.key]);
-
+    const cols = columnDefs.filter((c) => visible[c.key]);
+// ---- JOB COUNTS ----
+const totalJobs = rows.length;
+const canceledJobs = rows.filter(isCancelled).length;
+const closedJobs = totalJobs - canceledJobs;
   /* --- Title & filename --- */
   const name =
     (meta.tech && `Technician: ${meta.tech}`) ||
@@ -220,18 +228,25 @@ export function exportHTML(
 
   /* --- BODY --- */
   const tbody = `
-    <tbody>
-      ${rows
-        .map(
-          (job, i) => `
-      <tr data-row="${i}">
-        <td><input type="checkbox" class="row-check" data-row="${i}" /></td>
-        ${cols.map((c) => htmlCell(c.key, extract(job, c.key))).join("")}
-      </tr>`
-        )
-        .join("")}
-    </tbody>
-  `;
+<tbody>
+  ${rows
+    .map((job, i) => {
+      const cancelled = isCancelled(job);
+      const rowStyle = cancelled
+        ? 'background-color:#fef2f2;color:#991b1b;'
+        : '';
+
+      return `
+<tr data-row="${i}" style="${rowStyle}">
+  <td>
+    <input type="checkbox" class="row-check" data-row="${i}" />
+  </td>
+  ${cols.map((c) => htmlCell(c.key, extract(job, c.key))).join("")}
+</tr>`;
+    })
+    .join("")}
+</tbody>
+`;
 
   /* --- FOOTER --- */
   const tfoot = `
@@ -242,6 +257,15 @@ export function exportHTML(
       </tr>
     </tfoot>
   `;
+
+  /* --- JOB COUNT LINE --- */
+const jobCountLine = `
+<div id="job-count-line" style="margin:10px 0;font-weight:bold;">
+  Total jobs:
+  <span id="selected-count">0</span>/${totalJobs}
+  (${closedJobs} closed, ${canceledJobs} canceled)
+</div>
+`;
 
   /* --- SUMMARY BOXES --- */
 const summaryBoxes = `
@@ -306,7 +330,20 @@ document.addEventListener("DOMContentLoaded", function () {
       });
     });
   }
+  function updateSelectedCount() {
+    var checked = document.querySelectorAll(".row-check:checked").length;
+    var el = document.getElementById("selected-count");
+    if (el) el.textContent = checked;
+  }
 
+  document.querySelectorAll(".row-check").forEach(function (chk) {
+    chk.addEventListener("change", updateSelectedCount);
+  });
+
+  var checkAll = document.getElementById("check-all");
+  if (checkAll) {
+    checkAll.addEventListener("change", updateSelectedCount);
+  }
 });
 </script>
 `;
@@ -368,10 +405,13 @@ ${tbody}
 ${tfoot}
 </table>
 
+${jobCountLine}
 ${summaryBoxes}
 ${script}
 ${styleExtra}
-
+<p style="color:#991b1b;font-weight:bold;">
+  *Red rows indicate cancelled jobs
+</p>
 </body>
 </html>
 `;

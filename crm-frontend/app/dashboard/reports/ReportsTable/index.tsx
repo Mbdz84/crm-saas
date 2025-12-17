@@ -71,9 +71,6 @@ else {
 const [visible, setVisible] = useState<Record<string, boolean>>(baseVisibility);
 const [showColumns, setShowColumns] = useState(false);
 
-  if (!rows?.length) {
-    return <p className="text-gray-500 text-sm mt-4">No closed jobs.</p>;
-  }
 
   function onSort(field: string) {
     if (sortField === field) {
@@ -195,35 +192,39 @@ const [showColumns, setShowColumns] = useState(false);
         />
       )}
 
-      <div className="relative overflow-auto border rounded max-w-[1600px] max-h-[900px]">
-        <table className="min-w-[2000px] text-sm">
-          <TableHeader
+      {!rows?.length ? (
+  <p className="text-gray-500 text-sm mt-4">No closed jobs.</p>
+) : (
+  <div className="relative overflow-auto border rounded max-w-[1600px] max-h-[900px]">
+    <table className="min-w-[2000px] text-sm">
+      <TableHeader
+        visible={visible}
+        sortField={sortField}
+        sortDir={sortDir}
+        onSort={onSort}
+      />
+
+      <tbody>
+        {sortedRows.map((job: any) => (
+          <TableRow
+            key={job.id}
+            job={job}
             visible={visible}
-            sortField={sortField}
-            sortDir={sortDir}
-            onSort={onSort}
+            highlighted={!!highlighted[job.id]}
+            toggleRow={() =>
+              setHighlighted((prev) => ({
+                ...prev,
+                [job.id]: !prev[job.id],
+              }))
+            }
           />
+        ))}
 
-          <tbody>
-            {sortedRows.map((job: any) => (
-              <TableRow
-                key={job.id}
-                job={job}
-                visible={visible}
-                highlighted={!!highlighted[job.id]}
-                toggleRow={() =>
-                  setHighlighted((prev) => ({
-                    ...prev,
-                    [job.id]: !prev[job.id],
-                  }))
-                }
-              />
-            ))}
-
-            <TotalsRow rows={rows} visible={visible} />
-          </tbody>
-        </table>
-      </div>
+        <TotalsRow rows={sortedRows} visible={visible} />
+      </tbody>
+    </table>
+  </div>
+)}
     </div>
   );
 }

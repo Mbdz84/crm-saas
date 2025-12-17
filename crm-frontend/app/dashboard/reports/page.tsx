@@ -97,31 +97,60 @@ export default function ReportsPage() {
      LOAD REPORTS
   ------------------------------------------------------------ */
   async function loadReport(f = from, t = to) {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ status: "closed" });
-      if (f) params.append("from", f);
-      if (t) params.append("to", t);
+  setLoading(true);
 
-      const res = await fetch(`${API}/reports?` + params.toString(), {
-        credentials: "include",
-      });
+  try {
+    const baseParams = new URLSearchParams();
+    if (f) baseParams.append("from", f);
+    if (t) baseParams.append("to", t);
 
-      const json = await res.json();
+    // 1️⃣ CLOSED JOBS
+    const closedParams = new URLSearchParams(baseParams);
+    closedParams.append("status", "closed");
 
-      if (!res.ok) {
-        toast.error(json.error || "Failed to load report");
-        setLoading(false);
-        return;
-      }
+    const closedRes = await fetch(
+      `${API}/reports?` + closedParams.toString(),
+      { credentials: "include" }
+    );
 
-      setData(json);
-      toast.success("Report loaded");
-    } catch {
-      toast.error("Network error");
+    const closedJson = await closedRes.json();
+
+    if (!closedRes.ok) {
+      toast.error(closedJson.error || "Failed to load closed jobs");
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    let mergedJobs = closedJson.jobs || [];
+
+    // 2️⃣ CANCELED JOBS (ALWAYS FETCH)
+    const canceledRes = await fetch(
+      `${API}/reports/canceled?` + baseParams.toString(),
+      { credentials: "include" }
+    );
+
+    const canceledJson = await canceledRes.json();
+
+    if (canceledRes.ok && Array.isArray(canceledJson.jobs)) {
+      const map = new Map<string, any>();
+      mergedJobs.forEach((j: any) => map.set(j.id, j));
+      canceledJson.jobs.forEach((j: any) => map.set(j.id, j));
+      mergedJobs = Array.from(map.values());
+    }
+
+    setData({
+      ...closedJson, // keep summary logic intact
+      jobs: mergedJobs,
+    });
+
+    toast.success("Report loaded");
+  } catch (err) {
+    console.error(err);
+    toast.error("Network error");
   }
+
+  setLoading(false);
+}
 
   return (
     <div className="p-6 space-y-6">
@@ -239,25 +268,6 @@ export default function ReportsPage() {
         from={from}
         to={to}
       />
-
-      {/* FULL REPORTS TABLE */}
-      {data?.jobs?.length > 0 && (
-        <ReportsTable
-          rows={data.jobs}
-          from={from}
-          to={to}
-          expandedTechName={null}
-          expandedSourceName={null}
-          defaultVisibleKeys={[
-            "invoice",
-            "jobId",
-            "name",
-            "date",
-            "totalAmount",
-            "companyProfit",
-          ]}
-        />
-      )}
 
     </div>
   );
