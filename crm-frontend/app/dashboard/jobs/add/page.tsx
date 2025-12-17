@@ -133,11 +133,12 @@ export default function AddJobFromTextPage() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          ...preview,
-          technicianId: selectedTechId || null,
-          leadSourceId: leadSourceId || null, // ⭐ NEW
-          __rawText: rawText, // ⭐ for logs
-        }),
+  ...preview,
+  customerPhone2: preview.customerPhone2 || null,
+  technicianId: selectedTechId || null,
+  leadSourceId: leadSourceId || null,
+  __rawText: rawText,
+}),
       });
 
       const data = await res.json();
@@ -186,13 +187,19 @@ export default function AddJobFromTextPage() {
           <h2 className="text-xl font-semibold">Extracted Details</h2>
 
           <div className="space-y-1 text-sm">
-            <p><strong>Lead Source:</strong> {preview.source}</p>
-            <p><strong>Name:</strong> {preview.customerName}</p>
-            <p><strong>Phone:</strong> {preview.customerPhone}</p>
-            <p><strong>Address:</strong> {preview.customerAddress}</p>
-            <p><strong>Job Type:</strong> {preview.jobType}</p>
-            <p><strong>Description:</strong> {preview.description}</p>
-          </div>
+  <p><strong>Lead Source:</strong> {preview.source}</p>
+  <p><strong>Name:</strong> {preview.customerName}</p>
+
+  <p><strong>Phone:</strong> {preview.customerPhone}</p>
+
+  {preview.customerPhone2 && (
+    <p><strong>Phone 2:</strong> {preview.customerPhone2}</p>
+  )}
+
+  <p><strong>Address:</strong> {preview.customerAddress}</p>
+  <p><strong>Job Type:</strong> {preview.jobType}</p>
+  <p><strong>Description:</strong> {preview.description}</p>
+</div>
 
           {/* ⭐ LEAD SOURCE SELECT */}
           <div>

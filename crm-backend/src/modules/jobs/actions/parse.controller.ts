@@ -13,12 +13,21 @@ export async function parseJobFromText(req: Request, res: Response) {
     if (!text?.trim()) return res.status(400).json({ error: "Missing text" });
 
     const prompt = `
-Extract the following fields from the text. Return ONLY valid JSON:
+Extract the following fields from the text. Return ONLY valid JSON.
 
+Rules:
+- Extract up to TWO phone numbers.
+- The FIRST phone number → customerPhone
+- The SECOND phone number → customerPhone2
+- If only one phone exists, customerPhone2 must be null
+- Do NOT invent data
+
+Return format:
 {
   "source": "",
   "customerName": "",
   "customerPhone": "",
+  "customerPhone2": "",
   "customerAddress": "",
   "jobType": "",
   "description": ""
@@ -55,13 +64,16 @@ ${text}
     }
 
     return res.json({
-      source: parsed.source || null,
-      customerName: parsed.customerName || null,
-      customerPhone: parsed.customerPhone || null,
-      customerAddress: parsed.customerAddress ? normalizeAddress(parsed.customerAddress) : null,
-      jobType: parsed.jobType || null,
-      description: parsed.description || null,
-    });
+  source: parsed.source || null,
+  customerName: parsed.customerName || null,
+  customerPhone: parsed.customerPhone || null,
+  customerPhone2: parsed.customerPhone2 || null, // ✅ ADD THIS
+  customerAddress: parsed.customerAddress
+    ? normalizeAddress(parsed.customerAddress)
+    : null,
+  jobType: parsed.jobType || null,
+  description: parsed.description || null,
+});
   } catch (err) {
     console.error("parseJobFromText error:", err);
     return res.status(500).json({ error: "Failed to parse job text" });

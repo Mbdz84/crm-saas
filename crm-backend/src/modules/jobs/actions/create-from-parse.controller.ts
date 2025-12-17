@@ -13,6 +13,7 @@ function generateShortId() {
  * Route: POST /jobs/create-from-parse
  */
 export async function createJobFromParse(req: Request, res: Response) {
+  console.log("🚨 createJobFromParse HIT");
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -25,6 +26,7 @@ export async function createJobFromParse(req: Request, res: Response) {
       description,
       customerName,
       customerPhone,
+      customerPhone2,
       customerAddress,
       jobType,
       jobTypeId,
@@ -89,27 +91,29 @@ else if (source) {
     /* ------------------------------------------
        3) CREATE JOB (shortId REQUIRED)
     ------------------------------------------ */
+    console.log("📨 CREATE FROM PARSE BODY:", req.body);
     const job = await prisma.job.create({
-      data: {
-        shortId: generateShortId(), // ⭐ REQUIRED BY PRISMA
+    data: {
+    shortId: generateShortId(),
 
-        title: title || description || "New Job",
-        description: description || null,
+    title: title || description || "New Job",
+    description: description || null,
 
-        customerName: customerName || null,
-        customerPhone: customerPhone || null,
-        customerAddress: customerAddress || null,
+    customerName: customerName || null,
+    customerPhone: customerPhone || null,
+    customerPhone2: customerPhone2 || null, // ✅ ADD THIS
+    customerAddress: customerAddress || null,
 
-        jobTypeId: finalJobTypeId,
-        technicianId: technicianId || null,
-        sourceId: finalSourceId,
+    jobTypeId: finalJobTypeId,
+    technicianId: technicianId || null,
+    sourceId: finalSourceId,
 
-        status: "Accepted",
-        companyId,
+    status: "Accepted",
+    companyId,
 
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      },
-    });
+    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+  },
+});
 
     /* ------------------------------------------
        4) Optional: save raw text into job logs
