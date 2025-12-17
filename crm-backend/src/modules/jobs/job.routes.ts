@@ -77,7 +77,7 @@ router.get("/search", searchJobs);
 router.get("/:shortId", GetController.getJobByShortId);
 router.put("/:shortId", UpdateController.updateJobByShortId);
 
-/* --------------- DELETE JOB -------------------------------- */
+/* --------------- DELETE JOB ------------------------------- */
 router.delete("/:shortId", DeleteController.deleteJob);
 
 export default router;
