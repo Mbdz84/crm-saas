@@ -365,7 +365,7 @@ const selectedStatusIsCanceled = (() => {
           <div>
             <label className="block text-sm font-medium">Technician</label>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <select
                 className="border rounded p-2 flex-1"
                 value={editableJob.technicianId || ""}
@@ -387,7 +387,7 @@ const selectedStatusIsCanceled = (() => {
                   );
                   res.ok ? toast.success("SMS sent") : toast.error("Failed");
                 }}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
+                className="px-4 py-2 bg-blue-600 text-white rounded sm:w-auto w-full"
               >
                 Resend SMS
               </button>
@@ -461,7 +461,7 @@ const selectedStatusIsCanceled = (() => {
 <div>
   <label className="block text-sm font-medium mb-1">Appointment</label>
 
-  <div className="flex items-center gap-3">
+  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
     <AppointmentPicker
       key={appointmentKey}   // 👈 forces full reset
       value={editableJob.scheduledAt || ""}
@@ -478,7 +478,7 @@ const selectedStatusIsCanceled = (() => {
         // Force picker to reset hour/min UI
         setAppointmentKey((k) => k + 1);
       }}
-      className="px-3 py-2 text-sm border rounded text-gray-600 hover:bg-gray-100"
+      className="px-3 py-2 text-sm border rounded text-gray-600 hover:bg-gray-100 sm:w-auto w-full"
     >
       Clear
     </button>
