@@ -346,25 +346,24 @@ model JobRecord {
 // ─────────────────────────────────────────────
 //
 model JobReminder {
-  id    String @id @default(cuid())
-  jobId String
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  id               String   @id @default(cuid())
 
-  // reminder timing
-  minutesBefore Int
+  jobId            String   @map("job_id")
+  job              Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  // target
-  sendToTechnician Boolean @default(true)
+  minutesBefore    Int      @map("minutes_before")
+  scheduledFor     DateTime @map("scheduled_for")
 
-  // execution
-  scheduledFor DateTime
-  sentAt       DateTime?
+  sendToTechnician Boolean  @default(true) @map("send_to_technician")
 
-  canceled Boolean @default(false)
-  canceledAt DateTime?
+  sentAt           DateTime? @map("sent_at")
 
-  createdAt DateTime @default(now())
+  canceled         Boolean  @default(false)
+  canceledAt       DateTime? @map("canceledAt")
+
+  createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([jobId])
   @@index([scheduledFor])
+  @@map("JobReminder")
 }
