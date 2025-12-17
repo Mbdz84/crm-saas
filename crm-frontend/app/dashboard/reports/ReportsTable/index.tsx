@@ -29,6 +29,7 @@ export default function ReportsTable({
   const [highlighted, setHighlighted] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<string>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   /* -----------------------------------------
    COLUMN VISIBILITY WITH LOCALSTORAGE DEFAULTS
@@ -168,19 +169,50 @@ const [showColumns, setShowColumns] = useState(false);
             Export CSV
           </button>
 
-          <button
-            onClick={() =>
-              exportHTML(sortedRows, totals, visible, {
-                from,
-                to,
-                tech: expandedTechName || undefined,
-                source: expandedSourceName || undefined,
-              })
-            }
-            className="px-3 py-1 text-xs border rounded bg-white"
-          >
-            Export HTML
-          </button>
+          <div className="relative">
+  <button
+    className="px-3 py-1 text-xs border rounded bg-white"
+    onClick={() => setShowExportMenu((v) => !v)}
+  >
+    Export HTML ▾
+  </button>
+
+  {showExportMenu && (
+    <div className="absolute right-0 mt-1 w-48 bg-white border rounded shadow z-50">
+      <button
+        className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100"
+        onClick={() => {
+          exportHTML(
+            sortedRows,
+            totals,
+            visible,
+            { from, to, tech: expandedTechName || undefined, source: expandedSourceName || undefined },
+            { includeSummary: true }
+          );
+          setShowExportMenu(false);
+        }}
+      >
+        Export with summary
+      </button>
+
+      <button
+        className="block w-full text-left px-3 py-2 text-xs hover:bg-gray-100"
+        onClick={() => {
+          exportHTML(
+            sortedRows,
+            totals,
+            visible,
+            { from, to, tech: expandedTechName || undefined, source: expandedSourceName || undefined },
+            { includeSummary: false }
+          );
+          setShowExportMenu(false);
+        }}
+      >
+        Export table only
+      </button>
+    </div>
+  )}
+</div>
         </div>
       </div>
 

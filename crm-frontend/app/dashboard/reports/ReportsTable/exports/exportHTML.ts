@@ -181,7 +181,8 @@ export function exportHTML(
   rows: any[],
   totals: any,
   visible: Record<string, boolean>,
-  meta: { from?: string; to?: string; tech?: string; source?: string }
+  meta: { from?: string; to?: string; tech?: string; source?: string },
+  options?: { includeSummary?: boolean }
 ) {
   // 🔥 Debug totals here
   console.log("EXPORT TOTALS:", totals);
@@ -413,7 +414,7 @@ ${tfoot}
 </table>
 
 ${jobCountLine}
-${summaryBoxes}
+${options?.includeSummary !== false ? summaryBoxes : ""}
 ${script}
 ${styleExtra}
 <p style="color:#991b1b;font-weight:bold;">
