@@ -4,33 +4,53 @@ import { columnDefs } from "../utils/columnDefs";
  * Export CSV with:
  * - Only visible columns
  * - UI-style formatting
- * - TOTAL row with sums for all money / numeric columns
+ * - CLOSED jobs only
+ * - Correct payment totals (cash / credit / check / zelle)
+ * - Job counts footer
  */
 export function exportCSV(
   rows: any[],
   totals: any,
   visible: Record<string, boolean>
 ) {
+  // 🔥 CLOSED JOBS ONLY (matches UI + HTML)
+  const closedRows = rows.filter(
+    (r) => r.jobStatus?.name === "Closed"
+  );
 
-    // 🔥 Only export closed jobs
-  rows = rows.filter((r) => r.jobStatus?.name === "Closed");
-  
   const activeCols = columnDefs.filter((c) => visible[c.key]);
 
   const header = activeCols.map((c) => safeCSV(c.label)).join(",");
 
-  const csvRows = rows.map((job) =>
+  const csvRows = closedRows.map((job) =>
     activeCols.map((col) => safeCSV(formatCell(job, col.key))).join(",")
   );
 
   const totalsRow = activeCols
     .map((col) => {
-      const totalVal = getColumnTotal(col.key, rows, totals);
+      const totalVal = getColumnTotal(col.key, closedRows, totals);
       return safeCSV(formatTotalCell(col.key, totalVal));
     })
     .join(",");
 
-  const finalCSV = [header, ...csvRows, totalsRow].join("\n");
+  // ---- JOB COUNTS ----
+  const totalJobs = rows.length;
+  const canceledJobs = rows.filter(isCancelled).length;
+  const closedJobs = totalJobs - canceledJobs;
+
+  const jobCountText = `Total jobs: ${totalJobs} (${closedJobs} closed, ${canceledJobs} canceled)`;
+
+// Put text in FIRST column, rest empty
+const jobCountRow =
+  safeCSV(jobCountText) +
+  ",".repeat(activeCols.length - 1);
+
+const finalCSV = [
+  header,
+  ...csvRows,
+  totalsRow,
+  jobCountRow,
+].join("\n");
 
   const blob = new Blob([finalCSV], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -43,10 +63,40 @@ export function exportCSV(
 }
 
 /* ------------------------------------------------------------------
+   HELPERS
+------------------------------------------------------------------- */
+
+function isCancelled(job: any): boolean {
+  return (
+    job.jobStatus?.name === "Canceled" ||
+    job.jobStatus?.name === "Cancelled"
+  );
+}
+
+function computePayments(job: any) {
+  let cash = 0;
+  let credit = 0;
+  let check = 0;
+  let zelle = 0;
+
+  const payments = job.closing?.payments;
+  if (Array.isArray(payments)) {
+    payments.forEach((p: any) => {
+      const amt = Number(p.amount) || 0;
+      if (p.payment === "cash") cash += amt;
+      if (p.payment === "credit") credit += amt;
+      if (p.payment === "check") check += amt;
+      if (p.payment === "zelle") zelle += amt;
+    });
+  }
+
+  return { cash, credit, check, zelle };
+}
+
+/* ------------------------------------------------------------------
    FIELD DEFINITIONS
 ------------------------------------------------------------------- */
 
-// Columns treated as money in USD
 const moneyFields = new Set<string>([
   "total",
   "cashTotal",
@@ -68,15 +118,8 @@ const moneyFields = new Set<string>([
   "compBal",
 ]);
 
-// Columns treated as percentages
 const percentFields = new Set<string>(["tech%", "lead%", "comp%"]);
-
-// Columns treated as generic numeric (4 decimals)
 const numericFields = new Set<string>(["check"]);
-
-/* ------------------------------------------------------------------
-   FORMATTERS
-------------------------------------------------------------------- */
 
 const usd = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -100,11 +143,12 @@ function fmtCheck(v: any) {
 }
 
 /* ------------------------------------------------------------------
-   CELL FORMATTING (ROW)
+   CELL FORMATTING
 ------------------------------------------------------------------- */
 
 function formatCell(job: any, key: string) {
   const c = job.closing || {};
+  const payments = computePayments(job);
 
   const rawMap: any = {
     invoice: c.invoiceNumber,
@@ -119,10 +163,11 @@ function formatCell(job: any, key: string) {
     tech: job.technician?.name,
 
     total: c.totalAmount,
-    cashTotal: c.cashTotal,
-    creditTotal: c.creditTotal,
-    checkTotal: c.checkTotal,
-    zelleTotal: c.zelleTotal,
+    cashTotal: payments.cash,
+    creditTotal: payments.credit,
+    checkTotal: payments.check,
+    zelleTotal: payments.zelle,
+
     techParts: c.techParts,
     leadParts: c.leadParts,
     compParts: c.companyParts,
@@ -146,7 +191,6 @@ function formatCell(job: any, key: string) {
   };
 
   const raw = rawMap[key];
-
   if (raw == null) return "";
 
   if (moneyFields.has(key)) return fmtMoney(raw);
@@ -157,18 +201,20 @@ function formatCell(job: any, key: string) {
 }
 
 /* ------------------------------------------------------------------
-   TOTAL ROW HELPERS
+   TOTALS
 ------------------------------------------------------------------- */
 
 function getRawNumeric(job: any, key: string): number {
   const c = job.closing || {};
+  const payments = computePayments(job);
 
   const rawMap: any = {
     total: c.totalAmount,
-    cashTotal: c.cashTotal,
-    creditTotal: c.creditTotal,
-    checkTotal: c.checkTotal,
-    zelleTotal: c.zelleTotal,
+    cashTotal: payments.cash,
+    creditTotal: payments.credit,
+    checkTotal: payments.check,
+    zelleTotal: payments.zelle,
+
     techParts: c.techParts,
     leadParts: c.leadParts,
     compParts: c.companyParts,
@@ -176,32 +222,28 @@ function getRawNumeric(job: any, key: string): number {
     cc: c.totalCcFee,
     addFee: c.leadAdditionalFee,
     adjusted: c.adjustedTotal,
+
     techProfit: c.techProfit,
     leadProfit: c.leadProfit,
     compProfit: c.companyProfitDisplay,
+
     techBal: c.techBalance,
     leadBal: c.leadBalance,
     compBal: c.companyBalance,
+
     check: c.sumCheck,
   };
 
   const v = rawMap[key];
-  if (v == null || v === "") return 0;
-  return Number(v);
+  return v == null ? 0 : Number(v);
 }
 
-/**
- * Determine the numeric total for a column.
- * Prefer `totals[key]` if available; otherwise compute from rows.
- */
 function getColumnTotal(
   key: string,
   rows: any[],
   totals: any
 ): number | null {
-  const hasTotalsObject = totals && Object.prototype.hasOwnProperty.call(totals, key);
-
-  if (hasTotalsObject && totals[key] != null) {
+  if (totals && totals[key] != null) {
     return Number(totals[key]);
   }
 
@@ -209,13 +251,11 @@ function getColumnTotal(
     return rows.reduce((sum, job) => sum + getRawNumeric(job, key), 0);
   }
 
-  // For non-numeric / non-money columns we leave total blank
   return null;
 }
 
 function formatTotalCell(key: string, totalVal: number | null) {
   if (totalVal == null) {
-    // For non-numeric columns, only show label in first column
     if (key === "invoice" || key === "jobId" || key === "name") return "TOTAL";
     return "";
   }

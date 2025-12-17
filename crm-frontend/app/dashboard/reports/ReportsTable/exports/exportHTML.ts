@@ -63,8 +63,15 @@ function extract(job: any, key: string): any {
   (job.customerPhone || "") +
   (job.customerPhone2 ? " | " + job.customerPhone2 : ""),
     address: job.customerAddress,
-    date: job.closedAt ? new Date(job.closedAt).toLocaleDateString() : "",
-    type: job.jobType?.name,
+date:
+  job.jobStatus?.name === "Canceled" ||
+  job.jobStatus?.name === "Cancelled"
+    ? job.canceledAt
+      ? new Date(job.canceledAt).toLocaleDateString()
+      : ""
+    : job.closedAt
+    ? new Date(job.closedAt).toLocaleDateString()
+    : "",    type: job.jobType?.name,
     tech: job.technician?.name,
 
     total: c.totalAmount,

@@ -120,10 +120,16 @@ const bg = highlighted
       )}
 
       {visible.date && (
-        <td className="border px-2 py-1">
-          {job.closedAt ? new Date(job.closedAt).toLocaleDateString() : "-"}
-        </td>
-      )}
+  <td className="border px-2 py-1">
+    {job.jobStatus?.name === "Canceled" || job.jobStatus?.name === "Cancelled"
+      ? job.canceledAt
+        ? new Date(job.canceledAt).toLocaleDateString()
+        : "-"
+      : job.closedAt
+      ? new Date(job.closedAt).toLocaleDateString()
+      : "-"}
+  </td>
+)}
 
       {visible.type && (
         <td className="border px-2 py-1">{job.jobType?.name || "-"}</td>
