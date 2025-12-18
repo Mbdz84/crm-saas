@@ -36,8 +36,18 @@ export async function getReports(req: Request, res: Response) {
     if (jobType) where.jobTypeId = jobType as string;
     if (source) where.sourceId = source as string;
 
-    // Only jobs that have a closedAt in the range if dates provided
-    if (from || to) where.closedAt = dateFilter;
+
+    // Date filtering: closed jobs by closedAt, canceled jobs by canceledAt
+if (from || to) {
+  where.OR = [
+    {
+      closedAt: dateFilter,
+    },
+    {
+      canceledAt: dateFilter,
+    },
+  ];
+}
 
     /* --------------------------------------------------------
        FETCH JOBS
