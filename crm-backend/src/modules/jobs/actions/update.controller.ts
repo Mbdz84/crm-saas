@@ -96,6 +96,11 @@ console.log("🟡 INVALIDATION FLAGS:", {
 
         customerAddress: updates.customerAddress ?? job.customerAddress,
 
+        timezone:
+          updates.timezone !== undefined
+          ? updates.timezone || null
+          : job.timezone,
+
         sourceId:
           updates.sourceId !== undefined
             ? updates.sourceId || null
@@ -107,13 +112,16 @@ console.log("🟡 INVALIDATION FLAGS:", {
             ? updates.statusId || null
             : job.statusId,
 
-        ...(isCanceled
-          ? {
-              canceledReason,
-              canceledAt: new Date(),
-              isClosingLocked: false,
-            }
-          : {}),
+...(isCanceled
+  ? {
+      canceledReason,
+      canceledAt: updates.canceledAt
+        ? new Date(updates.canceledAt)
+        : job.canceledAt ?? new Date(),
+    }
+  : {
+      canceledAt: null,
+    }),
 
         ...(isClosed || updates.closedAt
           ? {

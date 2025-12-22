@@ -10,6 +10,41 @@ import AppointmentPicker from "./AppointmentPicker";
 import { useState } from "react";
 import { useEffect } from "react";
 
+// =========================
+// Timezone helpers (shared)
+// =========================
+function toLocalInputValue(date: string | Date, tz?: string) {
+  const d = new Date(date);
+
+  const zoned = tz
+    ? new Date(
+        d.toLocaleString("en-US", {
+          timeZone: tz,
+          hour12: false,
+        })
+      )
+    : d;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  return `${zoned.getFullYear()}-${pad(zoned.getMonth() + 1)}-${pad(
+    zoned.getDate()
+  )}T${pad(zoned.getHours())}:${pad(zoned.getMinutes())}`;
+}
+
+function fromLocalInputValue(value: string, tz?: string) {
+  if (!value) return null;
+
+  const local = new Date(value);
+
+  if (!tz) return local.toISOString();
+
+  const utc = new Date(
+    local.toLocaleString("en-US", { timeZone: "UTC" })
+  );
+
+  return utc.toISOString();
+}
 /* -----------------------------------------------------------
    MAIN OVERVIEW TAB
 ----------------------------------------------------------- */
@@ -316,6 +351,36 @@ const selectedStatusIsCanceled = (() => {
             />
           </div>
 
+{/* TIMEZONE */}
+<div>
+  <label className="block text-sm font-medium">Timezone</label>
+  <select
+  className="mt-1 w-full border rounded p-2"
+  value={editableJob.timezone || "__browser__"}
+  onChange={(e) => {
+    const val = e.target.value;
+    setField(
+      "timezone",
+      val === "__browser__"
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone
+        : val
+    );
+  }}
+>
+  <option value="__browser__">Use browser timezone</option>
+  <option value="America/Chicago">America/Chicago</option>
+  <option value="America/New_York">America/New_York</option>
+  <option value="America/Denver">America/Denver</option>
+  <option value="America/Los_Angeles">America/Los_Angeles</option>
+  <option value="America/Phoenix">America/Phoenix</option>
+</select>
+
+  <p className="text-xs text-gray-500 mt-1">
+    Used for appointments, reminders, and canceled/closed times.
+  </p>
+</div>
+
+
           {/* JOB TYPE */}
           <div>
             <label className="block text-sm font-medium">Job Type</label>
@@ -418,6 +483,34 @@ const selectedStatusIsCanceled = (() => {
           </div>
 {selectedStatusIsCanceled && (
   <div className="mt-2 space-y-2">
+
+{/* Editable Canceled Date */}
+{techRole !== "technician" && (
+  <div className="mt-3 max-w-xs">
+    <label className="block text-sm font-medium">Canceled At</label>
+    <input
+  type="datetime-local"
+  className="border rounded p-2 mt-1 w-full text-xs"
+  value={
+    editableJob.canceledAt
+      ? toLocalInputValue(editableJob.canceledAt, editableJob.timezone)
+      : toLocalInputValue(new Date(), editableJob.timezone)
+  }
+  onChange={(e) =>
+    setField(
+      "canceledAt",
+      fromLocalInputValue(e.target.value, editableJob.timezone)
+    )
+  }
+/>
+    <p className="text-[11px] text-gray-500 mt-1">
+      Adjust if the job was canceled at a different time.
+    </p>
+  </div>
+)}
+
+
+
     <label className="text-sm font-medium">Cancel Reason</label>
 
     {/* Suggested Cancel Reasons */}
@@ -636,12 +729,15 @@ const selectedStatusIsCanceled = (() => {
       console.log("🟢 FRONTEND REMINDERS SENT:", reminders);
 
       saveChanges({
-        statusNote: cancelReason,
-        reminders: reminders.map((r) => ({
-  minutesBefore: r.minutes,
-  canceled: r.canceled === true,
-})),
-      });
+  statusNote: cancelReason,
+  canceledAt: editableJob.canceledAt
+    ? new Date(editableJob.canceledAt).toISOString()
+    : null,
+  reminders: reminders.map((r) => ({
+    minutesBefore: r.minutes,
+    canceled: r.canceled === true,
+  })),
+});
     }}
     className="px-4 py-2 rounded shadow text-white bg-green-600"
   >
@@ -652,12 +748,15 @@ const selectedStatusIsCanceled = (() => {
   type="button"
   onClick={async () => {
     await saveChanges({
-      statusNote: cancelReason,
-      reminders: reminders.map((r) => ({
-        minutesBefore: r.minutes,
-        canceled: r.canceled === true,
-      })),
-    });
+  statusNote: cancelReason,
+  canceledAt: editableJob.canceledAt
+    ? new Date(editableJob.canceledAt).toISOString()
+    : null,
+  reminders: reminders.map((r) => ({
+    minutesBefore: r.minutes,
+    canceled: r.canceled === true,
+  })),
+});
 
     router.push("/dashboard/jobs");
   }}
@@ -811,15 +910,20 @@ function ClosingPanel(props: any) {
         <div className="mt-4 max-w-xs">
           <label className="block text-sm font-medium">Closed At</label>
           <input
-            type="datetime-local"
-            value={
-              editableJob.closedAt
-                ? new Date(editableJob.closedAt).toISOString().slice(0, 16)
-                : new Date().toISOString().slice(0, 16)
-            }
-            onChange={(e) => setField("closedAt", e.target.value)}
-            className="border rounded p-2 mt-1 w-full text-xs"
-          />
+  type="datetime-local"
+  className="border rounded p-2 mt-1 w-full text-xs"
+  value={
+    editableJob.closedAt
+      ? toLocalInputValue(editableJob.closedAt, editableJob.timezone)
+      : toLocalInputValue(new Date(), editableJob.timezone)
+  }
+  onChange={(e) =>
+    setField(
+      "closedAt",
+      fromLocalInputValue(e.target.value, editableJob.timezone)
+    )
+  }
+/>
           <p className="text-[11px] text-gray-500 mt-1">
             Change if the job was actually closed on a different date/time.
           </p>
