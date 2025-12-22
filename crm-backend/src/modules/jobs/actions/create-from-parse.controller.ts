@@ -60,63 +60,75 @@ export async function createJobFromParse(req: Request, res: Response) {
     }
 
     /* ------------------------------------------
-   2) Determine Lead Source
-      Priority:
-      1) UI dropdown → leadSourceId
-      2) AI parsed source → source
------------------------------------------- */
-let finalSourceId: string | null = null;
+       2) Determine Lead Source
+    ------------------------------------------ */
+    let finalSourceId: string | null = null;
 
-// treat "" as null
-const hasUiLeadSource = leadSourceId && leadSourceId.trim() !== "";
+    const hasUiLeadSource = leadSourceId && leadSourceId.trim() !== "";
 
-if (hasUiLeadSource) {
-  finalSourceId = leadSourceId;
-}
-else if (source) {
-  const match = await prisma.leadSource.findFirst({
-    where: { companyId, name: source },
-  });
+    if (hasUiLeadSource) {
+      finalSourceId = leadSourceId;
+    } else if (source) {
+      const match = await prisma.leadSource.findFirst({
+        where: { companyId, name: source },
+      });
 
-  if (match) {
-    finalSourceId = match.id;
-  } else {
-    const created = await prisma.leadSource.create({
-      data: { companyId, name: source },
-    });
-    finalSourceId = created.id;
-  }
-}
+      if (match) {
+        finalSourceId = match.id;
+      } else {
+        const created = await prisma.leadSource.create({
+          data: { companyId, name: source },
+        });
+        finalSourceId = created.id;
+      }
+    }
 
     /* ------------------------------------------
-       3) CREATE JOB (shortId REQUIRED)
+       3) Find Accepted status (CRITICAL FIX)
+    ------------------------------------------ */
+    const acceptedStatus = await prisma.jobStatus.findFirst({
+      where: {
+        name: "Accepted",
+        active: true,
+      },
+    });
+
+    if (!acceptedStatus) {
+      throw new Error("Accepted status not found");
+    }
+
+    /* ------------------------------------------
+       4) CREATE JOB
     ------------------------------------------ */
     console.log("📨 CREATE FROM PARSE BODY:", req.body);
+
     const job = await prisma.job.create({
-    data: {
-    shortId: generateShortId(),
+      data: {
+        shortId: generateShortId(),
 
-    title: title || description || "New Job",
-    description: description || null,
+        title: title || description || "New Job",
+        description: description || null,
 
-    customerName: customerName || null,
-    customerPhone: customerPhone || null,
-    customerPhone2: customerPhone2 || null, // ✅ ADD THIS
-    customerAddress: customerAddress || null,
+        customerName: customerName || null,
+        customerPhone: customerPhone || null,
+        customerPhone2: customerPhone2 || null,
+        customerAddress: customerAddress || null,
 
-    jobTypeId: finalJobTypeId,
-    technicianId: technicianId || null,
-    sourceId: finalSourceId,
+        jobTypeId: finalJobTypeId,
+        technicianId: technicianId || null,
+        sourceId: finalSourceId,
 
-    status: "Accepted",
-    companyId,
+        // ✅ FIXED
+        statusId: acceptedStatus.id,
+        status: acceptedStatus.name,
 
-    scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-  },
-});
+        companyId,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+      },
+    });
 
     /* ------------------------------------------
-       4) Optional: save raw text into job logs
+       5) Optional: save raw text into job logs
     ------------------------------------------ */
     if (__rawText) {
       await prisma.jobLog.create({
@@ -138,6 +150,8 @@ else if (source) {
 
   } catch (err) {
     console.error("createJobFromParse error:", err);
-    return res.status(500).json({ error: "Failed to create job from parsed text" });
+    return res
+      .status(500)
+      .json({ error: "Failed to create job from parsed text" });
   }
 }

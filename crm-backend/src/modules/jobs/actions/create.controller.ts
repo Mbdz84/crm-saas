@@ -13,7 +13,7 @@ export async function createJob(req: Request, res: Response) {
       description,
       customerName,
       customerPhone,
-      customerPhone2,      // ⭐ NEW FIELD
+      customerPhone2,
       customerAddress,
       jobTypeId,
       technicianId,
@@ -37,6 +37,23 @@ export async function createJob(req: Request, res: Response) {
         ? `${customerName}${jtName ? " - " + jtName : ""}`
         : "New Job");
 
+    /* -----------------------------
+       Find Accepted status
+    ------------------------------ */
+    const acceptedStatus = await prisma.jobStatus.findFirst({
+      where: {
+        name: "Accepted",
+        active: true,
+      },
+    });
+
+    if (!acceptedStatus) {
+      throw new Error("Accepted status not found");
+    }
+
+    /* -----------------------------
+       CREATE JOB
+    ------------------------------ */
     const job = await prisma.job.create({
       data: {
         shortId,
@@ -44,12 +61,16 @@ export async function createJob(req: Request, res: Response) {
         description,
         customerName,
         customerPhone,
-        customerPhone2: customerPhone2 || null,   // ⭐ SAVE FIELD
+        customerPhone2: customerPhone2 || null,
         customerAddress,
         jobTypeId: jobTypeId || null,
         technicianId: technicianId || null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        status: status || "Accepted",
+
+        // ✅ CRITICAL FIX
+        statusId: acceptedStatus.id,
+        status: acceptedStatus.name,
+
         sourceId: sourceId || null,
         companyId: req.user!.companyId,
       },
@@ -80,20 +101,20 @@ export async function createJobFromParsed(req: Request, res: Response) {
     const {
       customerName,
       customerPhone,
-      customerPhone2,          // ⭐ NEW FIELD
+      customerPhone2,
       customerAddress,
       jobType,
       description,
       source,
-      technicianId,            // ⭐ TECH SELECT SUPPORT
+      technicianId,
     } = req.body;
 
     const user = req.user;
-    if (!user?.companyId)
+    if (!user?.companyId) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
 
     const companyId = user.companyId;
-
     const shortId = await generateUniqueShortId();
 
     /* -----------------------------
@@ -133,6 +154,20 @@ export async function createJobFromParsed(req: Request, res: Response) {
         : customerName || jobType || "New Job";
 
     /* -----------------------------
+       Find Accepted status
+    ------------------------------ */
+    const acceptedStatus = await prisma.jobStatus.findFirst({
+      where: {
+        name: "Accepted",
+        active: true,
+      },
+    });
+
+    if (!acceptedStatus) {
+      throw new Error("Accepted status not found");
+    }
+
+    /* -----------------------------
        CREATE JOB
     ------------------------------ */
     const job = await prisma.job.create({
@@ -141,14 +176,18 @@ export async function createJobFromParsed(req: Request, res: Response) {
         title,
         customerName: customerName || null,
         customerPhone: customerPhone || null,
-        customerPhone2: customerPhone2 || null,   // ⭐ SAVE SECOND PHONE
+        customerPhone2: customerPhone2 || null,
         customerAddress: customerAddress || null,
         description: description || null,
         jobTypeId,
         sourceId,
-        technicianId: technicianId || null,       // ⭐ ASSIGN TECH IF SELECTED
+        technicianId: technicianId || null,
         scheduledAt: null,
-        status: "Accepted",
+
+        // ✅ CRITICAL FIX
+        statusId: acceptedStatus.id,
+        status: acceptedStatus.name,
+
         companyId,
       },
       include: {

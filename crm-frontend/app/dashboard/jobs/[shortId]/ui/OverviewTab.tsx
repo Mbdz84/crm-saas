@@ -467,7 +467,7 @@ const selectedStatusIsCanceled = (() => {
               value={editableJob.statusId || ""}
               onChange={(e) => setField("statusId", e.target.value)}
             >
-              <option value="">Select Status</option>
+              
               {statuses
                 .filter((s: any) => {
                   if (techRole === "technician" && s.name === "Closed")
