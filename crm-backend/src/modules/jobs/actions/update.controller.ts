@@ -146,6 +146,23 @@ console.log("🟡 INVALIDATION FLAGS:", {
 /* ======================================================
    📝 LOG EVENTS
 ====================================================== */
+function normalizeText(v?: string | null) {
+  return (v || "").trim();
+}
+// 📝 DESCRIPTION / NOTES CHANGED
+const oldDesc = normalizeText(job.description);
+const newDesc = normalizeText(updatedJob.description);
+
+if (oldDesc !== newDesc) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "updated",
+    text: newDesc
+      ? `Notes updated:\n— Before: "${oldDesc || "empty"}"\n→ After: "${newDesc}"`
+      : `Notes cleared (was: "${oldDesc}")`,
+    userId: req.user!.id,
+  });
+}
 
 // 🔴 CANCELED (log once)
 if (isCanceled && !job.canceledAt) {
