@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { generateUniqueShortId } from "../utils/shortId";
 import { sendTechSms } from "./sms.controller";
+import { logJobEvent } from "../../../utils/jobLogger";
+
 
 /* ============================================================
    MANUAL CREATE JOB
@@ -81,6 +83,13 @@ export async function createJob(req: Request, res: Response) {
         jobStatus: true,
       },
     });
+
+  await logJobEvent({
+    jobId: job.id,
+    type: "created",
+    text: "Job created manually",
+    userId: req.user?.id,
+  });
 
     if (sendSmsToTech && technicianId) {
       await sendTechSms(technicianId, job);
@@ -197,6 +206,16 @@ export async function createJobFromParsed(req: Request, res: Response) {
         jobStatus: true,
       },
     });
+
+  await logJobEvent({
+    jobId: job.id,
+    type: "created",
+    text: "Job created from parsed SMS",
+    userId: req.user?.id,
+  });
+
+
+
 
     /* -----------------------------
        Save raw SMS text as log

@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { calcPaymentTotals } from "../utils/payments";
+import { logJobEvent } from "../../../utils/jobLogger";
+
 
 export async function closeJob(req: Request, res: Response) {
   try {
@@ -164,6 +166,13 @@ export async function closeJob(req: Request, res: Response) {
 
       return { job: updatedJob, closing };
     });
+
+    await logJobEvent({
+  jobId: job.id,
+  type: "closed",
+  text: "Job closed",
+  userId: user.id,
+});
 
     return res.json(result);
   } catch (err) {

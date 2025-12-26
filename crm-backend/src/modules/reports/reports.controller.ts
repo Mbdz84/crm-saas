@@ -1,13 +1,20 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { startOfDay, endOfDay, parseISO } from "date-fns";
+import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
 
 /* ============================================================
    /reports?from=2025-01-01&to=2025-01-31&status=closed
 ============================================================ */
 export async function getReports(req: Request, res: Response) {
   try {
-    const { from, to, tech, jobType, source, groupBy } = req.query;
+    const { from, to, tech, jobType, source, groupBy, tz } = req.query;
+
+    const reportTz =
+     typeof tz === "string" && tz.length > 0
+      ? tz
+      : "America/Chicago"; // default fallback
+
 
     // Known status buckets
     const CLOSED_STATUSES = ["Closed"];
@@ -22,8 +29,15 @@ export async function getReports(req: Request, res: Response) {
        DATE FILTER (by closedAt)
     -------------------------------------------------------- */
     const dateFilter: any = {};
-    if (from) dateFilter.gte = startOfDay(parseISO(from as string));
-    if (to) dateFilter.lte = endOfDay(parseISO(to as string));
+
+if (from) {
+  const fromLocal = startOfDay(parseISO(from as string));
+dateFilter.gte = fromZonedTime(fromLocal, reportTz);
+}
+
+if (to) {
+  const toLocal = endOfDay(parseISO(to as string));
+dateFilter.lte = fromZonedTime(toLocal, reportTz);}
 
     /* --------------------------------------------------------
        WHERE CLAUSE (do NOT use isClosingLocked)
@@ -106,23 +120,28 @@ if (from || to) {
     let grouped: any = {};
 
     if (groupBy === "day") {
-      closedJobs.forEach((job: any) => {
-        const key = job.closedAt?.toISOString().split("T")[0] || "Unknown";
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(job);
-      });
-    }
+  closedJobs.forEach((job: any) => {
+    if (!job.closedAt) return;
+
+    const zoned = toZonedTime(job.closedAt, reportTz);
+    const key = format(zoned, "yyyy-MM-dd");
+
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(job);
+  });
+}
 
     if (groupBy === "month") {
-      closedJobs.forEach((job: any) => {
-        const d = job.closedAt ? new Date(job.closedAt) : null;
-        const key = d
-          ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-          : "Unknown";
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(job);
-      });
-    }
+  closedJobs.forEach((job: any) => {
+    if (!job.closedAt) return;
+
+    const zoned = toZonedTime(job.closedAt, reportTz);
+    const key = format(zoned, "yyyy-MM");
+
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(job);
+  });
+}
 
     if (groupBy === "technician") {
       closedJobs.forEach((job: any) => {
@@ -200,6 +219,8 @@ if (from || to) {
        - jobs / rows → ONLY CLOSED JOBS (for tables & amounts)
        - summaries → computed from all jobs where needed
     ------------------------------------------------------------ */
+res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+res.setHeader("Pragma", "no-cache");
     return res.json({
       summary,
       grouped,
@@ -207,6 +228,7 @@ if (from || to) {
       rows: closedJobs,
       technicianSummary: technicianSummary ?? [],
       leadSourceSummary,
+      timezone: reportTz,
     });
   } catch (err) {
     console.error("🔥 REPORTS ERROR:", err);

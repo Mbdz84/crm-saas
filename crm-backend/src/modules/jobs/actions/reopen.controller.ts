@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { logJobEvent } from "../../../utils/jobLogger";
+
 
 export async function reopenJob(req: Request, res: Response) {
   try {
@@ -25,6 +27,13 @@ export async function reopenJob(req: Request, res: Response) {
         closedAt: null,
       },
     });
+
+    await logJobEvent({
+  jobId: job.id,
+  type: "reopened",
+  text: "Job reopened",
+  userId: user.id,
+});
 
     return res.json({
       message: "Job reopened — closing data preserved",

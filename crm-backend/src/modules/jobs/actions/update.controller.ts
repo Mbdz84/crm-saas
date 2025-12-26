@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { logJobEvent } from "../../../utils/jobLogger";
+
 
 export async function updateJobByShortId(req: Request, res: Response) {
   try {
@@ -119,6 +121,7 @@ console.log("🟡 INVALIDATION FLAGS:", {
         ? new Date(updates.canceledAt)
         : job.canceledAt ?? new Date(),
     }
+
   : {
       canceledAt: null,
     }),
@@ -140,9 +143,80 @@ console.log("🟡 INVALIDATION FLAGS:", {
       },
     });
 
-    /* ======================================================
-       🧹 CANCEL REMINDERS WHEN INVALID
-    ====================================================== */
+/* ======================================================
+   📝 LOG EVENTS
+====================================================== */
+
+// 🔴 CANCELED (log once)
+if (isCanceled && !job.canceledAt) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "canceled",
+    text: canceledReason
+      ? `Job canceled: ${canceledReason}`
+      : "Job canceled",
+    userId: req.user!.id,
+  });
+}
+
+// 🔵 STATUS CHANGED (explicit, non-cancel, non-close)
+if (
+  updates.statusId &&
+  updatedJob.statusId !== job.statusId &&
+  !isCanceled &&
+  !isClosed &&
+  job.statusId // ✅ GUARARD AGAINST NULL
+) {
+  const [oldStatus, newStatus] = await Promise.all([
+    prisma.jobStatus.findUnique({
+      where: { id: job.statusId! }, // 👈 non-null assertion
+    }),
+    prisma.jobStatus.findUnique({
+      where: { id: updatedJob.statusId! },
+    }),
+  ]);
+
+  if (oldStatus?.name !== newStatus?.name) {
+    await logJobEvent({
+      jobId: job.id,
+      type: "status_changed",
+      text: `Status changed from ${oldStatus?.name ?? "Unknown"} → ${newStatus?.name ?? "Unknown"}`,
+      userId: req.user!.id,
+    });
+  }
+}
+
+// 🌎 TIMEZONE CHANGED
+if (
+  updates.timezone !== undefined &&
+  String(updates.timezone || "") !== String(job.timezone || "")
+) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "timezone_changed",
+    text: `Timezone changed from ${job.timezone || "unset"} → ${updates.timezone || "unset"}`,
+    userId: req.user!.id,
+  });
+}
+
+// 📅 APPOINTMENT CHANGED / CLEARED
+if (
+  updates.scheduledAt !== undefined &&
+  updates.scheduledAt !== job.scheduledAt
+) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "scheduled",
+    text: updates.scheduledAt
+      ? "Appointment scheduled/updated"
+      : "Appointment cleared",
+    userId: req.user!.id,
+  });
+}
+
+/* ======================================================
+🧹 CANCEL REMINDERS WHEN INVALID
+====================================================== */
     if (appointmentCleared || isCanceled || isClosed || techRemoved) {
   console.log("🧹 REMINDERS INVALIDATED — CANCELING", { jobId: job.id });
 

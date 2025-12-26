@@ -6,7 +6,6 @@ export function exportCanceledHTML(rows: any[]) {
 
   const title = "Canceled Jobs Report";
 
-  // Build rows
   const bodyRows = rows
     .map((job) => {
       const date = job.createdAt
@@ -24,7 +23,6 @@ export function exportCanceledHTML(rows: any[]) {
           <td>${job.customerName || ""}</td>
           <td>${phones}</td>
           <td>${job.customerAddress || ""}</td>
-          <td>${job.description || ""}</td>
           <td>${job.technician?.name || "—"}</td>
           <td>${job.source?.name || "—"}</td>
           <td>${job.canceledReason || "—"}</td>
@@ -41,25 +39,52 @@ export function exportCanceledHTML(rows: any[]) {
 <title>${title}</title>
 
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; }
-  h1 { text-align: center; margin-bottom: 20px; }
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
 
-  table { width: 100%; border-collapse: collapse; }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
   th, td {
     border: 1px solid #000;
     padding: 6px 8px;
-    font-size: 14px;
+    font-size: 13px;
+    vertical-align: top;
+    word-wrap: break-word;
   }
+
   th {
     background: #f2f2f2;
     font-weight: bold;
+    text-align: left;
   }
+
   tr:nth-child(even) {
     background: #fafafa;
   }
-</style>
 
+  /* Column widths aligned with UI */
+  th:nth-child(1), td:nth-child(1) { width: 90px; }   /* Date */
+  th:nth-child(2), td:nth-child(2) { width: 80px; }   /* Job ID */
+  th:nth-child(3), td:nth-child(3) { width: 140px; }  /* Customer */
+  th:nth-child(4), td:nth-child(4) { width: 120px; }  /* Phones */
+  th:nth-child(5), td:nth-child(5) { width: 260px; }  /* Address */
+  th:nth-child(6), td:nth-child(6) { width: 140px; }  /* Technician */
+  th:nth-child(7), td:nth-child(7) { width: 140px; }  /* Lead Source */
+  th:nth-child(8), td:nth-child(8) { width: 180px; }  /* Cancel Reason */
+</style>
 </head>
+
 <body>
 
 <h1>${title}</h1>
@@ -87,7 +112,6 @@ export function exportCanceledHTML(rows: any[]) {
 </html>
 `;
 
-  // Download file
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

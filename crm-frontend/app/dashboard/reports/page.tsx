@@ -7,6 +7,9 @@ import { useRouter } from "next/navigation";
 import TechnicianSummary from "./TechnicianSummary";
 import LeadSourceSummary from "./LeadSourceSummary";
 import ReportsTable from "./ReportsTable";
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { toZonedTime, format } from "date-fns-tz";
+
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -18,80 +21,99 @@ export default function ReportsPage() {
 
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+const [timezone, setTimezone] = useState("America/Chicago");
+
+const TIMEZONES = [
+  { value: "America/New_York", label: "US – Eastern (New York)" },
+  { value: "America/Chicago", label: "US – Central (Chicago)" },
+  { value: "America/Denver", label: "US – Mountain (Denver)" },
+  { value: "America/Los_Angeles", label: "US – Pacific (Los Angeles)" },
+  { value: "Asia/Jerusalem", label: "Israel (Jerusalem)" },
+];
+
+
+function getNowInTimezone(tz: string) {
+  return toZonedTime(new Date(), tz);
+}
+
+function fmt(d: Date) {
+  return format(d, "yyyy-MM-dd");
+}
+
   /* ------------------------------------------------------------
      DATE PRESET LOGIC
   ------------------------------------------------------------ */
   function setPresetRange(preset: string) {
-    const today = new Date();
-    const y = new Date();
-    y.setDate(y.getDate() - 1);
+  const now = getNowInTimezone(timezone);
 
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-    const prevMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-    const prevMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  let start: Date | null = null;
+  let end: Date | null = null;
 
-    let f = "";
-    let t = "";
-
-    switch (preset) {
-      case "today":
-        f = t = today.toISOString().split("T")[0];
-        break;
-      case "yesterday":
-        f = t = y.toISOString().split("T")[0];
-        break;
-
-      case "this-week": {
-        const d = new Date();
-        const monday = new Date(d);
-        monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-        f = monday.toISOString().split("T")[0];
-        t = today.toISOString().split("T")[0];
-        break;
-      }
-
-      case "last-week": {
-        const d = new Date();
-        d.setDate(d.getDate() - 7);
-        const monday = new Date(d);
-        monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        f = monday.toISOString().split("T")[0];
-        t = sunday.toISOString().split("T")[0];
-        break;
-      }
-
-      case "two-weeks-ago": {
-        const d = new Date();
-        d.setDate(d.getDate() - 14);
-        const monday = new Date(d);
-        monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        f = monday.toISOString().split("T")[0];
-        t = sunday.toISOString().split("T")[0];
-        break;
-      }
-
-      case "this-month":
-        f = monthStart.toISOString().split("T")[0];
-        t = today.toISOString().split("T")[0];
-        break;
-
-      case "last-month":
-        f = prevMonthStart.toISOString().split("T")[0];
-        t = prevMonthEnd.toISOString().split("T")[0];
-        break;
-
-      default:
-        return;
+  switch (preset) {
+    case "today": {
+      start = now;
+      end = now;
+      break;
     }
 
-    setFrom(f);
-    setTo(t);
-    loadReport(f, t);
+    case "yesterday": {
+      start = new Date(now);
+      start.setDate(start.getDate() - 1);
+      end = start;
+      break;
+    }
+
+    case "this-week": {
+      start = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+      end = endOfWeek(now, { weekStartsOn: 1 });
+      break;
+    }
+
+    case "last-week": {
+      start = startOfWeek(now, { weekStartsOn: 1 });
+      start.setDate(start.getDate() - 7);
+
+      end = endOfWeek(now, { weekStartsOn: 1 });
+      end.setDate(end.getDate() - 7);
+      break;
+    }
+
+    case "two-weeks-ago": {
+      start = startOfWeek(now, { weekStartsOn: 1 });
+      start.setDate(start.getDate() - 14);
+
+      end = endOfWeek(now, { weekStartsOn: 1 });
+      end.setDate(end.getDate() - 14);
+      break;
+    }
+
+    case "this-month": {
+      start = startOfMonth(now);
+      end = now;
+      break;
+    }
+
+    case "last-month": {
+      start = startOfMonth(now);
+      start.setMonth(start.getMonth() - 1);
+
+      end = endOfMonth(start);
+      break;
+    }
+
+    default:
+      return;
   }
+
+  if (!start || !end) return;
+
+  const f = fmt(start);
+  const t = fmt(end);
+
+  setFrom(f);
+  setTo(t);
+  loadReport(f, t);
+}
 
   /* ------------------------------------------------------------
      LOAD REPORTS
@@ -103,6 +125,7 @@ export default function ReportsPage() {
     const baseParams = new URLSearchParams();
     if (f) baseParams.append("from", f);
     if (t) baseParams.append("to", t);
+    baseParams.append("tz", timezone);
 
     // 1️⃣ CLOSED JOBS
     const closedParams = new URLSearchParams(baseParams);
@@ -196,7 +219,24 @@ export default function ReportsPage() {
             className="border rounded px-2 py-1"
           />
         </div>
-
+        <div className="basis-full h-0" />
+<div className="flex flex-col">
+  <label className="text-sm mb-1">Timezone</label>
+  <select
+    value={timezone}
+    onChange={(e) => setTimezone(e.target.value)}
+    className="border rounded px-2 py-1"
+  >
+    {TIMEZONES.map((tz) => (
+      <option key={tz.value} value={tz.value}>
+        {tz.label}
+      </option>
+    ))}
+  </select>
+  <span className="text-xs text-gray-500 mt-1">
+    Date range is interpreted in this timezone
+  </span>
+</div>
         <button
           onClick={() => loadReport()}
           disabled={loading}
@@ -211,7 +251,8 @@ export default function ReportsPage() {
   >
     Go to Canceled Jobs Report
   </button>
-</div>
+  </div>
+  
       </div>
 
 

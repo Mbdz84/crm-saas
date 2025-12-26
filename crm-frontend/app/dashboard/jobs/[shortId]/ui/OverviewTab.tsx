@@ -9,6 +9,24 @@ import Editable from "./Editable";
 import AppointmentPicker from "./AppointmentPicker";
 import { useState } from "react";
 import { useEffect } from "react";
+import { toZonedTime, format } from "date-fns-tz";
+
+
+function formatWithTimezone(
+  date: string | Date | null | undefined,
+  tz?: string
+) {
+  if (!date) return "";
+
+  const effectiveTz =
+    tz && tz.length > 0
+      ? tz
+      : Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const zoned = toZonedTime(new Date(date), effectiveTz);
+
+  return format(zoned, "MM/dd/yyyy, hh:mm:ss a");
+}
 
 // =========================
 // Timezone helpers (shared)
@@ -195,17 +213,17 @@ const selectedStatusIsCanceled = (() => {
         <div>
           <h1 className="text-2xl font-semibold">Job #{displayId}</h1>
           <p className="text-green-500 text-sm">
-            Created: {new Date(job.createdAt).toLocaleString()}
-          </p>
+  Created: {formatWithTimezone(job.createdAt, job.timezone)}
+</p>
           {job.closedAt && (
   <p className="text-red-500 text-sm">
-    Closed: {new Date(job.closedAt).toLocaleString()}
+    Closed: {formatWithTimezone(job.closedAt, job.timezone)}
   </p>
 )}
 
 {job.canceledAt && (
   <p className="text-red-500 text-sm">
-    Canceled: {new Date(job.canceledAt).toLocaleString()}
+    Canceled: {formatWithTimezone(job.canceledAt, job.timezone)}
   </p>
 )}
         </div>

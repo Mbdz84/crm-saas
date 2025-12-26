@@ -16,6 +16,17 @@ export default function CanceledReportsPage() {
   const [selectedSource, setSelectedSource] = useState<string>("all");
   const [groupByTech, setGroupByTech] = useState(false);
   const [groupBySource, setGroupBySource] = useState(false);
+// TIMEZONE
+const [timezone, setTimezone] = useState("America/Chicago");
+
+const TIMEZONES = [
+  { value: "America/New_York", label: "US – Eastern (New York)" },
+  { value: "America/Chicago", label: "US – Central (Chicago)" },
+  { value: "America/Denver", label: "US – Mountain (Denver)" },
+  { value: "America/Los_Angeles", label: "US – Pacific (Los Angeles)" },
+  { value: "Asia/Jerusalem", label: "Israel (Jerusalem)" },
+];
+
 
   // COLUMN VISIBILITY STATE
 const [columnsVisible, setColumnsVisible] = useState<Record<string, boolean>>({
@@ -37,7 +48,8 @@ const [columnsVisible, setColumnsVisible] = useState<Record<string, boolean>>({
     try {
       const params = new URLSearchParams();
       if (f) params.append("from", f);
-      if (t) params.append("to", t);
+if (t) params.append("to", t);
+params.append("tz", timezone);
 
       const res = await fetch(`${API}/reports/canceled?` + params, {
         credentials: "include",
@@ -286,6 +298,27 @@ const [columnsVisible, setColumnsVisible] = useState<Record<string, boolean>>({
         >
           {loading ? "Loading…" : "Load Canceled Report"}
         </button>
+        {/* force next row */}
+<div className="basis-full h-0" />
+
+{/* TIMEZONE */}
+<div className="flex flex-col">
+  <label className="text-sm mb-1">Timezone</label>
+  <select
+    value={timezone}
+    onChange={(e) => setTimezone(e.target.value)}
+    className="border rounded px-2 py-1"
+  >
+    {TIMEZONES.map((tz) => (
+      <option key={tz.value} value={tz.value}>
+        {tz.label}
+      </option>
+    ))}
+  </select>
+  <span className="text-xs text-gray-500 mt-1">
+    Date range is interpreted in this timezone
+  </span>
+</div>
       </div>
 
       {/* FILTERS */}
