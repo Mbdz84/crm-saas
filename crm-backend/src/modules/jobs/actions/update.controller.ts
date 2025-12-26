@@ -230,6 +230,33 @@ if (
     userId: req.user!.id,
   });
 }
+// 👨‍🔧 TECHNICIAN CHANGED
+if (
+  updates.technicianId !== undefined &&
+  updatedJob.technicianId !== job.technicianId
+) {
+  const oldTech = job.technicianId
+    ? await prisma.user.findUnique({
+        where: { id: job.technicianId },
+        select: { name: true },
+      })
+    : null;
+
+  const newTech = updatedJob.technicianId
+    ? await prisma.user.findUnique({
+        where: { id: updatedJob.technicianId },
+        select: { name: true },
+      })
+    : null;
+
+  await logJobEvent({
+    jobId: job.id,
+    type: "assigned_technician",
+    text: `Technician changed from ${oldTech?.name || "Unassigned"} → ${newTech?.name || "Unassigned"}`,
+    userId: req.user!.id,
+  });
+}
+
 
 /* ======================================================
 🧹 CANCEL REMINDERS WHEN INVALID
