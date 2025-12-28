@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../../middleware/auth";
 import { tenantMiddleware } from "../../middleware/tenant";
+import { generateLeadSourceApiKey, revokeLeadSourceApiKey,} from "./leadSource.controller";
 
 import {
   getLeadSources,
@@ -26,5 +27,20 @@ router.put("/:id", authMiddleware, tenantMiddleware, updateLeadSource);
 
 // DELETE
 router.delete("/:id", authMiddleware, tenantMiddleware, deleteLeadSource);
+
+// 🔐 API KEY MANAGEMENT
+router.post(
+  "/:id/api-key",
+  authMiddleware,
+  tenantMiddleware,
+  generateLeadSourceApiKey
+);
+
+router.delete(
+  "/:id/api-key",
+  authMiddleware,
+  tenantMiddleware,
+  revokeLeadSourceApiKey
+);
 
 export default router;

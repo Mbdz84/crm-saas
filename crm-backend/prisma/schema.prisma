@@ -119,6 +119,13 @@ model LeadSource {
   company   Company @relation(fields: [companyId], references: [id])
 
   // ─────────────────────────────────────
+  // API AUTH (Direct JSON ingestion)
+  // ─────────────────────────────────────
+  apiKeyHash      String?  @unique
+  apiKeyLast4     String?
+  apiKeyCreatedAt DateTime?
+
+  // ─────────────────────────────────────
   // Profile / behavior
   // ─────────────────────────────────────
   color  String  @default("#6b7280") // tag color for UI

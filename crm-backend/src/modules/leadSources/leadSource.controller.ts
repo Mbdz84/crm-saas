@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
+import { generateApiKey, hashApiKey, getLast4 } from "../../utils/apiKey";
 
 /* ============================================================
    GET ALL LEAD SOURCES
@@ -174,5 +175,69 @@ export async function deleteLeadSource(req: Request, res: Response) {
   } catch (err) {
     console.error("🔥 DELETE LEAD SOURCE ERROR:", err);
     res.status(500).json({ error: "Failed to delete lead source" });
+  }
+}
+
+/* ============================================================
+   GENERATE / ROTATE API KEY (shown once)
+============================================================ */
+export async function generateLeadSourceApiKey(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const source = await prisma.leadSource.findFirst({
+      where: {
+        id,
+        companyId: req.user!.companyId,
+      },
+    });
+
+    if (!source) {
+      return res.status(404).json({ error: "Lead source not found" });
+    }
+
+    const apiKey = generateApiKey();
+    const apiKeyHash = hashApiKey(apiKey);
+
+    await prisma.leadSource.update({
+      where: { id },
+      data: {
+        apiKeyHash,
+        apiKeyLast4: getLast4(apiKey),
+        apiKeyCreatedAt: new Date(),
+      },
+    });
+
+    // 🔴 THIS IS THE ONLY TIME THE KEY IS RETURNED
+    return res.json({
+      apiKey,
+      warning:
+        "This API key will only be shown once. Store it securely.",
+    });
+  } catch (err) {
+    console.error("🔥 GENERATE API KEY ERROR:", err);
+    return res.status(500).json({ error: "Failed to generate API key" });
+  }
+}
+/* ============================================================
+   REVOKE API KEY
+============================================================ */
+export async function revokeLeadSourceApiKey(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+
+    await prisma.leadSource.update({
+      where: { id },
+      data: {
+        apiKeyHash: null,
+        apiKeyLast4: null,
+        apiKeyCreatedAt: null,
+      },
+    });
+
+    return res.json({ message: "API key revoked" });
+  } catch (err) {
+    console.error("🔥 REVOKE API KEY ERROR:", err);
+    return res.status(500).json({ error: "Failed to revoke API key" });
   }
 }

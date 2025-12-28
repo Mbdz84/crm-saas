@@ -4,6 +4,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import logoutRoutes from "./modules/auth/logout.routes";
+import ingestRoutes from "./modules/ingest/ingest.routes";
 
 // Logging middleware
 import { requestLogger } from "./middleware/requestLogger";
@@ -55,6 +56,9 @@ app.use(
 
 // FIX for Cloud Run preflight handling:
 app.options("*", cors());
+
+// ingest incoming json for job create
+app.use("/api/ingest", ingestRoutes);
 
 // logout
 app.use("/logout", logoutRoutes);

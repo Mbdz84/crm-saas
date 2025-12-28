@@ -13,6 +13,7 @@ export default function LeadSourceProfile() {
   const [source, setSource] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [newApiKey, setNewApiKey] = useState<string | null>(null);
 
   const [tab, setTab] = useState<TabKey>("profile");
 
@@ -161,6 +162,62 @@ export default function LeadSourceProfile() {
     }
   };
 
+// ============================
+// API KEY ACTIONS (FIXED)
+// ============================
+
+const generateApiKey = async () => {
+  try {
+    const res = await fetch(`${base}/lead-sources/${id}/api-key`, {
+      method: "POST",
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to generate API key");
+    }
+
+    setNewApiKey(data.apiKey); // ✅ store temporarily
+    toast.success("API key generated");
+
+    load(); // refresh last4
+  } catch (err: any) {
+    console.error(err);
+    toast.error(err?.message || "Failed to generate API key");
+  }
+};
+
+const rotateApiKey = async () => {
+  if (!confirm("Rotate API key? Old key will stop working.")) return;
+  await generateApiKey();
+};
+
+const revokeApiKey = async () => {
+  if (!confirm("Revoke API key? This cannot be undone.")) return;
+
+  try {
+    const res = await fetch(`${base}/lead-sources/${id}/api-key`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to revoke API key");
+    }
+
+    toast.success("API key revoked");
+    load();
+  } catch (err: any) {
+    console.error(err);
+    toast.error(err?.message || "Failed to revoke API key");
+  }
+};
+
+
   if (loading) return <div className="p-6">Loading...</div>;
   if (!source) return <div className="p-6">Lead source not found</div>;
 
@@ -228,7 +285,7 @@ export default function LeadSourceProfile() {
                 onChange={(e) => setName(e.target.value)}
                 disabled={locked}
               />
-            </div>
+                          </div>
 
             {/* COLOR */}
             <div className="flex items-center gap-3">
@@ -248,7 +305,7 @@ export default function LeadSourceProfile() {
                     onChange={(e) => setColor(e.target.value)}
                     disabled={locked}
                   />
-                </div>
+                 </div>
               </div>
 
               <div className="text-xs text-gray-500 mt-6">
@@ -276,6 +333,81 @@ export default function LeadSourceProfile() {
               />
               <span>Locked (prevent accidental edits / delete)</span>
             </label>
+{/* NEW API KEY DISPLAY (shown once) */}
+{newApiKey && (
+  <div className="border border-green-300 bg-green-50 dark:bg-green-900/20 rounded-lg p-4 space-y-3">
+    <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+      New API Key (shown once)
+    </p>
+
+    <div className="flex items-center gap-2">
+      <input
+        readOnly
+        value={newApiKey}
+        className="flex-1 font-mono text-sm border rounded p-2 bg-white dark:bg-gray-900"
+      />
+
+      <button
+        onClick={async () => {
+          await navigator.clipboard.writeText(newApiKey);
+          toast.success("API key copied to clipboard");
+          setNewApiKey(null); // hide after copy
+        }}
+        className="px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-500"
+      >
+        Copy
+      </button>
+    </div>
+
+    <p className="text-xs text-gray-600 dark:text-gray-400">
+      Store this key securely. You won’t be able to see it again.
+    </p>
+  </div>
+)}
+
+{/* API KEY */}
+<div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 mt-6 space-y-2">
+  <h3 className="text-sm font-semibold">API Access (Direct JSON)</h3>
+
+  {source.apiKeyLast4 ? (
+    <>
+      <p className="text-sm">
+        API Key:{" "}
+        <span className="font-mono text-gray-700 dark:text-gray-300">
+          ••••{source.apiKeyLast4}
+        </span>
+      </p>
+
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={rotateApiKey}
+          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-500"
+        >
+          Rotate Key
+        </button>
+
+        <button
+          onClick={revokeApiKey}
+          className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-500"
+        >
+          Revoke Key
+        </button>
+      </div>
+    </>
+  ) : (
+    <button
+      onClick={generateApiKey}
+      className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-500"
+    >
+      Generate API Key
+    </button>
+  )}
+
+  <p className="text-xs text-gray-500">
+    Used for Direct JSON → CRM API ingestion.  
+    Keys are shown only once. Store securely.
+  </p>
+</div>
           </div>
         )}
 
