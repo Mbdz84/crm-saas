@@ -4,24 +4,32 @@ import prisma from "../../../prisma/client";
 export async function getJobs(req: Request, res: Response) {
   try {
     const jobs = await prisma.job.findMany({
-      where: { companyId: req.user!.companyId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        technician: true,
-        jobType: true,
-        source: true,
-        jobStatus: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            order: true,
-            active: true,
-            locked: true,
-          },
-        },
+  where: { companyId: req.user!.companyId },
+
+  orderBy: [
+    // ✅ ALWAYS group by status order first
+    { jobStatus: { order: "asc" } },
+
+    // ✅ THEN newest first (frontend can re-sort safely)
+    { createdAt: "desc" },
+  ],
+
+  include: {
+    technician: true,
+    jobType: true,
+    source: true,
+    jobStatus: {
+      select: {
+        id: true,
+        name: true,
+        color: true,
+        order: true,
+        active: true,
+        locked: true,
       },
-    });
+    },
+  },
+});
 
     res.json(jobs);
   } catch (err) {

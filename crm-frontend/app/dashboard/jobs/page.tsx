@@ -55,8 +55,7 @@ type ColumnKey =
   | "status"
   | "source"
   | "appointment"
-  | "createdAt"
-  | "quick";
+  | "createdAt";
 
 type ColumnVisibility = Record<ColumnKey, boolean>;
 
@@ -79,10 +78,31 @@ function formatPhone(raw?: string | null): string {
 
 export default function JobsPage() {
   const router = useRouter();
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showColumnPicker, setShowColumnPicker] = useState(false);
+
+  type SortKey =
+    | "phone"
+    | "address"
+    | "technician"
+    | "source"
+    | "appointment"
+    | "createdAt";
+
+  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   const [columnsVisible, setColumnsVisible] = useState<ColumnVisibility>({
     shortId: true,
@@ -94,7 +114,6 @@ export default function JobsPage() {
     source: true,
     appointment: true,
     createdAt: false,
-    quick: true,
   });
 
   const base = process.env.NEXT_PUBLIC_API_URL;
@@ -122,81 +141,122 @@ export default function JobsPage() {
     load();
   }, []);
 
+useEffect(() => {
+  const saved = localStorage.getItem("jobs.columns");
+  if (saved) {
+    try {
+      setColumnsVisible(JSON.parse(saved));
+    } catch {}
+  }
+}, []);
+
   /* ------------------------------------------------------------
      FILTER + HIDE CLOSED/CANCELED OLDER THAN 45 MIN
   ------------------------------------------------------------ */
   const filteredJobs = useMemo(() => {
-    const now = Date.now();
+  const now = Date.now();
 
-    return jobs
-      .filter((job) => {
-        // Hide closed/canceled jobs after 45 minutes
-        const statusName = job.jobStatus?.name || job.status || "Unknown";
+  return jobs.filter((job) => {
+    const statusName = job.jobStatus?.name || job.status || "Unknown";
 
-        if (["Closed", "Canceled", "Cancelled"].includes(statusName)) {
-          const ts = job.closedAt || job.canceledAt;
-          if (ts) {
-            const age = now - new Date(ts).getTime();
-            if (age > BOARD_HIDE_MS) return false;
-          }
-        }
+    if (["Closed", "Canceled", "Cancelled"].includes(statusName)) {
+      const ts = job.closedAt || job.canceledAt;
+      if (ts) {
+        const age = now - new Date(ts).getTime();
+        if (age > BOARD_HIDE_MS) return false;
+      }
+    }
 
-        // Text search
-        const text = (
-          (job.shortId || "") +
-          " " +
-          job.title +
-          " " +
-          (job.customerName || "") +
-          " " +
-          (job.customerPhone || "") +
-(job.customerPhone?.replace(/\D/g, "") || "") +  // normalized digits
-          " " +
-          (job.customerAddress || "") +
-          " " +
-          (job.source?.name || "")
-        )
-          .toLowerCase()
-          .trim();
+    const text = (
+      (job.shortId || "") +
+      " " +
+      job.title +
+      " " +
+      (job.customerName || "") +
+      " " +
+      (job.customerPhone || "") +
+      (job.customerPhone?.replace(/\D/g, "") || "") +
+      " " +
+      (job.customerAddress || "") +
+      " " +
+      (job.source?.name || "")
+    )
+      .toLowerCase()
+      .trim();
 
-        return text.includes(search.toLowerCase().trim());
-      })
-      .sort((a, b) => {
-        // Sort primarily by status order, then createdAt desc
-        const aOrder = a.jobStatus?.order ?? 999;
-        const bOrder = b.jobStatus?.order ?? 999;
-        if (aOrder !== bOrder) return aOrder - bOrder;
-
-        return (
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      });
-  }, [jobs, search]);
+    return text.includes(search.toLowerCase().trim());
+  });
+}, [jobs, search]);
 
   /* ------------------------------------------------------------
      GROUP BY STATUS
   ------------------------------------------------------------ */
   const groupedByStatus = useMemo(() => {
-    const groups: Record<
-      string,
-      { statusName: string; color: string; order: number; jobs: Job[] }
-    > = {};
+  const map = new Map<
+    string,
+    { statusName: string; color: string; order: number; jobs: Job[] }
+  >();
 
-    filteredJobs.forEach((job) => {
-      const meta = job.jobStatus;
-      const statusName = meta?.name || job.status || "Unknown";
-      const color = meta?.color || "#e5e7eb";
-      const order = meta?.order ?? 999;
+  // build groups
+  filteredJobs.forEach((job) => {
+    const meta =
+  job.jobStatus ??
+  {
+    name: job.status,
+    color: "#e5e7eb",
+    order: 999,
+  };
+    const statusName = meta?.name || job.status || "Unknown";
 
-      if (!groups[statusName]) {
-        groups[statusName] = { statusName, color, order, jobs: [] };
-      }
+    if (!map.has(statusName)) {
+      map.set(statusName, {
+        statusName,
+        color: meta?.color || "#e5e7eb",
+        order: meta?.order ?? 999,
+        jobs: [],
+      });
+    }
 
-      groups[statusName].jobs.push(job);
+    map.get(statusName)!.jobs.push(job);
+  });
+
+  // sort jobs INSIDE each group
+  map.forEach((group) => {
+    group.jobs.sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+
+      const getVal = (job: Job) => {
+        switch (sortKey) {
+          case "phone":
+            return job.customerPhone || "";
+          case "address":
+            return job.customerAddress || "";
+          case "technician":
+            return job.technician?.name || "";
+          case "source":
+            return job.source?.name || "";
+          case "appointment":
+            return job.scheduledAt
+              ? new Date(job.scheduledAt).getTime()
+              : 0;
+          case "createdAt":
+          default:
+            return new Date(job.createdAt).getTime();
+        }
+      };
+
+      const aVal = getVal(a);
+      const bVal = getVal(b);
+
+      if (aVal < bVal) return -1 * dir;
+      if (aVal > bVal) return 1 * dir;
+      return 0;
     });
+  });
 
-    return Object.values(groups).sort((a, b) => a.order - b.order);
-  }, [filteredJobs]);
+  // sort groups by fixed status order ONLY
+  return Array.from(map.values()).sort((a, b) => a.order - b.order);
+}, [filteredJobs, sortKey, sortDir]);
 
   /* ------------------------------------------------------------
      APPOINTMENT RANGE FORMATTER
@@ -255,7 +315,6 @@ function formatAddress(addr?: string | null) {
     "source",
     "appointment",
     "createdAt",
-    "quick",
   ];
 
   return (
@@ -322,8 +381,22 @@ function formatAddress(addr?: string | null) {
                 {labelForColumn(key)}
               </label>
             ))}
+            <div className="mt-3 flex justify-end">
+  <button
+    onClick={() => {
+      localStorage.setItem(
+        "jobs.columns",
+        JSON.stringify(columnsVisible)
+      );
+      setShowColumnPicker(false);
+    }}
+    className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+  >
+    Save Columns
+  </button>
+</div>
           </div>
-        </div>
+       </div>
       )}
 
       {/* NO JOBS */}
@@ -368,30 +441,53 @@ function formatAddress(addr?: string | null) {
       <th className="p-2 text-left w-32">Customer</th>
     )}
     {columnsVisible.phone && (
-      <th className="p-2 text-left w-32">Phone</th>
+      <th className="p-2 text-left w-32 cursor-pointer select-none"
+  onClick={() => toggleSort("phone")}>Phone</th>
     )}
     {columnsVisible.address && (
-      <th className="p-2 text-left w-64">Address</th>
+      <th
+  className="p-2 text-left w-64 cursor-pointer select-none"
+  onClick={() => toggleSort("address")}
+>
+  Address
+</th>
     )}
     {columnsVisible.technician && (
-      <th className="p-2 text-left w-28">Tech</th>
+      <th
+  className="p-2 text-left w-28 cursor-pointer select-none"
+onClick={() => toggleSort("technician")}
+>
+  Tech
+</th>
     )}
     {columnsVisible.status && (
       <th className="p-2 text-left w-28">Status</th>
     )}
     {columnsVisible.source && (
-      <th className="p-2 text-left w-32">Lead Source</th>
+      <th
+  className="p-2 text-left w-32 cursor-pointer select-none"
+onClick={() => toggleSort("source")}
+>
+  Lead Source
+</th>
     )}
     {columnsVisible.appointment && (
-      <th className="p-2 text-left w-40">Appt Time</th>
+      <th
+  className="p-2 text-left w-40 cursor-pointer select-none"
+onClick={() => toggleSort("appointment")}
+>
+  Appt Time
+</th>
     )}
     {columnsVisible.createdAt && (
-      <th className="p-2 text-left w-32">Created</th>
+      <th
+  className="p-2 text-left w-32 cursor-pointer select-none"
+onClick={() => toggleSort("createdAt")}
+>
+  Created
+</th>
     )}
-    {columnsVisible.quick && (
-      <th className="p-2 text-right w-24">Quick</th>
-    )}
-  </tr>
+     </tr>
 </thead>
               <tbody>
                 {group.jobs.map((job) => {
@@ -461,48 +557,8 @@ function formatAddress(addr?: string | null) {
 )}
                       
 
-                      {/* QUICK ACTIONS */}
-                      {columnsVisible.quick && (
-                      <td className="p-2">
-                        <div className="flex justify-end gap-2 text-lg">
-                          {/* Call */}
-                          <button
-                            data-action-btn
-                            title="Call customer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!job.customerPhone) return;
-                              window.location.href = `tel:${job.customerPhone}`;
-                            }}
-                            className="hover:text-blue-600"
-                          >
-                            📞
-                          </button>
+                     
 
-                          {/* Directions */}
-                          <button
-                            data-action-btn
-                            title="Directions"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!job.customerAddress) return;
-                              const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                                job.customerAddress
-                              )}`;
-                              window.open(url, "_blank");
-                            }}
-                            className="hover:text-green-600"
-                          >
-                            📍
-                          </button>
-
-                          {/* ===================== */}
-                          {/* add extra buttons.... */}
-                          {/* ===================== */}
-
-                        </div>
-                      </td>
-                      )}
                     </tr>
                   );
                 })}
@@ -608,12 +664,7 @@ function formatAddress(addr?: string | null) {
                     >
                       📍 Directions
                     </button>
-                    <button
-                      className="flex-1 ml-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
-                      onClick={() => router.push(`/dashboard/jobs/${short}`)}
-                    >
-                      📝 Job
-                    </button>
+                    
                   </div>
                 </div>
               );
@@ -648,9 +699,7 @@ function labelForColumn(key: ColumnKey): string {
       return "Appt Time";
     case "createdAt":
       return "Created";
-    case "quick":
-      return "Quick Actions";
-    default:
+      default:
       return key;
   }
 }
