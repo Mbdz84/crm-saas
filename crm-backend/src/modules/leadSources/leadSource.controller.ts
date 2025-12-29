@@ -50,6 +50,7 @@ export async function createLeadSource(req: Request, res: Response) {
       color,
       active,
       locked,
+      incomingSmsNumbers,
       defaultLeadPercent,
       defaultAdditionalFee,
       defaultCcFeePercent,
@@ -113,6 +114,7 @@ export async function updateLeadSource(req: Request, res: Response) {
       color,
       active,
       locked,
+      incomingSmsNumbers,
       defaultLeadPercent,
       defaultAdditionalFee,
       defaultCcFeePercent,
@@ -121,6 +123,14 @@ export async function updateLeadSource(req: Request, res: Response) {
     } = req.body;
 
     const data: any = {};
+
+    if (incomingSmsNumbers !== undefined) {
+  data.incomingSmsNumbers = Array.isArray(incomingSmsNumbers)
+    ? incomingSmsNumbers
+        .map((n: string) => n.replace(/[^\d+]/g, ""))
+        .filter(Boolean)
+    : [];
+}
 
     if (name !== undefined) data.name = name.trim();
     if (color !== undefined) data.color = color;

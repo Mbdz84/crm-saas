@@ -33,7 +33,10 @@ export default function LeadSourceProfile() {
 
   const base = process.env.NEXT_PUBLIC_API_URL;
 
-  // Load lead source.
+   // Incoming SMS numbers
+   const [incomingSmsNumbers, setIncomingSmsNumbers] = useState<string[]>([]);
+
+   // Load lead source.
   const load = async () => {
     setLoading(true);
     try {
@@ -55,6 +58,8 @@ export default function LeadSourceProfile() {
       setColor(data.color ?? "#6b7280");
       setActive(data.active ?? true);
       setLocked(data.locked ?? false);
+
+      setIncomingSmsNumbers(data.incomingSmsNumbers ?? []);
 
       // Financial – Prisma decimals usually come as string
       setDefaultLeadPercent(
@@ -97,6 +102,9 @@ export default function LeadSourceProfile() {
       color,
       active,
       locked,
+      incomingSmsNumbers: incomingSmsNumbers
+        .map(n => n.trim())
+        .filter(Boolean),
       autoApplyFinancialRules,
       defaultLeadPercent:
         defaultLeadPercent.trim() === "" ? null : defaultLeadPercent.trim(),
@@ -333,6 +341,60 @@ const revokeApiKey = async () => {
               />
               <span>Locked (prevent accidental edits / delete)</span>
             </label>
+{/* INCOMING SMS NUMBERS */}
+<div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 space-y-3">
+  <h3 className="text-sm font-semibold">
+    Incoming SMS Numbers
+  </h3>
+
+  <p className="text-xs text-gray-500">
+    SMS from these phone numbers will automatically create jobs.
+  </p>
+
+  {incomingSmsNumbers.map((num, index) => (
+    <div key={index} className="flex items-center gap-2">
+      <input
+        className="flex-1 border rounded p-2 text-sm dark:bg-gray-900"
+        placeholder="+18475551234"
+        value={num}
+        disabled={locked}
+        onChange={(e) => {
+          const copy = [...incomingSmsNumbers];
+          copy[index] = e.target.value;
+          setIncomingSmsNumbers(copy);
+        }}
+      />
+
+      {!locked && (
+        <button
+          type="button"
+          onClick={() =>
+            setIncomingSmsNumbers(
+              incomingSmsNumbers.filter((_, i) => i !== index)
+            )
+          }
+          className="px-2 py-1 text-xs bg-red-600 text-white rounded"
+        >
+          Delete
+        </button>
+      )}
+    </div>
+  ))}
+
+  {!locked && (
+    <button
+      type="button"
+      onClick={() =>
+        setIncomingSmsNumbers([...incomingSmsNumbers, ""])
+      }
+      className="px-3 py-1 text-sm bg-blue-600 text-white rounded"
+    >
+      + Add Number
+    </button>
+  )}
+</div>
+
+
 {/* NEW API KEY DISPLAY (shown once) */}
 {newApiKey && (
   <div className="border border-green-300 bg-green-50 dark:bg-green-900/20 rounded-lg p-4 space-y-3">

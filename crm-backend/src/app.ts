@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import bodyParser from "body-parser";
 import logoutRoutes from "./modules/auth/logout.routes";
 import ingestRoutes from "./modules/ingest/ingest.routes";
+import twilioSmsRoutes from "./modules/twilio/sms.routes";
 
 // Logging middleware
 import { requestLogger } from "./middleware/requestLogger";
@@ -34,6 +35,9 @@ const app = express();
 /* ============================================================
    GLOBAL MIDDLEWARE
 ============================================================ */
+
+// 👇 must be BEFORE auth
+app.use("/twilio", twilioSmsRoutes);
 
 // Twilio sends x-www-form-urlencoded — MUST BE FIRST
 app.use(bodyParser.urlencoded({ extended: false }));
