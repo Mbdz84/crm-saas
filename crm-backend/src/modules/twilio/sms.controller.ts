@@ -3,14 +3,26 @@ import prisma from "../../prisma/client";
 import { nanoid } from "nanoid";
 
 export async function incomingSms(req: Request, res: Response) {
-  const from = normalizePhone(req.body.From);
-  const body = req.body.Body?.trim();
+  // 🔒 SAFE extraction for Twilio (form-urlencoded)
+  const fromRaw =
+    req.body?.From ||
+    (req as any).body?.From ||
+    req.body?.from;
+
+  const bodyRaw =
+    req.body?.Body ||
+    (req as any).body?.Body ||
+    req.body?.body;
+
+  const from = normalizePhone(fromRaw);
+  const body = bodyRaw?.trim();
 
   if (!from || !body) {
-    return res.send("<Response></Response>");
+    console.warn("⚠️ Incoming SMS missing data", req.body);
+    return res.type("text/xml").send("<Response></Response>");
   }
 
-  // ✅ FIX: include company + correct where
+  // 🔍 Match Lead Source by incoming SMS number
   const leadSource = await prisma.leadSource.findFirst({
     where: {
       incomingSmsNumbers: {
@@ -22,52 +34,54 @@ export async function incomingSms(req: Request, res: Response) {
     },
   });
 
-  const companyId = leadSource?.companyId;
+  let companyId: string;
+  let leadSourceId: string | null = null;
 
-  if (!companyId) {
-    // fallback → no lead source
+  if (leadSource) {
+    companyId = leadSource.companyId;
+    leadSourceId = leadSource.id;
+  } else {
+    // 🧯 Fallback company (oldest company = default)
     const company = await prisma.company.findFirst({
-  orderBy: { createdAt: "asc" }, // deterministic
-});
-    if (!company) return res.send("<Response></Response>");
-
-    await createJob({
-      companyId: company.id,
-      leadSourceId: null,
-      from,
-      body,
+      orderBy: { createdAt: "asc" },
     });
 
-    return res.send("<Response></Response>");
+    if (!company) {
+      console.error("❌ No company found for incoming SMS");
+      return res.type("text/xml").send("<Response></Response>");
+    }
+
+    companyId = company.id;
   }
 
   await createJob({
     companyId,
-    leadSourceId: leadSource.id,
+    leadSourceId,
     from,
     body,
   });
 
-  res.send("<Response></Response>");
+  // ✅ ALWAYS respond XML to Twilio
+  return res.type("text/xml").send("<Response></Response>");
 }
 
 /* ============================
    HELPERS
 ============================ */
 
-function normalizePhone(phone?: string) {
-  if (!phone) return null;
-  function normalizePhone(phone?: string) {
+function normalizePhone(phone?: string): string | null {
   if (!phone) return null;
 
   const digits = phone.replace(/[^\d]/g, "");
 
+  // US standard handling
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+
+  // Already E.164
   if (phone.startsWith("+")) return phone;
 
   return null;
-}
 }
 
 async function createJob({
