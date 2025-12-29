@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { incomingSms } from "./sms.controller";
+import { incomingSms } from "./twilio.ai.sms.controller";
 
 const router = Router();
 

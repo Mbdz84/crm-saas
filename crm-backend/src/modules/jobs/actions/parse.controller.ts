@@ -1,11 +1,6 @@
 import { Request, Response } from "express";
-import OpenAI from "openai";
+import { parseTextWithAI } from "./parse.helper";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
-
-const PARSE_MODEL = process.env.OPENAI_PARSE_MODEL || "gpt-4.1";
 
 export async function parseJobFromText(req: Request, res: Response) {
   try {
@@ -37,20 +32,13 @@ Text:
 ${text}
 `;
 
-    const completion = await openai.chat.completions.create({
-      model: PARSE_MODEL,
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0,
-    });
-
-    const raw = completion.choices?.[0]?.message?.content || "";
-
     let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      return res.status(500).json({ error: "AI parse error" });
-    }
+try {
+  parsed = await parseTextWithAI(text);
+} catch (err) {
+  console.error("AI parse error:", err);
+  return res.status(500).json({ error: "AI parse error" });
+}
 
     // Clean address
     function normalizeAddress(address: string): string {

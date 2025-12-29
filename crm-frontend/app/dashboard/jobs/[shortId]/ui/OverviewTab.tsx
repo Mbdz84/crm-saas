@@ -10,7 +10,7 @@ import AppointmentPicker from "./AppointmentPicker";
 import { useState } from "react";
 import { useEffect } from "react";
 import { toZonedTime, format } from "date-fns-tz";
-
+import { formatPhone } from "@/utils/formatPhone";
 
 function formatWithTimezone(
   date: string | Date | null | undefined,
@@ -312,15 +312,27 @@ const selectedStatusIsCanceled = (() => {
 {/* PHONE 1 */}
 <Editable
   label="Phone"
-  value={editableJob.customerPhone || ""}
-  onChange={(v) => setField("customerPhone", v)}
+  value={formatPhone(editableJob.customerPhone)}
+  onChange={(v) => {
+    const digits = v.replace(/[^\d]/g, "");
+    setField(
+      "customerPhone",
+      digits ? `+1${digits.slice(-10)}` : ""
+    );
+  }}
 />
 
 {/* PHONE 2 */}
 <Editable
   label="Phone 2"
-  value={(editableJob as any).customerPhone2 || ""}
-  onChange={(v) => setField("customerPhone2", v)}
+  value={formatPhone((editableJob as any).customerPhone2)}
+  onChange={(v) => {
+    const digits = v.replace(/[^\d]/g, "");
+    setField(
+      "customerPhone2",
+      digits ? `+1${digits.slice(-10)}` : ""
+    );
+  }}
 />
 
           {/* MASKED DIALS */}

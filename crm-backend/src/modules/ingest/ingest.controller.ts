@@ -3,10 +3,14 @@ import prisma from "../../prisma/client";
 import { IngestJobPayload } from "./ingest.types";
 import { nanoid } from "nanoid";
 
+type JobOrigin = "ai_generated" | "incoming_sms" | "external_api";
+
 export async function ingestJob(req: Request, res: Response) {
   const leadSource = (req as any).leadSource;
   const company = (req as any).company;
   const payload = req.body as IngestJobPayload;
+
+  const origin: JobOrigin = payload.origin || "external_api";
 
   if (!payload.customerPhone && !payload.customerName) {
     return res.status(400).json({
@@ -14,8 +18,11 @@ export async function ingestJob(req: Request, res: Response) {
     });
   }
 
-  // Find job type if provided
+  /* ------------------------------------------
+     JOB TYPE (optional match only)
+  ------------------------------------------ */
   let jobTypeId: string | undefined;
+
   if (payload.jobType) {
     const jt = await prisma.jobType.findFirst({
       where: {
@@ -27,6 +34,26 @@ export async function ingestJob(req: Request, res: Response) {
     if (jt) jobTypeId = jt.id;
   }
 
+  /* ------------------------------------------
+     LOG TYPE (single source of truth)
+  ------------------------------------------ */
+  const logType =
+    origin === "ai_generated"
+      ? "ai_generated"
+      : origin === "incoming_sms"
+      ? "incoming_sms"
+      : "ingested";
+
+  const logText =
+    origin === "ai_generated"
+      ? "AI agent created the job (Direct JSON ingest)"
+      : origin === "incoming_sms"
+      ? "Job created from incoming SMS (Direct JSON ingest)"
+      : `Job created via API from lead source "${leadSource.name}"`;
+
+  /* ------------------------------------------
+     CREATE JOB
+  ------------------------------------------ */
   const job = await prisma.job.create({
     data: {
       shortId: nanoid(6).toUpperCase(),
@@ -54,34 +81,15 @@ export async function ingestJob(req: Request, res: Response) {
       status: "Accepted",
 
       logs: {
-  createMany: {
-    data: [
-      {
-        type: "ingested",
-        text: `Job created via API from lead source "${leadSource.name}"`,
+        create: {
+          type: logType,
+          text: logText,
+        },
       },
-      {
-        type: "ai_generated",
-        text: [
-          `Source: ${leadSource.name}`,
-          payload.externalId ? `Job ID: ${payload.externalId}` : null,
-          payload.customerName ? `Name: ${payload.customerName}` : null,
-          payload.customerPhone ? `Phone: ${payload.customerPhone}` : null,
-          payload.customerAddress
-            ? `Address: ${payload.customerAddress}`
-            : null,
-          payload.description ? `Notes: ${payload.description}` : null,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      },
-    ],
-  },
-},
     },
   });
 
-  res.json({
+  return res.json({
     success: true,
     jobId: job.id,
     shortId: job.shortId,

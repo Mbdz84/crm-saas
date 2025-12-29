@@ -11,4 +11,5 @@ export interface IngestJobPayload {
   timezone?: string;
 
   externalId?: string; // optional (for dedupe later)
+  origin?: "ai_generated" | "incoming_sms" | "external_api";
 }
