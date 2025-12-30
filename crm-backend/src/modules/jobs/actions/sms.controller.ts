@@ -112,7 +112,7 @@ const sessions = await prisma.jobCallSession.findMany({
     const clean = TWILIO_NUMBER.replace(/^\+1/, "").replace(/[^\d]/g, "");
 
     jobForSms.customerPhone = sessions
-      .map((s) => `${clean},${s.extension}`)
+      .map((s: { extension: string }) => `${clean},${s.extension}`)
       .join(" / ");
   }
 } else {
