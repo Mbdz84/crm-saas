@@ -11,6 +11,7 @@ import {
   RecordingsController,
   DeleteController,
   DuplicateController,
+  previewTechSms,
 } from "./index";
 import { createJobFromParse } from "./actions/create-from-parse.controller";
 import { authMiddleware } from "../../middleware/auth";
@@ -62,7 +63,9 @@ router.post("/:shortId/close", CloseController.closeJob);
 router.post("/:shortId/reopen", ReopenController.reopenJob);
 
 /* --------------- SMS ---------------------------------------- */
+router.post("/:shortId/preview-sms", authMiddleware, tenantMiddleware, previewTechSms);
 router.post("/:shortId/resend-sms", SmsController.resendJobSms);
+
 
 /* --------------- RECORDINGS --------------------------------- */
 router.get("/:shortId/recordings", RecordingsController.getJobRecordings);

@@ -24,3 +24,5 @@ export {
   DeleteController,
   DuplicateController,
 };
+
+export { previewTechSms } from "./actions/sms.controller";

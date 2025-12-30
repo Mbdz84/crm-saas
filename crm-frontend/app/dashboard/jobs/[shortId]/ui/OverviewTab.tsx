@@ -72,6 +72,9 @@ export default function OverviewTab() {
   const techRole = userRole;
   const router = useRouter();
   const [appointmentKey, setAppointmentKey] = useState(0);
+  const [showSmsModal, setShowSmsModal] = useState(false);
+  const [smsPreview, setSmsPreview] = useState<any>(null);
+  
   const jobCtx = useJob();
   const {
     job,
@@ -465,17 +468,26 @@ const selectedStatusIsCanceled = (() => {
               </select>
 
               <button
-                onClick={async () => {
-                  const res = await fetch(
-                    `${base}/jobs/${job.shortId}/resend-sms`,
-                    { method: "POST", credentials: "include" }
-                  );
-                  res.ok ? toast.success("SMS sent") : toast.error("Failed");
-                }}
-                className="px-4 py-2 bg-blue-600 text-white rounded sm:w-auto w-full"
-              >
-                Resend SMS
-              </button>
+  onClick={async () => {
+    try {
+      const res = await fetch(
+        `${base}/jobs/${job.shortId}/preview-sms`,
+        { method: "POST", credentials: "include" }
+      );
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Preview failed");
+
+      setSmsPreview(data);
+      setShowSmsModal(true);
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  }}
+  className="px-4 py-2 bg-gray-600 text-white rounded"
+>
+  Preview SMS
+</button>
             </div>
           </div>
 
@@ -833,7 +845,75 @@ const selectedStatusIsCanceled = (() => {
             cancelReason={cancelReason}
           />
         )}
+</div>
+{/* ========================= */}
+{/* SMS PREVIEW MODAL */}
+{/* ========================= */}
+{showSmsModal && smsPreview && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white dark:bg-gray-900 rounded p-5 w-full max-w-lg space-y-3">
+      <h3 className="font-semibold text-lg">SMS Preview</h3>
+
+      <div className="text-xs text-gray-500">
+        To: {smsPreview.to}
+        <br />
+        From: {smsPreview.from}
+        <br />
+        Masked: {smsPreview.masked ? "Yes" : "No"}
       </div>
+
+      <textarea
+        readOnly
+        className="w-full border rounded p-3 font-mono text-sm h-40"
+        value={smsPreview.body}
+      />
+
+      {/* ACTION BUTTONS */}
+      <div className="flex justify-start gap-3 pt-2">
+        {/* Cancel */}
+        <button
+  onClick={() => setShowSmsModal(false)}
+  className="px-3 py-2 border border-red-600 text-red-600 rounded hover:bg-red-300"
+>
+  ❌ Cancel
+</button>
+
+        {/* Send SMS */}
+        <button
+          onClick={async () => {
+            const res = await fetch(
+              `${base}/jobs/${job.shortId}/resend-sms`,
+              { method: "POST", credentials: "include" }
+            );
+
+            res.ok
+              ? toast.success("SMS sent")
+              : toast.error("Send failed");
+
+            setShowSmsModal(false);
+          }}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Send SMS
+        </button>
+
+        {/* Copy */}
+        <button
+  onClick={() => {
+    navigator.clipboard.writeText(smsPreview.body);
+    toast.success("Copied to clipboard");
+  }}
+  className="px-3 py-2 border border-green-600 text-green-600 rounded hover:bg-green-300"
+>
+ 📋 Copy
+</button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+      
     </>
   );
 }
@@ -1355,6 +1435,8 @@ function ClosingPanel(props: any) {
     Close Job (Admin Only)
   </button>
 )}
+
+
             </div>
           </div>
         </div>

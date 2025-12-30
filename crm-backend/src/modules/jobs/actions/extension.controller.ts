@@ -111,6 +111,7 @@ export async function ensureJobExtensions(jobId: string) {
         clientPhoneType: p.type,
         extension: Math.floor(1000 + Math.random() * 9000).toString(),
         companyId: job.companyId,
+        active: true,
       },
     });
   }

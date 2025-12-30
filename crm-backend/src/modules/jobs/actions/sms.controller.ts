@@ -235,3 +235,77 @@ if (settings.showLabel[key]) {
 
   return lines.join("\n").trim();
 }
+/* ============================================================
+   PREVIEW TECH SMS (NO SEND)
+============================================================ */
+export async function previewTechSms(req: Request, res: Response) {
+  try {
+    const job = await prisma.job.findFirst({
+      where: {
+        shortId: req.params.shortId.toUpperCase(),
+        companyId: req.user!.companyId,
+      },
+      include: {
+        technician: true,
+        jobType: true,
+        source: true,
+        callSessions: {
+      where: { active: true },
+      orderBy: [
+  { clientPhoneType: "asc" }, // primary first, secondary second
+  { createdAt: "asc" },       // safety fallback
+],
+      },
+      },
+    });
+
+    if (!job) return res.status(404).json({ error: "Job not found" });
+    if (!job.technicianId)
+      return res.status(400).json({ error: "No technician assigned" });
+
+    const tech = await prisma.user.findUnique({
+      where: { id: job.technicianId },
+    });
+
+    if (!tech) return res.status(404).json({ error: "Technician not found" });
+
+    const company = await prisma.company.findUnique({
+      where: { id: job.companyId },
+    });
+
+    const settings =
+      (company?.smsSettings as any) || defaultSmsSettings;
+
+    const maskingEnabled = !!tech.maskedCalls;
+    const jobForSms = { ...job };
+
+    if (maskingEnabled && job.callSessions?.length) {
+      const clean = process.env.TWILIO_NUMBER!
+        .replace(/^\+1/, "")
+        .replace(/[^\d]/g, "");
+
+      jobForSms.customerPhone = job.callSessions
+        .map((s) => `${clean},${s.extension}`)
+        .join(" / ");
+    } else {
+      jobForSms.customerPhone = [
+        job.customerPhone,
+        job.customerPhone2,
+      ]
+        .filter(Boolean)
+        .join(" / ");
+    }
+
+    const smsText = buildSmsText(jobForSms, settings);
+
+    res.json({
+      to: tech.phone,
+      from: process.env.TWILIO_NUMBER,
+      body: smsText,
+      masked: maskingEnabled,
+    });
+  } catch (err) {
+    console.error("🔥 SMS PREVIEW ERROR:", err);
+    res.status(500).json({ error: "Failed to preview SMS" });
+  }
+}
