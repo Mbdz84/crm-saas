@@ -188,17 +188,24 @@ model JobStatus {
 
 model JobCallSession {
   id              String   @id @default(cuid())
+
   jobId           String
-  technicianId    String
-  customerPhone   String
-  extension       String
   companyId       String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  technicianId    String?          // ← make optional
+
+  customerPhone   String
   clientPhoneType String?
-  company         Company  @relation("CompanyCallSessions", fields: [companyId], references: [id])
-  job             Job      @relation(fields: [jobId], references: [id])
-  technician      User     @relation("UserCallSessions", fields: [technicianId], references: [id])
+  extension       String
+
+  lastCallerPhone String?           // ← ADD
+  active          Boolean @default(true) // ← ADD
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company @relation("CompanyCallSessions", fields: [companyId], references: [id])
+  job        Job     @relation(fields: [jobId], references: [id])
+  technician User?   @relation("UserCallSessions", fields: [technicianId], references: [id])
 
   @@index([jobId])
   @@index([customerPhone])
