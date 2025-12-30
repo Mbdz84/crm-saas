@@ -16,7 +16,7 @@ export default function Editable({
       <label className="block text-sm font-medium">{label}</label>
       {textarea ? (
         <textarea
-          className="mt-1 w-full border rounded p-2 min-h-[80px]"
+          className="mt-1 w-full border rounded p-2 min-h-20"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />

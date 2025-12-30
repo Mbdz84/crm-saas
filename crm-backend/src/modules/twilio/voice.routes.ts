@@ -1,18 +1,19 @@
 import { Router } from "express";
 import {
-  handleIncomingCall,
-  bridgeTechToCustomer,
-  handleVoiceTimeout,
-  handleRecording
-} from "./voice.controller";
+  inboundVoice,
+  handleExtension,
+  handleRecording,
+  } from "./voice.controller";
 
 const router = Router();
 
-// Twilio sends form-urlencoded by default
-router.post("/voice", handleIncomingCall);
-router.post("/voice/bridge-tech", bridgeTechToCustomer);
-router.post("/voice/voice-timeout", handleVoiceTimeout);
-router.post("/recording", handleRecording);
+// MAIN inbound Twilio voice webhook
+router.post("/voice", inboundVoice);
 
+// Extension handler (DTMF)
+router.post("/voice/extension", handleExtension);
+
+// Recording webhook (KEEP)
+router.post("/recording", handleRecording);
 
 export default router;

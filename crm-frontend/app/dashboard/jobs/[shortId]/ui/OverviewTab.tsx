@@ -151,6 +151,19 @@ useEffect(() => {
 
   if (!job || !editableJob || tab !== "overview") return null;
 
+// =========================
+// Job Call Extensions
+// =========================
+const sessions = Array.isArray(job.callSessions) ? job.callSessions : [];
+
+const phone1Ext = sessions.find(
+  (s: any) => s.clientPhoneType === "primary"
+)?.extension || null;
+
+const phone2Ext = sessions.find(
+  (s: any) => s.clientPhoneType === "secondary"
+)?.extension || null;
+
   const displayId = job.shortId || job.id.slice(0, 8);
   const isAdmin = true;
 
@@ -175,22 +188,7 @@ const selectedStatusIsCanceled = (() => {
 
   const editingLocked = job.isClosingLocked === true;
 
-  // 🔢 Masked dial helpers (for phone 1 + phone 2)
-  const extension = job.callSessions?.[0]?.extension;
-
-  const maskedDial1 =
-    editableJob.customerPhone && extension
-      ? `${(editableJob.customerPhone || "")
-          .replace(/^\+1/, "")
-          .replace(/[^\d]/g, "")},${extension}`
-      : null;
-
-  const maskedDial2 =
-    (editableJob as any).customerPhone2 && extension
-      ? `${((editableJob as any).customerPhone2 || "")
-          .replace(/^\+1/, "")
-          .replace(/[^\d]/g, "")},${extension}`
-      : null;
+  
 
   function getCollectorOptions(payment: "cash" | "credit" | "check" | "zelle") {
     switch (payment) {
@@ -335,51 +333,43 @@ const selectedStatusIsCanceled = (() => {
   }}
 />
 
-          {/* MASKED DIALS */}
-          {extension && (
-            <div className="mt-2 flex items-center flex-wrap gap-4 text-s text-gray-500">
-              <span>
-                Tech Extension: <b>{extension}</b>
-              </span>
+{/* =========================
+    MASKED EXTENSIONS
+========================= */}
+{(phone1Ext || phone2Ext) && (
+  <div className="mt-3 text-sm text-gray-600">
+    <div className="font-medium mb-1">Masked Calls</div>
 
-              {maskedDial1 && (
-                <>
-                  <span className="text-gray-400">|</span>
-                  <span>
-                    Masked Dial:{" "}
-                    <span className="font-mono">{maskedDial1}</span>
-                  </span>
-                </>
-              )}
+    {phone1Ext && (
+      <div className="flex items-center gap-2 font-mono">
+        <span>Phone 1</span>
+        <span className="text-gray-400">→</span>
+        <span>
+          {process.env.NEXT_PUBLIC_TWILIO_NUMBER?.replace(/[^\d]/g, "")},
+          {phone1Ext}
+        </span>
+      </div>
+    )}
 
-              {maskedDial2 && (
-                <>
-                  <span className="text-gray-400">|</span>
-                  <span>
-                    Masked Dial 2:{" "}
-                    <span className="font-mono">{maskedDial2}</span>
-                  </span>
-                </>
-              )}
+    {phone2Ext && (
+      <div className="flex items-center gap-2 font-mono mt-1">
+        <span>Phone 2</span>
+        <span className="text-gray-400">→</span>
+        <span>
+          {process.env.NEXT_PUBLIC_TWILIO_NUMBER?.replace(/[^\d]/g, "")},
+          {phone2Ext}
+        </span>
+      </div>
+    )}
 
-              <span className="text-gray-400">—</span>
-
-              <button
-                onClick={refreshExt}
-                className="text-blue-600 underline"
-              >
-                Refresh Extension
-              </button>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium">Address</label>
-            <GoogleAddressInput
-              value={editableJob.customerAddress || ""}
-              onChange={(v) => setField("customerAddress", v)}
-            />
-          </div>
+    <button
+      onClick={refreshExt}
+      className="mt-2 text-blue-600 underline text-sm"
+    >
+      Refresh Extensions
+    </button>
+  </div>
+)}
 
 {/* TIMEZONE */}
 <div>
@@ -439,7 +429,7 @@ const selectedStatusIsCanceled = (() => {
         {/* =============================================== */}
         {/* TECH / STATUS / SOURCE */}
         {/* =============================================== */}
-        <div className="border rounded p-4 space-y-4 bg-white dark:bg-gray-900">
+        <div className="border rounded p-4 space-y-4 bg-muted/50 dark:bg-gray-900">
           <div>
             <label className="block text-sm font-medium">Lead Source</label>
             <select

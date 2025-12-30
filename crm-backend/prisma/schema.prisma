@@ -302,24 +302,37 @@ model JobStatus {
 // ─────────────────────────────────────────────
 //
 model JobCallSession {
-  id           String @id @default(cuid())
-  jobId        String
-  job          Job    @relation(fields: [jobId], references: [id])
-  technicianId String
+  id        String @id @default(cuid())
 
-  customerPhone String
-  extension     String
-  technician    User    @relation("UserCallSessions", fields: [technicianId], references: [id])
-  company       Company @relation("CompanyCallSessions", fields: [companyId], references: [id])
+  jobId     String
+  job       Job    @relation(fields: [jobId], references: [id])
 
   companyId String
+  company   Company @relation("CompanyCallSessions", fields: [companyId], references: [id])
+
+  // 🔑 Client phone this extension belongs to
+  customerPhone   String
+  clientPhoneType String // "primary" | "secondary"
+
+  // 🔢 Extension
+  extension String
+
+  // 🔁 Callback routing
+  lastCallerPhone String?
+
+  // 🔒 Kill switch (job closed / canceled)
+  active Boolean @default(true)
+
+  // Optional: who last owned it (for UI / logs)
+  technicianId String?
+  technician   User? @relation("UserCallSessions", fields: [technicianId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([jobId])
-  @@index([technicianId])
   @@index([customerPhone])
+  @@index([extension])
   @@index([companyId, extension])
 }
 
