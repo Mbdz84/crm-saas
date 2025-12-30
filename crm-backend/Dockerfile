@@ -22,6 +22,9 @@ RUN npm install --production=false
 FROM deps AS build
 
 COPY . .
+
+RUN npx prisma generate
+
 RUN npm run build
 
 # ------------------------------
@@ -43,10 +46,6 @@ ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# ------------------------------
-# Prisma: generate client on container
-# ------------------------------
-RUN npx prisma generate
 
 # ------------------------------
 # Start the server
