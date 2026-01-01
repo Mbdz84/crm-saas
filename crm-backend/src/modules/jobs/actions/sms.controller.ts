@@ -284,9 +284,38 @@ export async function previewTechSms(req: Request, res: Response) {
         .replace(/^\+1/, "")
         .replace(/[^\d]/g, "");
 
-      jobForSms.customerPhone = job.callSessions
-        .map((s) => `${clean},${s.extension}`)
-        .join(" / ");
+      if (maskingEnabled && job.callSessions?.length) {
+  const clean = process.env.TWILIO_NUMBER!
+    .replace(/^\+1/, "")
+    .replace(/[^\d]/g, "");
+
+  // ✅ enforce ONE session per phone type
+  const primary = job.callSessions.find(
+    (s) => s.clientPhoneType === "primary"
+  );
+  const secondary = job.callSessions.find(
+    (s) => s.clientPhoneType === "secondary"
+  );
+
+  const phones: string[] = [];
+
+  if (primary) {
+    phones.push(`${clean},${primary.extension}`);
+  }
+
+  if (secondary) {
+    phones.push(`${clean},${secondary.extension}`);
+  }
+
+  jobForSms.customerPhone = phones.join(" / ");
+} else {
+  jobForSms.customerPhone = [
+    job.customerPhone,
+    job.customerPhone2,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+}
     } else {
       jobForSms.customerPhone = [
         job.customerPhone,

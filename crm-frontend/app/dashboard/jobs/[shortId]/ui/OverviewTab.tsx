@@ -12,6 +12,24 @@ import { useEffect } from "react";
 import { toZonedTime, format } from "date-fns-tz";
 import { formatPhone } from "@/utils/formatPhone";
 
+function splitPhoneExt(value?: string) {
+  if (!value) return { phone: "", ext: "" };
+
+  const [phone, ext] = value.replace(/[^\d,]/g, "").split(",");
+  return {
+    phone: phone || "",
+    ext: ext || "",
+  };
+}
+
+function joinPhoneExt(phone: string, ext: string) {
+  const cleanPhone = phone.replace(/[^\d]/g, "");
+  const cleanExt = ext.replace(/[^\d]/g, "");
+
+  if (!cleanPhone) return "";
+  return cleanExt ? `${cleanPhone},${cleanExt}` : cleanPhone;
+}
+
 function formatWithTimezone(
   date: string | Date | null | undefined,
   tz?: string
@@ -311,30 +329,84 @@ const selectedStatusIsCanceled = (() => {
 />
 
 {/* PHONE 1 */}
-<Editable
-  label="Phone"
-  value={formatPhone(editableJob.customerPhone)}
-  onChange={(v) => {
-    const digits = v.replace(/[^\d]/g, "");
-    setField(
-      "customerPhone",
-      digits ? `+1${digits.slice(-10)}` : ""
-    );
-  }}
-/>
+{(() => {
+  const { phone, ext } = splitPhoneExt(editableJob.customerPhone);
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">Phone</label>
+
+      <div className="flex gap-2">
+        {/* Phone */}
+        <input
+          className="flex-1 border rounded p-2"
+          placeholder="Phone 1"
+          value={phone}
+          onChange={(e) =>
+            setField(
+              "customerPhone",
+              joinPhoneExt(e.target.value, ext)
+            )
+          }
+        />
+
+        {/* Ext */}
+        <input
+          className="w-24 border rounded p-2"
+          placeholder="Ext"
+          value={ext}
+          onChange={(e) =>
+            setField(
+              "customerPhone",
+              joinPhoneExt(phone, e.target.value)
+            )
+          }
+        />
+      </div>
+    </div>
+  );
+})()}
 
 {/* PHONE 2 */}
-<Editable
-  label="Phone 2"
-  value={formatPhone((editableJob as any).customerPhone2)}
-  onChange={(v) => {
-    const digits = v.replace(/[^\d]/g, "");
-    setField(
-      "customerPhone2",
-      digits ? `+1${digits.slice(-10)}` : ""
-    );
-  }}
-/>
+{(() => {
+  const { phone, ext } = splitPhoneExt(
+    (editableJob as any).customerPhone2
+  );
+
+  return (
+    <div>
+      <label className="block text-sm font-medium mb-1">Phone 2</label>
+
+      <div className="flex gap-2">
+        {/* Phone */}
+        <input
+          className="flex-1 border rounded p-2"
+          placeholder="Phone 2"
+          value={phone}
+          onChange={(e) =>
+            setField(
+              "customerPhone2",
+              joinPhoneExt(e.target.value, ext)
+            )
+          }
+        />
+
+        {/* Ext */}
+        <input
+          className="w-24 border rounded p-2"
+          placeholder="Ext"
+          value={ext}
+          onChange={(e) =>
+            setField(
+              "customerPhone2",
+              joinPhoneExt(phone, e.target.value)
+            )
+          }
+        />
+      </div>
+    </div>
+  );
+})()}
 
 {/* =========================
     MASKED EXTENSIONS
@@ -373,6 +445,16 @@ const selectedStatusIsCanceled = (() => {
     </button>
   </div>
 )}
+
+{/* ADDRESS */}
+<div>
+  <label className="block text-sm font-medium">Address</label>
+  <GoogleAddressInput
+    value={editableJob.customerAddress || ""}
+    onChange={(v) => setField("customerAddress", v)}
+  />
+</div>
+
 
 {/* TIMEZONE */}
 <div>

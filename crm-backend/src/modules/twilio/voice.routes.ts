@@ -3,17 +3,29 @@ import {
   inboundVoice,
   handleExtension,
   handleRecording,
-  } from "./voice.controller";
+  clientWhisper,
+} from "./voice.controller";
 
 const router = Router();
 
-// MAIN inbound Twilio voice webhook
+/* -----------------------------------------------------------
+   MAIN INBOUND TWILIO VOICE WEBHOOK
+----------------------------------------------------------- */
 router.post("/voice", inboundVoice);
 
-// Extension handler (DTMF)
+/* -----------------------------------------------------------
+   EXTENSION HANDLER (DTMF)
+----------------------------------------------------------- */
 router.post("/voice/extension", handleExtension);
 
-// Recording webhook (KEEP)
+/* -----------------------------------------------------------
+   CLIENT WHISPER (CALLED PARTY ONLY)
+----------------------------------------------------------- */
+router.post("/voice/client-whisper", clientWhisper);
+
+/* -----------------------------------------------------------
+   RECORDING WEBHOOK (KEEP)
+----------------------------------------------------------- */
 router.post("/recording", handleRecording);
 
 export default router;

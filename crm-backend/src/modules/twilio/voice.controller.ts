@@ -24,32 +24,23 @@ function send(res: Response, twiml: twilio.twiml.VoiceResponse) {
 
 export async function inboundVoice(req: Request, res: Response) {
   const twiml = new VoiceResponse();
-
   const from = normalize(req.body.From);
-  const to = normalize(req.body.To);
 
   /* ---------------------------------------
-     1️⃣ CLIENT CALLBACK FLOW
+     CLIENT CALLBACK FLOW
   --------------------------------------- */
+  if (from) {
+    const clientSession = await prisma.jobCallSession.findFirst({
+      where: {
+        customerPhone: { endsWith: from },
+        lastCallerPhone: { not: null },
+        active: true,
+        job: { status: { notIn: ["Closed", "Canceled"] } },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
 
-  let clientSession = null;
-
-if (from) {
-  clientSession = await prisma.jobCallSession.findFirst({
-  where: {
-    customerPhone: { endsWith: from },
-    lastCallerPhone: { not: null },
-    active: true,
-    job: {
-      status: { notIn: ["Closed", "Canceled"] },
-    },
-  },
-  orderBy: { updatedAt: "desc" },
-});
-}
-
-  if (clientSession) {
-    if (clientSession.lastCallerPhone) {
+    if (clientSession?.lastCallerPhone) {
       const dial = twiml.dial({
         callerId: TWILIO_NUMBER,
         record: "record-from-answer",
@@ -58,20 +49,16 @@ if (from) {
       dial.number(clientSession.lastCallerPhone);
       return send(res, twiml);
     }
-
-    twiml.say("Please dial the extension.");
-    return send(res, twiml);
   }
 
   /* ---------------------------------------
-     2️⃣ UNKNOWN CALLER → EXTENSION FLOW
+     EXTENSION FLOW — SINGLE 15s WAIT
   --------------------------------------- */
-
   const gather = twiml.gather({
     numDigits: 4,
-    action: "/twilio/voice/extension",
+    timeout: 15, // ✅ single 15s wait
     method: "POST",
-    timeout: 8,
+    action: "/twilio/voice/extension",
   });
 
   gather.say("Please dial the extension.");
@@ -85,27 +72,32 @@ if (from) {
 
 export async function handleExtension(req: Request, res: Response) {
   const twiml = new VoiceResponse();
-
   const from = normalize(req.body.From);
   const digits = req.body.Digits;
 
+  /* ---------------------------------------
+     NO INPUT → HANG UP
+  --------------------------------------- */
   if (!digits) {
-    twiml.say("No extension received.");
+    twiml.say("No extension was entered. Goodbye.");
+    twiml.hangup();
     return send(res, twiml);
   }
 
+  /* ---------------------------------------
+     VALIDATE EXTENSION
+  --------------------------------------- */
   const session = await prisma.jobCallSession.findFirst({
     where: {
       extension: digits,
       active: true,
-      job: {
-        status: { notIn: ["Closed", "Canceled"] },
-      },
+      job: { status: { notIn: ["Closed", "Canceled"] } },
     },
   });
 
   if (!session) {
-    twiml.say("Invalid or expired extension.");
+    twiml.say("Invalid or expired extension. Goodbye.");
+    twiml.hangup();
     return send(res, twiml);
   }
 
@@ -114,42 +106,59 @@ export async function handleExtension(req: Request, res: Response) {
   --------------------------------------- */
   await prisma.jobCallSession.update({
     where: { id: session.id },
-    data: {
-      lastCallerPhone: from,
-    },
+    data: { lastCallerPhone: from },
   });
 
   /* ---------------------------------------
-     DIAL CLIENT
+     CONNECT — CLIENT WHISPER
   --------------------------------------- */
   const dial = twiml.dial({
-  callerId: TWILIO_NUMBER,
-  record: "record-from-answer",
-  recordingStatusCallback: `${process.env.PUBLIC_URL}/twilio/recording?ext=${session.extension}`,
-  recordingStatusCallbackMethod: "POST",
-});
+    callerId: TWILIO_NUMBER,
+    record: "record-from-answer",
+    recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
+    recordingStatusCallbackMethod: "POST",
+  });
 
-dial.number(session.customerPhone);
+  // ✅ Client hears whisper BEFORE call connects
+  dial.number(
+    {
+      url: "/twilio/voice/client-whisper",
+    },
+    session.customerPhone
+  );
 
   return send(res, twiml);
 }
 
 /* -----------------------------------------------------------
-   RECORDING WEBHOOK (UNCHANGED LOGIC)
+   CLIENT WHISPER (CALLED PARTY ONLY)
+----------------------------------------------------------- */
+
+export async function clientWhisper(req: Request, res: Response) {
+  const twiml = new VoiceResponse();
+
+  twiml.say(
+    "This call is being recorded for quality and training purposes."
+  );
+
+  return send(res, twiml);
+}
+
+/* -----------------------------------------------------------
+   RECORDING WEBHOOK
 ----------------------------------------------------------- */
 
 export async function handleRecording(req: Request, res: Response) {
   try {
     const {
-      CallSid,
       RecordingUrl,
       RecordingSid,
       RecordingDuration,
+      CallSid,
       ParentCallSid,
     } = req.body;
 
     const ext = req.query.ext as string;
-
     if (!ext) return res.send("<Response />");
 
     const session = await prisma.jobCallSession.findFirst({

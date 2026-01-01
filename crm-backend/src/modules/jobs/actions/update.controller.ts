@@ -149,6 +149,53 @@ console.log("🟡 INVALIDATION FLAGS:", {
 function normalizeText(v?: string | null) {
   return (v || "").trim();
 }
+
+// 📍 ADDRESS CHANGED
+const oldAddress = normalizeText(job.customerAddress);
+const newAddress = normalizeText(updatedJob.customerAddress);
+
+if (oldAddress !== newAddress) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "updated",
+    text: `📍 Address changed
+Old: ${oldAddress || "—"}
+New: ${newAddress || "—"}`,
+    userId: req.user!.id,
+  });
+}
+
+// 📞 PHONE 1 CHANGED
+const oldPhone1 = normalizeText(job.customerPhone);
+const newPhone1 = normalizeText(updatedJob.customerPhone);
+
+if (oldPhone1 !== newPhone1) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "updated",
+    text: `📞 Phone 1 changed
+Old: ${oldPhone1 || "—"}
+New: ${newPhone1 || "—"}`,
+    userId: req.user!.id,
+  });
+}
+
+// 📞 PHONE 2 CHANGED
+const oldPhone2 = normalizeText(job.customerPhone2);
+const newPhone2 = normalizeText(updatedJob.customerPhone2);
+
+if (oldPhone2 !== newPhone2) {
+  await logJobEvent({
+    jobId: job.id,
+    type: "updated",
+    text: `📞 Phone 2 changed
+Old: ${oldPhone2 || "—"}
+New: ${newPhone2 || "—"}`,
+    userId: req.user!.id,
+  });
+}
+
+
 // 📝 DESCRIPTION / NOTES CHANGED
 const oldDesc = normalizeText(job.description);
 const newDesc = normalizeText(updatedJob.description);
@@ -216,20 +263,37 @@ if (
   });
 }
 
-// 📅 APPOINTMENT CHANGED / CLEARED
+// 📅 APPOINTMENT CHANGED / CLEARED (WITH TIME)
 if (
   updates.scheduledAt !== undefined &&
-  updates.scheduledAt !== job.scheduledAt
+  String(updates.scheduledAt) !== String(job.scheduledAt)
 ) {
+  const oldTime = job.scheduledAt
+    ? new Date(job.scheduledAt).toLocaleString("en-US", {
+        timeZone: job.timezone || "UTC",
+      })
+    : null;
+
+  const newTime = updates.scheduledAt
+    ? new Date(updates.scheduledAt).toLocaleString("en-US", {
+        timeZone: job.timezone || "UTC",
+      })
+    : null;
+
   await logJobEvent({
     jobId: job.id,
     type: "scheduled",
     text: updates.scheduledAt
-      ? "Appointment scheduled/updated"
-      : "Appointment cleared",
+      ? `📅 Appointment updated
+Old: ${oldTime || "—"}
+New: ${newTime}`
+      : `📅 Appointment cleared
+Old: ${oldTime || "—"}`,
     userId: req.user!.id,
   });
 }
+
+
 // 👨‍🔧 TECHNICIAN CHANGED
 if (
   updates.technicianId !== undefined &&
