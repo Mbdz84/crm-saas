@@ -228,7 +228,7 @@ const selectedStatusIsCanceled = (() => {
   return (
     <>
       {/* HEADER */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Job #{displayId}</h1>
           <p className="text-green-500 text-sm">
@@ -247,7 +247,7 @@ const selectedStatusIsCanceled = (() => {
 )}
         </div>
 
-        <div className="flex justify-start items-center gap-3">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:gap-3">
           {/* Back */}
           <button
             onClick={() => router.back()}
@@ -339,7 +339,7 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex gap-2">
         {/* Phone */}
         <input
-          className="flex-1 border rounded p-2"
+  className="flex-1 sm:flex-auto max-w-[17ch] border rounded p-2"
           placeholder="Phone 1"
           value={phone}
           onChange={(e) =>
@@ -352,7 +352,7 @@ const selectedStatusIsCanceled = (() => {
 
         {/* Ext */}
         <input
-          className="w-24 border rounded p-2"
+          className="w-[9ch] border rounded p-2"
           placeholder="Ext"
           value={ext}
           onChange={(e) =>
@@ -380,7 +380,7 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex gap-2">
         {/* Phone */}
         <input
-          className="flex-1 border rounded p-2"
+  className="flex-1 sm:flex-auto max-w-[17ch] border rounded p-2"
           placeholder="Phone 2"
           value={phone}
           onChange={(e) =>
@@ -393,7 +393,7 @@ const selectedStatusIsCanceled = (() => {
 
         {/* Ext */}
         <input
-          className="w-24 border rounded p-2"
+          className="w-[9ch] border rounded p-2"
           placeholder="Ext"
           value={ext}
           onChange={(e) =>
@@ -669,27 +669,26 @@ const selectedStatusIsCanceled = (() => {
   <label className="block text-sm font-medium mb-1">Appointment</label>
 
   <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+  <div className="w-full sm:w-auto">
     <AppointmentPicker
       key={appointmentKey}   // 👈 forces full reset
       value={editableJob.scheduledAt || ""}
       onChange={(v: string) => setField("scheduledAt", v)}
     />
-
-    {/* Clear appointment */}
-    <button
-      type="button"
-      onClick={() => {
-        // Clear stored value
-        setField("scheduledAt", "");
-
-        // Force picker to reset hour/min UI
-        setAppointmentKey((k) => k + 1);
-      }}
-      className="px-3 py-2 text-sm border rounded text-gray-600 hover:bg-gray-100 sm:w-auto w-full"
-    >
-      Clear
-    </button>
   </div>
+
+  {/* Clear appointment */}
+  <button
+    type="button"
+    onClick={() => {
+      setField("scheduledAt", "");
+      setAppointmentKey((k) => k + 1);
+    }}
+    className="px-3 py-2 text-sm border rounded text-gray-600 hover:bg-gray-100 sm:w-auto w-full"
+  >
+    Clear
+  </button>
+</div>
 </div>
 {/* Add Reminder */}
 <div className="mt-4">
