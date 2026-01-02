@@ -123,7 +123,7 @@ function labelPhone(phone?: string) {
         {sortedRecordings.map((rec) => (
           <div
   key={rec.recordingSid || rec.callSid}
-  className="relative border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-sm"
+  className="relative border rounded-lg p-3 bg-gray-50 dark:bg-gray-900 shadow-sm grid grid-cols-1 md:grid-cols-[1fr_360px] gap-3"
 >
             {/* DATE + STATUS */}
             {/* STATUS BADGE */}
@@ -135,33 +135,35 @@ function labelPhone(phone?: string) {
   {(rec.status || "unknown").replace("-", " ").toUpperCase()}
 </span>
 
-{/* DATE */}
-<span className="text-xs text-gray-500 block mb-2">
-  {new Date(rec.createdAt).toLocaleString()}
-</span>
+{/* LEFT COLUMN – DATE + CALL INFO */}
+<div className="space-y-2">
+  <span className="text-sm font-medium text-gray-600 block">
+    {new Date(rec.createdAt).toLocaleString()}
+  </span>
 
-            {/* CALL INFO */}
-            <div className="text-sm mb-2">
-              <div>
-  <b>From:</b> {labelPhone(rec.from)}
+  <div className="text-sm space-y-1">
+    <div>
+      <b>From:</b> {labelPhone(rec.from)}
+    </div>
+    <div>
+      <b>To:</b> {labelPhone(rec.to)}
+    </div>
+    <div className="text-xs text-gray-500">
+      <b>Call SID:</b>{" "}
+      <span className="font-mono">{rec.callSid}</span>
+    </div>
+  </div>
 </div>
-<div>
-  <b>To:</b> {labelPhone(rec.to)}
-</div>
-              <div>
-                <b>Call SID:</b>{" "}
-                <span className="font-mono text-xs">{rec.callSid}</span>
-              </div>
-            </div>
 
             {/* PLAYER */}
-            <div className="mt-2 border rounded-md p-2 bg-white dark:bg-gray-800">
-              <div className="flex justify-between items-center">
-                <b className="text-xs">Recording</b>
-                <span className="text-xs text-gray-400">
-                  {rec.duration ? `${rec.duration}s` : ""}
-                </span>
-              </div>
+            {/* RIGHT COLUMN – RECORDING */}
+<div className="border rounded-md p-2 bg-white dark:bg-gray-800">
+              <div className="flex justify-between items-center mb-1">
+  <b className="text-xs uppercase tracking-wide">Recording</b>
+  <span className="text-xs text-gray-400">
+    {rec.duration ? `${rec.duration}s` : ""}
+  </span>
+</div>
 
               {rec.recordingSid ? (
   <>
@@ -172,12 +174,12 @@ function labelPhone(phone?: string) {
     />
 
     <a
-      href={rec.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      download
-      className="text-blue-600 underline text-xs mt-1 inline-block"
-    >
+  href={rec.url}
+  target="_blank"
+  rel="noopener noreferrer"
+  download
+  className="text-blue-600 underline text-xs mt-0.5 inline-block"
+>
       Download MP3
     </a>
   </>
