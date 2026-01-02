@@ -219,10 +219,10 @@ model JobRecord {
   id            String   @id @default(cuid())
   jobId         String
   callSid       String
-  recordingSid  String
+  recordingSid  String?
   from          String?
   to            String?
-  url           String
+  url           String?
   parentCallSid String?
   duration      Int?
   status        String?

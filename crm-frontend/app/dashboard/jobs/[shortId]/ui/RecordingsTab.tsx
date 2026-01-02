@@ -11,6 +11,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-green-600",
   busy: "bg-red-600",
   failed: "bg-red-700",
+  "no-answer": "bg-yellow-600",
   noanswer: "bg-yellow-600",
   ringing: "bg-blue-600",
   inprogress: "bg-blue-500",
@@ -43,6 +44,24 @@ const sortedRecordings = recordings
   );
 
   if (!job || tab !== "recordings") return null;
+
+
+  function normalizePhone(phone?: string) {
+  return (phone || "").replace(/[^\d]/g, "").slice(-10);
+}
+
+function labelPhone(phone?: string) {
+  if (!phone) return "Unknown";
+
+  const customer = normalizePhone(job?.customerPhone);
+  const current = normalizePhone(phone);
+
+  if (customer && current === customer) {
+    return `${phone} (Customer)`;
+  }
+
+  return phone;
+}
 
   /* ----------------------------------------------------------
      LOAD RECORDINGS
@@ -103,28 +122,32 @@ const sortedRecordings = recordings
       <div className="space-y-3">
         {sortedRecordings.map((rec) => (
           <div
-            key={rec.recordingSid}
-            className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-sm"
-          >
+  key={rec.recordingSid || rec.callSid}
+  className="relative border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-sm"
+>
             {/* DATE + STATUS */}
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-gray-500">
-                {new Date(rec.createdAt).toLocaleString()}
-              </span>
+            {/* STATUS BADGE */}
+<span
+  className={`absolute top-3 right-3 text-xs text-white px-2 py-1 rounded ${
+    statusColors[rec.status?.toLowerCase() || "unknown"]
+  }`}
+>
+  {(rec.status || "unknown").replace("-", " ").toUpperCase()}
+</span>
 
-              <span
-                className={`text-xs text-white px-2 py-1 rounded ${
-                  statusColors[rec.status?.toLowerCase() || "unknown"]
-                }`}
-              >
-                {(rec.status || "Unknown").toUpperCase()}
-              </span>
-            </div>
+{/* DATE */}
+<span className="text-xs text-gray-500 block mb-2">
+  {new Date(rec.createdAt).toLocaleString()}
+</span>
 
             {/* CALL INFO */}
             <div className="text-sm mb-2">
-              <div><b>From:</b> {rec.from || "Unknown"}</div>
-              <div><b>To:</b> {rec.to || "Unknown"}</div>
+              <div>
+  <b>From:</b> {labelPhone(rec.from)}
+</div>
+<div>
+  <b>To:</b> {labelPhone(rec.to)}
+</div>
               <div>
                 <b>Call SID:</b>{" "}
                 <span className="font-mono text-xs">{rec.callSid}</span>
@@ -140,21 +163,29 @@ const sortedRecordings = recordings
                 </span>
               </div>
 
-              <audio
-                controls
-                src={rec.url}
-                className="mt-1 w-full rounded"
-              />
+              {rec.recordingSid ? (
+  <>
+    <audio
+      controls
+      src={rec.url}
+      className="mt-1 w-full rounded"
+    />
 
-              <a
-                href={rec.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                className="text-blue-600 underline text-xs mt-1 inline-block"
-              >
-                Download MP3
-              </a>
+    <a
+      href={rec.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      download
+      className="text-blue-600 underline text-xs mt-1 inline-block"
+    >
+      Download MP3
+    </a>
+  </>
+) : (
+  <div className="text-xs text-red-600 font-medium mt-2">
+    Call failed ({rec.status})
+  </div>
+)}
 
               {/* TRANSCRIPT */}
               {rec.transcript && (

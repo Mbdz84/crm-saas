@@ -4,6 +4,7 @@ import {
   handleExtension,
   handleRecording,
   clientWhisper,
+  dialComplete,
 } from "./voice.controller";
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
    MAIN INBOUND TWILIO VOICE WEBHOOK
 ----------------------------------------------------------- */
 router.post("/voice", inboundVoice);
+router.post("/voice/dial-complete", dialComplete);
 
 /* -----------------------------------------------------------
    EXTENSION HANDLER (DTMF)

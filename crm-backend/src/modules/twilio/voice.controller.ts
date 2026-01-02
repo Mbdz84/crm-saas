@@ -54,6 +54,8 @@ export async function inboundVoice(req: Request, res: Response) {
   record: "record-from-answer",
   recordingStatusCallback: "/twilio/recording",
   recordingStatusCallbackMethod: "POST",
+  action: "/twilio/voice/dial-complete",
+  method: "POST",
 });
 
   dial.number(clientSession.lastCallerPhone);
@@ -123,12 +125,20 @@ export async function handleExtension(req: Request, res: Response) {
      CONNECT — CLIENT WHISPER
   --------------------------------------- */
   const dial = twiml.dial({
-    callerId: TWILIO_NUMBER,
-    record: "record-from-answer",
-    recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
-    recordingStatusCallbackMethod: "POST",
-  });
-
+  callerId: TWILIO_NUMBER,
+  record: "record-from-answer",
+  recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
+  recordingStatusCallbackMethod: "POST",
+  action: "/twilio/voice/dial-complete",
+  method: "POST",
+});
+// 🔑 Track outbound tech → client calls (for failed/no-answer)
+await prisma.jobCallSession.update({
+  where: { id: session.id },
+  data: {
+    lastOutboundCallSid: req.body.CallSid,
+  },
+});
   // ✅ Client hears whisper BEFORE call connects
   dial.number(
     {
@@ -216,4 +226,53 @@ export async function handleRecording(req: Request, res: Response) {
     console.error("🔥 Recording webhook error", err);
     return res.send("<Response />");
   }
+}
+export async function dialComplete(req: Request, res: Response) {
+  const {
+    DialCallStatus,   // completed | busy | no-answer | failed
+    DialCallSid,
+    DialCallDuration,
+    CallSid,
+  } = req.body;
+
+  console.log("📞 Dial completed", {
+    DialCallStatus,
+    DialCallSid,
+    DialCallDuration,
+    CallSid,
+  });
+
+  // completed calls are handled by recording webhook
+  if (DialCallStatus === "completed") {
+    return res.send("<Response />");
+  }
+
+  // match session (client callback OR tech call)
+  const session = await prisma.jobCallSession.findFirst({
+    where: {
+      OR: [
+  { lastInboundCallSid: CallSid },
+  { lastOutboundCallSid: CallSid }, // ✅ MATCH PARENT SID
+],
+    },
+  });
+
+  if (!session) {
+    console.warn("⚠️ Failed call not matched to session");
+    return res.send("<Response />");
+  }
+
+  await prisma.jobRecord.create({
+    data: {
+      jobId: session.jobId,
+      callSid: DialCallSid || CallSid,
+      recordingSid: null,      // ❌ no recording
+      url: null,
+      duration: Number(DialCallDuration) || 0,
+      status: DialCallStatus,  // 👈 IMPORTANT
+    },
+  });
+
+  console.log("❌ Failed call saved", DialCallStatus);
+  return res.send("<Response />");
 }
