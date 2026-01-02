@@ -19,9 +19,28 @@ const statusColors: Record<string, string> = {
 };
 
 export default function RecordingsTab() {
-  const { job, tab, base, setJob, shortId } = useJob();
+  const { job, tab, base, shortId } = useJob();
+
+  const [recordings, setRecordings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [openTranscript, setOpenTranscript] = useState<string | null>(null);
+
+  /* ----------------------------------------------------------
+     AUTO LOAD WHEN TAB OPENS
+  ---------------------------------------------------------- */
+  useEffect(() => {
+    if (tab === "recordings") {
+      loadRecordings(false);
+    }
+  }, [tab]);
+
+const sortedRecordings = recordings
+  .slice()
+  .sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() -
+      new Date(a.createdAt).getTime()
+  );
 
   if (!job || tab !== "recordings") return null;
 
@@ -30,28 +49,34 @@ export default function RecordingsTab() {
   ---------------------------------------------------------- */
   async function loadRecordings(showToast = true) {
     setLoading(true);
+    console.log("🎧 Loading recordings…");
+
     try {
       const res = await fetch(`${base}/jobs/${shortId}/recordings`, {
         credentials: "include",
+        cache: "no-store",
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
-        showToast && toast.error("Failed to load recordings");
-        return;
+        throw new Error(`HTTP ${res.status}`);
       }
 
-      setJob((prev: any) => ({ ...prev!, recordings: data }));
+      const data = await res.json();
+      console.log("✅ Recordings loaded:", data);
+
+      setRecordings(data);
       showToast && toast.success("Recordings updated");
-    } catch {
-      showToast && toast.error("Network error");
+    } catch (err) {
+      console.error("❌ loadRecordings failed", err);
+      showToast && toast.error("Failed to load recordings");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  const recordings = (job as any).recordings || [];
-
+  /* ----------------------------------------------------------
+     UI
+  ---------------------------------------------------------- */
   return (
     <div className="space-y-4 mt-4">
       {/* HEADER */}
@@ -59,10 +84,11 @@ export default function RecordingsTab() {
         <h2 className="text-lg font-semibold">Call Recordings</h2>
 
         <button
+          type="button"
           onClick={() => loadRecordings(true)}
-          className={`px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm`}
+          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm"
         >
-          {loading ? "Refreshing..." : "Refresh"}
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
       </div>
 
@@ -73,16 +99,14 @@ export default function RecordingsTab() {
         </p>
       )}
 
-      {/* ----------------------------------------------------------
-          RECORDINGS LIST
-      ---------------------------------------------------------- */}
+      {/* RECORDINGS LIST */}
       <div className="space-y-3">
-        {recordings.map((rec: any) => (
+        {sortedRecordings.map((rec) => (
           <div
-            key={rec.callSid}
+            key={rec.recordingSid}
             className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-900 shadow-sm"
           >
-            {/* TOP LINE: DATE + STATUS */}
+            {/* DATE + STATUS */}
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs text-gray-500">
                 {new Date(rec.createdAt).toLocaleString()}
@@ -97,31 +121,17 @@ export default function RecordingsTab() {
               </span>
             </div>
 
-            {/* LIVE CALL INDICATOR */}
-            {rec.status === "in-progress" && (
-              <div className="flex items-center gap-2 text-green-600 text-sm font-medium mb-2">
-                <span className="animate-pulse h-3 w-3 rounded-full bg-green-500"></span>
-                Call in progress…
-              </div>
-            )}
-
             {/* CALL INFO */}
-            <div className="text-sm mb-2 leading-tight">
-              <div>
-                <b>From:</b> {rec.from || "Unknown"}
-              </div>
-              <div>
-                <b>To:</b> {rec.to || "Unknown"}
-              </div>
+            <div className="text-sm mb-2">
+              <div><b>From:</b> {rec.from || "Unknown"}</div>
+              <div><b>To:</b> {rec.to || "Unknown"}</div>
               <div>
                 <b>Call SID:</b>{" "}
                 <span className="font-mono text-xs">{rec.callSid}</span>
               </div>
             </div>
 
-            {/* ----------------------------------------------------------
-                RECORDING PLAYER
-            ---------------------------------------------------------- */}
+            {/* PLAYER */}
             <div className="mt-2 border rounded-md p-2 bg-white dark:bg-gray-800">
               <div className="flex justify-between items-center">
                 <b className="text-xs">Recording</b>
@@ -132,21 +142,21 @@ export default function RecordingsTab() {
 
               <audio
                 controls
-                src={`${base}/twilio/recording/${rec.recordingSid}`}
+                src={rec.url}
                 className="mt-1 w-full rounded"
               />
 
               <a
-                href={`${base}/twilio/recording/${rec.recordingSid}`}
+                href={rec.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 download
                 className="text-blue-600 underline text-xs mt-1 inline-block"
               >
                 Download MP3
               </a>
 
-              {/* ----------------------------------------------------------
-                  TRANSCRIPT COLLAPSIBLE
-              ---------------------------------------------------------- */}
+              {/* TRANSCRIPT */}
               {rec.transcript && (
                 <div className="mt-2">
                   <button

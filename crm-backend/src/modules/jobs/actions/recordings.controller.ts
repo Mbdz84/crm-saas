@@ -8,6 +8,10 @@ const twilioClient = twilio(
 );
 
 export async function getJobRecordings(req: Request, res: Response) {
+  console.log("📞 GET /jobs/:shortId/recordings HIT", {
+  shortId: req.params.shortId,
+  companyId: req.user?.companyId,
+});
   try {
     const job = await prisma.job.findFirst({
       where: {
@@ -19,53 +23,52 @@ export async function getJobRecordings(req: Request, res: Response) {
       },
     });
 
-    if (!job) return res.status(404).json({ error: "Job not found" });
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
 
     const results: any[] = [];
 
     for (const rec of job.records) {
       try {
+        // Fetch call details
         const call = await twilioClient.calls(rec.callSid).fetch();
 
+        // Fetch recordings for this call
         const twilioRecordings = await twilioClient
           .calls(rec.callSid)
           .recordings.list();
 
-        const formattedRecordings = [];
-
         for (const r of twilioRecordings) {
-          const mp3Url =
-            `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${r.sid}.mp3`;
-
           let transcript = "";
 
           try {
-            const transList = await twilioClient
+            const transcriptions = await twilioClient
               .recordings(r.sid)
               .transcriptions.list();
 
-            if (transList.length > 0) {
-              transcript = transList[0].transcriptionText || "";
+            if (transcriptions.length > 0) {
+              transcript =
+                transcriptions[0].transcriptionText || "";
             }
-          } catch {}
+          } catch {
+            // transcription optional
+          }
 
-          formattedRecordings.push({
-            recordingSid: r.sid,
-            duration: r.duration,
-            url: mp3Url,
-            transcript,
-          });
+          results.push({
+  recordingSid: r.sid,                      // required
+  callSid: rec.callSid,
+  createdAt: rec.createdAt,
+  from: call.from,
+  to: call.to,
+  status: call.status,
+  duration: r.duration,
+  transcript,
+
+  // ✅ THIS FIXES PLAYER + DOWNLOAD
+  url: `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${r.sid}`,
+});
         }
-
-        results.push({
-          id: rec.id,
-          callSid: rec.callSid,
-          createdAt: rec.createdAt,
-          from: call.from,
-          to: call.to,
-          status: call.status,
-          recordings: formattedRecordings,
-        });
       } catch (err) {
         console.error("❌ Twilio recording fetch error", err);
       }

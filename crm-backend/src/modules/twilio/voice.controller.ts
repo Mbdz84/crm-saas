@@ -172,7 +172,7 @@ export async function handleRecording(req: Request, res: Response) {
         jobId: session.jobId,
         callSid: CallSid,
         recordingSid: RecordingSid,
-        url: `${RecordingUrl}.mp3`,
+        url: `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${RecordingSid}.mp3`,
         duration: Number(RecordingDuration) || null,
         parentCallSid: ParentCallSid || null,
       },

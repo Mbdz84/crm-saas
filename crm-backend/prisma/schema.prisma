@@ -198,6 +198,8 @@ model JobCallSession {
   extension       String
 
   lastCallerPhone String?           // ← ADD
+  lastInboundCallSid   String?
+  lastOutboundCallSid String?
   active          Boolean @default(true) // ← ADD
 
   createdAt DateTime @default(now())
