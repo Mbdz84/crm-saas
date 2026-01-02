@@ -41,14 +41,24 @@ export async function inboundVoice(req: Request, res: Response) {
     });
 
     if (clientSession?.lastCallerPhone) {
-      const dial = twiml.dial({
-        callerId: TWILIO_NUMBER,
-        record: "record-from-answer",
-      });
+  // 🔑 SAVE inbound CallSid so recording can be matched later
+  await prisma.jobCallSession.update({
+    where: { id: clientSession.id },
+    data: {
+      lastInboundCallSid: req.body.CallSid,
+    },
+  });
 
-      dial.number(clientSession.lastCallerPhone);
-      return send(res, twiml);
-    }
+  const dial = twiml.dial({
+  callerId: TWILIO_NUMBER,
+  record: "record-from-answer",
+  recordingStatusCallback: "/twilio/recording",
+  recordingStatusCallbackMethod: "POST",
+});
+
+  dial.number(clientSession.lastCallerPhone);
+  return send(res, twiml);
+}
   }
 
   /* ---------------------------------------
@@ -158,29 +168,52 @@ export async function handleRecording(req: Request, res: Response) {
       ParentCallSid,
     } = req.body;
 
-    const ext = req.query.ext as string;
-    if (!ext) return res.send("<Response />");
-
-    const session = await prisma.jobCallSession.findFirst({
-      where: { extension: ext },
+    console.log("🎙 Recording webhook", {
+      RecordingSid,
+      CallSid,
+      ParentCallSid,
     });
 
-    if (!session) return res.send("<Response />");
+    let session = null;
+
+    // 1️⃣ TECH → CLIENT (extension-based)
+    const ext = req.query.ext as string | undefined;
+    if (ext) {
+      session = await prisma.jobCallSession.findFirst({
+        where: { extension: ext },
+      });
+    }
+
+    // 2️⃣ CLIENT → TECH CALLBACK (match inbound CallSid)
+    if (!session && CallSid) {
+      session = await prisma.jobCallSession.findFirst({
+        where: { lastInboundCallSid: CallSid },
+      });
+    }
+
+    if (!session) {
+      console.warn("⚠️ Recording not matched to any session", {
+        RecordingSid,
+        CallSid,
+      });
+      return res.send("<Response />");
+    }
 
     await prisma.jobRecord.create({
       data: {
         jobId: session.jobId,
         callSid: CallSid,
         recordingSid: RecordingSid,
-        url: `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${RecordingSid}.mp3`,
+        url: RecordingUrl, // ❌ NO .mp3
         duration: Number(RecordingDuration) || null,
         parentCallSid: ParentCallSid || null,
       },
     });
 
+    console.log("✅ Recording saved for job", session.jobId);
     return res.send("<Response />");
   } catch (err) {
-    console.error("RECORDING ERROR", err);
+    console.error("🔥 Recording webhook error", err);
     return res.send("<Response />");
   }
 }
