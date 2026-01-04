@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { toZonedTime, format } from "date-fns-tz";
 import { formatPhone } from "@/utils/formatPhone";
 
+
 function splitPhoneExt(value?: string) {
   if (!value) return { phone: "", ext: "" };
 
@@ -85,6 +86,7 @@ function fromLocalInputValue(value: string, tz?: string) {
    MAIN OVERVIEW TAB
 ----------------------------------------------------------- */
 export default function OverviewTab() {
+  const [prevTechId, setPrevTechId] = useState<string | null>(null);
   const userRole =
     typeof window !== "undefined" ? localStorage.getItem("role") : null;
   const techRole = userRole;
@@ -92,7 +94,7 @@ export default function OverviewTab() {
   const [appointmentKey, setAppointmentKey] = useState(0);
   const [showSmsModal, setShowSmsModal] = useState(false);
   const [smsPreview, setSmsPreview] = useState<any>(null);
-  
+
   const jobCtx = useJob();
   const {
     job,
@@ -121,6 +123,8 @@ export default function OverviewTab() {
     setCancelReason,
   } = jobCtx;
 
+  const { refreshExt } = useJob(); // ✅ CORRECT SOURCE
+
 type Reminder = {
   id: string;
   minutes: number;
@@ -147,11 +151,19 @@ useEffect(() => {
 
   // ✅ always safe array
   const techList = Array.isArray(techs) ? techs : [];
+  
+  const selectedTech =
+  editableJob?.technicianId
+    ? techList.find((t: any) => t.id === editableJob.technicianId)
+    : null;
+
+    const maskedNumber =
+  selectedTech?.maskedTwilioPhoneNumber
+    ?.replace(/[^\d]/g, "") || "";
 
   const {
     setField,
     saveChanges,
-    refreshExt,
     addPaymentRow,
     removePaymentRow,
     updatePayment,
@@ -169,6 +181,22 @@ useEffect(() => {
     setDisableAutoAdjust,
     setInvoiceState,
   } = useJobActions();
+
+  useEffect(() => {
+  if (!editableJob?.technicianId) return;
+
+  // First render → remember tech only
+  if (prevTechId === null) {
+    setPrevTechId(editableJob.technicianId);
+    return;
+  }
+
+  // Technician actually changed
+  if (prevTechId !== editableJob.technicianId) {
+    refreshExt(); // ✅ only here
+    setPrevTechId(editableJob.technicianId);
+  }
+}, [editableJob?.technicianId]);
 
   if (!job || !editableJob || tab !== "overview") return null;
 
@@ -419,10 +447,7 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex items-center gap-2 font-mono">
         <span>Phone 1</span>
         <span className="text-gray-400">→</span>
-        <span>
-          {process.env.NEXT_PUBLIC_TWILIO_NUMBER?.replace(/[^\d]/g, "")},
-          {phone1Ext}
-        </span>
+        <span>{(maskedNumber || "—")},{phone1Ext}</span>
       </div>
     )}
 
@@ -430,15 +455,12 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex items-center gap-2 font-mono mt-1">
         <span>Phone 2</span>
         <span className="text-gray-400">→</span>
-        <span>
-          {process.env.NEXT_PUBLIC_TWILIO_NUMBER?.replace(/[^\d]/g, "")},
-          {phone2Ext}
-        </span>
+        <span>{(maskedNumber || "—")},{phone2Ext}</span>
       </div>
     )}
 
     <button
-      onClick={refreshExt}
+      onClick={() => refreshExt()}
       className="mt-2 text-blue-600 underline text-sm"
     >
       Refresh Extensions
@@ -537,10 +559,19 @@ const selectedStatusIsCanceled = (() => {
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <select
-                className="border rounded p-2 flex-1"
-                value={editableJob.technicianId || ""}
-                onChange={(e) => setField("technicianId", e.target.value)}
-              >
+  className="border rounded p-2 flex-1"
+  value={editableJob.technicianId || ""}
+  onChange={(e) => {
+    const newTechId = e.target.value;
+
+    // 1️⃣ Update technician locally ONLY
+    setField("technicianId", newTechId);
+
+    // 2️⃣ Regenerate extensions AFTER tech change
+    // ⚠️ does NOT refetch job
+
+  }}
+>
                 <option value="">Unassigned</option>
                 {techList.map((t: any) => (
                   <option key={t.id} value={t.id}>

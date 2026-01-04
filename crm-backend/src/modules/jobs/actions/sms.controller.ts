@@ -12,6 +12,17 @@ const twilioClient = twilio(
 
 const TWILIO_NUMBER = process.env.TWILIO_NUMBER;
 
+
+async function getTechMaskedNumber(tech: any) {
+  if (!tech?.maskedTwilioNumberSid) return null;
+
+  const number = await twilioClient
+    .incomingPhoneNumbers(tech.maskedTwilioNumberSid)
+    .fetch();
+
+  return number.phoneNumber; // +E164
+}
+
 /* ============================================================
    SEND TECH SMS  (honors maskedCalls flag)
 ============================================================ */
@@ -109,7 +120,10 @@ const sessions = await prisma.jobCallSession.findMany({
   },
 });
   if (sessions.length && TWILIO_NUMBER) {
-    const clean = TWILIO_NUMBER.replace(/^\+1/, "").replace(/[^\d]/g, "");
+    const masked = await getTechMaskedNumber(tech);
+const clean = (masked || TWILIO_NUMBER)
+  .replace(/^\+1/, "")
+  .replace(/[^\d]/g, "");
 
     jobForSms.customerPhone = sessions
       .map((s: { extension: string }) => `${clean},${s.extension}`)
@@ -280,14 +294,16 @@ export async function previewTechSms(req: Request, res: Response) {
     const jobForSms = { ...job };
 
     if (maskingEnabled && job.callSessions?.length) {
-      const clean = process.env.TWILIO_NUMBER!
-        .replace(/^\+1/, "")
-        .replace(/[^\d]/g, "");
+      const masked = await getTechMaskedNumber(tech);
+const clean = (masked || process.env.TWILIO_NUMBER!)
+  .replace(/^\+1/, "")
+  .replace(/[^\d]/g, "");
 
       if (maskingEnabled && job.callSessions?.length) {
-  const clean = process.env.TWILIO_NUMBER!
-    .replace(/^\+1/, "")
-    .replace(/[^\d]/g, "");
+  const masked = await getTechMaskedNumber(tech);
+const clean = (masked || process.env.TWILIO_NUMBER!)
+  .replace(/^\+1/, "")
+  .replace(/[^\d]/g, "");
 
   // ✅ enforce ONE session per phone type
   const primary = job.callSessions.find(

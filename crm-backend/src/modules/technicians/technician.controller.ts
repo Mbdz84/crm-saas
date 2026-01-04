@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import bcrypt from "bcryptjs";
+import twilio from "twilio";
 
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
 /* ----------------------------------------
    Helper: Normalize phone to E.164 (+1...)
 -----------------------------------------*/
@@ -54,6 +59,8 @@ export async function getTechnicians(req: any, res: Response) {
         active: true,
         receiveSms: true,
         maskedCalls: true,
+        maskedTwilioNumberSid: true,
+        maskedTwilioPhoneNumber: true,
         payrollEnabled: true,
         canSeeClosing: true,
         canViewAllJobs: true,
@@ -231,7 +238,19 @@ if (f.active !== undefined) allowedFields.active = Boolean(f.active);
 // Toggles
 if (f.receiveSms !== undefined) allowedFields.receiveSms = Boolean(f.receiveSms);
 if (f.maskedCalls !== undefined) allowedFields.maskedCalls = Boolean(f.maskedCalls);
-if (f.payrollEnabled !== undefined) allowedFields.payrollEnabled = Boolean(f.payrollEnabled);
+if (f.maskedTwilioNumberSid !== undefined) {
+  allowedFields.maskedTwilioNumberSid = f.maskedTwilioNumberSid || null;
+
+  if (f.maskedTwilioNumberSid) {
+    const num = await twilioClient
+      .incomingPhoneNumbers(f.maskedTwilioNumberSid)
+      .fetch();
+
+    allowedFields.maskedTwilioPhoneNumber = num.phoneNumber; // +E164
+  } else {
+    allowedFields.maskedTwilioPhoneNumber = null;
+  }
+}if (f.payrollEnabled !== undefined) allowedFields.payrollEnabled = Boolean(f.payrollEnabled);
 if (f.canSeeClosing !== undefined) allowedFields.canSeeClosing = Boolean(f.canSeeClosing);
 if (f.canViewAllJobs !== undefined) allowedFields.canViewAllJobs = Boolean(f.canViewAllJobs);
 

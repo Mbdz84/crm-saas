@@ -24,6 +24,7 @@ import jobTypeRoutes from "./modules/jobTypes/jobType.routes";
 import leadSourceRoutes from "./modules/leadSources/leadSource.routes";
 import jobStatusRoutes from "./modules/jobStatus/jobStatus.routes";
 import smsSettingsRouter from "./modules/smsSettings/smsSettings.routes";
+import systemRouter from "./modules/system/system.routes";
 
 import reportsRoutes from "./modules/reports/reports.routes";
 
@@ -93,6 +94,7 @@ app.use("/users", authMiddleware, tenantMiddleware, userRoutes);
 app.use("/jobs", authMiddleware, tenantMiddleware, jobRoutes);
 app.use("/technicians", authMiddleware, tenantMiddleware, technicianRoutes);
 app.use("/settings", authMiddleware, tenantMiddleware, settingsRoutes);
+app.use("/system", authMiddleware, tenantMiddleware, systemRouter);
 app.use("/job-status", jobStatusRoutes);
 app.use("/job-types", authMiddleware, tenantMiddleware, jobTypeRoutes);
 // PUBLIC (no auth needed)

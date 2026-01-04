@@ -2,13 +2,40 @@ import { Request, Response } from "express";
 import twilio from "twilio";
 import prisma from "../../prisma/client";
 
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
+
 const VoiceResponse = twilio.twiml.VoiceResponse;
-const TWILIO_NUMBER = process.env.TWILIO_NUMBER!;
+
+/* -----------------------------------------------------------
+   RESOLVE CALLER ID (PER TECH)
+----------------------------------------------------------- */
+async function getCallerIdForSession(session: any): Promise<string> {
+  if (!session?.technicianId) {
+    return process.env.TWILIO_NUMBER!;
+  }
+
+  const tech = await prisma.user.findUnique({
+    where: { id: session.technicianId },
+    select: { maskedTwilioNumberSid: true },
+  });
+
+  if (!tech?.maskedTwilioNumberSid) {
+    return process.env.TWILIO_NUMBER!;
+  }
+
+  const number = await twilioClient
+    .incomingPhoneNumbers(tech.maskedTwilioNumberSid)
+    .fetch();
+
+  return number.phoneNumber; // +E164
+}
 
 /* -----------------------------------------------------------
    HELPERS
 ----------------------------------------------------------- */
-
 function normalize(phone?: string): string {
   return (phone || "").replace(/[^\d]/g, "").slice(-10);
 }
@@ -21,7 +48,6 @@ function send(res: Response, twiml: twilio.twiml.VoiceResponse) {
 /* -----------------------------------------------------------
    ENTRY POINT — ALL INBOUND CALLS
 ----------------------------------------------------------- */
-
 export async function inboundVoice(req: Request, res: Response) {
   const twiml = new VoiceResponse();
   const from = normalize(req.body.From);
@@ -41,64 +67,56 @@ export async function inboundVoice(req: Request, res: Response) {
     });
 
     if (clientSession?.lastCallerPhone) {
-  // 🔑 SAVE inbound CallSid so recording can be matched later
-  await prisma.jobCallSession.update({
-    where: { id: clientSession.id },
-    data: {
-      lastInboundCallSid: req.body.CallSid,
-    },
-  });
+      // Save inbound CallSid
+      await prisma.jobCallSession.update({
+        where: { id: clientSession.id },
+        data: { lastInboundCallSid: req.body.CallSid },
+      });
 
-  const dial = twiml.dial({
-  callerId: TWILIO_NUMBER,
-  record: "record-from-answer",
-  recordingStatusCallback: "/twilio/recording",
-  recordingStatusCallbackMethod: "POST",
-  action: "/twilio/voice/dial-complete",
-  method: "POST",
-});
+      const callerId = await getCallerIdForSession(clientSession);
 
-  dial.number(clientSession.lastCallerPhone);
-  return send(res, twiml);
-}
+      const dial = twiml.dial({
+        callerId,
+        record: "record-from-answer",
+        recordingStatusCallback: "/twilio/recording",
+        recordingStatusCallbackMethod: "POST",
+        action: "/twilio/voice/dial-complete",
+        method: "POST",
+      });
+
+      dial.number(clientSession.lastCallerPhone);
+      return send(res, twiml);
+    }
   }
 
   /* ---------------------------------------
-     EXTENSION FLOW — SINGLE 15s WAIT
+     EXTENSION FLOW
   --------------------------------------- */
   const gather = twiml.gather({
     numDigits: 4,
-    timeout: 15, // ✅ single 15s wait
+    timeout: 15,
     method: "POST",
     action: "/twilio/voice/extension",
   });
 
   gather.say("Please dial the extension.");
-
   return send(res, twiml);
 }
 
 /* -----------------------------------------------------------
    EXTENSION HANDLER
 ----------------------------------------------------------- */
-
 export async function handleExtension(req: Request, res: Response) {
   const twiml = new VoiceResponse();
   const from = normalize(req.body.From);
   const digits = req.body.Digits;
 
-  /* ---------------------------------------
-     NO INPUT → HANG UP
-  --------------------------------------- */
   if (!digits) {
     twiml.say("No extension was entered. Goodbye.");
     twiml.hangup();
     return send(res, twiml);
   }
 
-  /* ---------------------------------------
-     VALIDATE EXTENSION
-  --------------------------------------- */
   const session = await prisma.jobCallSession.findFirst({
     where: {
       extension: digits,
@@ -113,37 +131,33 @@ export async function handleExtension(req: Request, res: Response) {
     return send(res, twiml);
   }
 
-  /* ---------------------------------------
-     SAVE LAST CALLER
-  --------------------------------------- */
   await prisma.jobCallSession.update({
     where: { id: session.id },
     data: { lastCallerPhone: from },
   });
 
-  /* ---------------------------------------
-     CONNECT — CLIENT WHISPER
-  --------------------------------------- */
-  const dial = twiml.dial({
-  callerId: TWILIO_NUMBER,
+  const callerId = await getCallerIdForSession(session);
+
+
+console.log("📞 FORCED TECH CALLER ID =", callerId);
+
+const dial = twiml.dial({
+  callerId, // ✅ ALWAYS technician’s assigned masked number
   record: "record-from-answer",
   recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
   recordingStatusCallbackMethod: "POST",
   action: "/twilio/voice/dial-complete",
   method: "POST",
 });
-// 🔑 Track outbound tech → client calls (for failed/no-answer)
-await prisma.jobCallSession.update({
-  where: { id: session.id },
-  data: {
-    lastOutboundCallSid: req.body.CallSid,
-  },
-});
-  // ✅ Client hears whisper BEFORE call connects
+
+  // Track outbound parent CallSid
+  await prisma.jobCallSession.update({
+    where: { id: session.id },
+    data: { lastOutboundCallSid: req.body.CallSid },
+  });
+
   dial.number(
-    {
-      url: "/twilio/voice/client-whisper",
-    },
+    { url: "/twilio/voice/client-whisper" },
     session.customerPhone
   );
 
@@ -151,23 +165,17 @@ await prisma.jobCallSession.update({
 }
 
 /* -----------------------------------------------------------
-   CLIENT WHISPER (CALLED PARTY ONLY)
+   CLIENT WHISPER
 ----------------------------------------------------------- */
-
 export async function clientWhisper(req: Request, res: Response) {
   const twiml = new VoiceResponse();
-
-  twiml.say(
-    "This call is being recorded for quality and training purposes."
-  );
-
+  twiml.say("This call is being recorded for quality control.");
   return send(res, twiml);
 }
 
 /* -----------------------------------------------------------
    RECORDING WEBHOOK
 ----------------------------------------------------------- */
-
 export async function handleRecording(req: Request, res: Response) {
   try {
     const {
@@ -178,15 +186,8 @@ export async function handleRecording(req: Request, res: Response) {
       ParentCallSid,
     } = req.body;
 
-    console.log("🎙 Recording webhook", {
-      RecordingSid,
-      CallSid,
-      ParentCallSid,
-    });
-
     let session = null;
 
-    // 1️⃣ TECH → CLIENT (extension-based)
     const ext = req.query.ext as string | undefined;
     if (ext) {
       session = await prisma.jobCallSession.findFirst({
@@ -194,7 +195,6 @@ export async function handleRecording(req: Request, res: Response) {
       });
     }
 
-    // 2️⃣ CLIENT → TECH CALLBACK (match inbound CallSid)
     if (!session && CallSid) {
       session = await prisma.jobCallSession.findFirst({
         where: { lastInboundCallSid: CallSid },
@@ -202,10 +202,6 @@ export async function handleRecording(req: Request, res: Response) {
     }
 
     if (!session) {
-      console.warn("⚠️ Recording not matched to any session", {
-        RecordingSid,
-        CallSid,
-      });
       return res.send("<Response />");
     }
 
@@ -214,51 +210,43 @@ export async function handleRecording(req: Request, res: Response) {
         jobId: session.jobId,
         callSid: CallSid,
         recordingSid: RecordingSid,
-        url: RecordingUrl, // ❌ NO .mp3
+        url: RecordingUrl,
         duration: Number(RecordingDuration) || null,
         parentCallSid: ParentCallSid || null,
       },
     });
 
-    console.log("✅ Recording saved for job", session.jobId);
     return res.send("<Response />");
-  } catch (err) {
-    console.error("🔥 Recording webhook error", err);
+  } catch {
     return res.send("<Response />");
   }
 }
+
+/* -----------------------------------------------------------
+   DIAL COMPLETE (FAILED CALLS)
+----------------------------------------------------------- */
 export async function dialComplete(req: Request, res: Response) {
   const {
-    DialCallStatus,   // completed | busy | no-answer | failed
+    DialCallStatus,
     DialCallSid,
     DialCallDuration,
     CallSid,
   } = req.body;
 
-  console.log("📞 Dial completed", {
-    DialCallStatus,
-    DialCallSid,
-    DialCallDuration,
-    CallSid,
-  });
-
-  // completed calls are handled by recording webhook
   if (DialCallStatus === "completed") {
     return res.send("<Response />");
   }
 
-  // match session (client callback OR tech call)
   const session = await prisma.jobCallSession.findFirst({
     where: {
       OR: [
-  { lastInboundCallSid: CallSid },
-  { lastOutboundCallSid: CallSid }, // ✅ MATCH PARENT SID
-],
+        { lastInboundCallSid: CallSid },
+        { lastOutboundCallSid: CallSid },
+      ],
     },
   });
 
   if (!session) {
-    console.warn("⚠️ Failed call not matched to session");
     return res.send("<Response />");
   }
 
@@ -266,13 +254,12 @@ export async function dialComplete(req: Request, res: Response) {
     data: {
       jobId: session.jobId,
       callSid: DialCallSid || CallSid,
-      recordingSid: null,      // ❌ no recording
+      recordingSid: null,
       url: null,
       duration: Number(DialCallDuration) || 0,
-      status: DialCallStatus,  // 👈 IMPORTANT
+      status: DialCallStatus,
     },
   });
 
-  console.log("❌ Failed call saved", DialCallStatus);
   return res.send("<Response />");
 }

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-
 import { toast } from "sonner";
+
 import PermissionsTab from "./tabs/PermissionsTab";
 import FinancialTab from "./tabs/FinancialTab";
 import AvailabilityTab from "./tabs/AvailabilityTab";
+import MaskedCallSettingsTab from "./tabs/maskedCallSettings";
 
 export default function TechnicianProfilePage() {
   const params = useParams();
@@ -19,8 +20,9 @@ export default function TechnicianProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Active tab
-  const [tab, setTab] = useState<"profile" | "permissions" | "financial" | "availability">("profile");
+  const [tab, setTab] = useState<
+    "profile" | "permissions" | "financial" | "availability" | "masked-calls"
+  >("profile");
 
   /* ============================================================
      LOAD TECHNICIAN
@@ -34,17 +36,26 @@ export default function TechnicianProfilePage() {
       const data = await res.json();
       if (!res.ok) return;
 
-      setTech(data.tech || data); // backend returns {tech}
+      setTech(data.tech || data);
     } catch (err) {
       console.error("LOAD TECH ERROR:", err);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => {
     loadTech();
   }, []);
+
+  /* ============================================================
+     SAFETY: EXIT MASKED TAB IF DISABLED
+  ============================================================ */
+  useEffect(() => {
+    if (!tech?.maskedCalls && tab === "masked-calls") {
+      setTab("profile");
+    }
+  }, [tech?.maskedCalls, tab]);
 
   /* ============================================================
      SAVE TECHNICIAN
@@ -56,17 +67,20 @@ export default function TechnicianProfilePage() {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(tech),
+      body: JSON.stringify({
+        ...tech,
+        maskedTwilioNumberSid: tech.maskedTwilioNumberSid || null,
+      }),
     });
 
     setSaving(false);
 
     if (res.ok) {
-  toast.success("Technician updated");
-  loadTech();
-} else {
-  toast.error("Failed to update technician");
-}
+      toast.success("Technician updated");
+      loadTech();
+    } else {
+      toast.error("Failed to update technician");
+    }
   };
 
   /* ============================================================
@@ -91,7 +105,6 @@ export default function TechnicianProfilePage() {
 
   return (
     <div className="p-6">
-
       {/* BACK BUTTON */}
       <button onClick={() => router.back()} className="text-blue-600 mb-4">
         ← Back
@@ -128,16 +141,21 @@ export default function TechnicianProfilePage() {
         >
           Availability
         </button>
+
+        {tech?.maskedCalls && (
+          <button
+            className={tab === "masked-calls" ? "font-bold text-blue-600" : ""}
+            onClick={() => setTab("masked-calls")}
+          >
+            Masked Calls
+          </button>
+        )}
       </div>
 
-      {/* TAB CONTENT */}
+      {/* MAIN CONTENT */}
       <div className="max-w-xl">
-
-        {/* PROFILE TAB */}
         {tab === "profile" && (
           <div className="space-y-6">
-
-            {/* NAME */}
             <div>
               <label className="font-medium block mb-1">Name</label>
               <input
@@ -147,7 +165,6 @@ export default function TechnicianProfilePage() {
               />
             </div>
 
-            {/* PHONE */}
             <div>
               <label className="font-medium block mb-1">Phone</label>
               <input
@@ -157,7 +174,6 @@ export default function TechnicianProfilePage() {
               />
             </div>
 
-            {/* EMAIL */}
             <div>
               <label className="font-medium block mb-1">Email</label>
               <input
@@ -167,90 +183,95 @@ export default function TechnicianProfilePage() {
               />
             </div>
 
-            {/* ACTIVE */}
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={tech.active}
                 onChange={(e) => setTech({ ...tech, active: e.target.checked })}
               />
-              <span>Active Technician</span>
+              Active Technician
             </label>
 
-            {/* RECEIVE SMS */}
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={tech.receiveSms}
-                onChange={(e) => setTech({ ...tech, receiveSms: e.target.checked })}
+                onChange={(e) =>
+                  setTech({ ...tech, receiveSms: e.target.checked })
+                }
               />
-              <span>Receive SMS</span>
+              Receive SMS
             </label>
 
-            {/* MASKED CALLS */}
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={tech.maskedCalls}
-                onChange={(e) => setTech({ ...tech, maskedCalls: e.target.checked })}
+                onChange={(e) =>
+                  setTech({ ...tech, maskedCalls: e.target.checked })
+                }
               />
-              <span>Masked Calls + Recording</span>
+              Masked Calls + Recording
             </label>
-{/* RESET PASSWORD */}
-<button
-  className="px-3 py-2 bg-orange-500 text-white rounded w-full"
-  onClick={async () => {
-    const newPass = prompt("Enter new password:");
 
-    if (!newPass) return;
-
-    await fetch(`${API}/technicians/${id}/reset-password`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: newPass }),
-    });
-
-    toast.success("Password reset");
-  }}
->
-  Reset Password
-</button>
-            {/* SAVE BUTTON */}
             <button
-              disabled={saving}
+              className="px-3 py-2 bg-blue-600 text-white rounded w-full"
               onClick={saveProfile}
-              className="px-4 py-2 bg-blue-600 text-white rounded w-full"
+              disabled={saving}
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
 
-            {/* DELETE BUTTON */}
             <button
+              className="px-3 py-2 bg-red-500 text-white rounded w-full"
               onClick={deleteTech}
-              className="px-4 py-2 bg-red-500 text-white rounded w-full"
             >
               Delete Technician
             </button>
           </div>
         )}
 
-        {/* PERMISSIONS */}
         {tab === "permissions" && (
-          <PermissionsTab tech={tech} setTech={setTech} save={saveProfile} saving={saving} />
+          <PermissionsTab
+            tech={tech}
+            setTech={setTech}
+            save={saveProfile}
+            saving={saving}
+          />
         )}
 
-        {/* FINANCIAL */}
         {tab === "financial" && (
-          <FinancialTab tech={tech} setTech={setTech} save={saveProfile} saving={saving} />
+          <FinancialTab
+            tech={tech}
+            setTech={setTech}
+            save={saveProfile}
+            saving={saving}
+          />
         )}
 
-        {/* AVAILABILITY */}
         {tab === "availability" && (
-          <AvailabilityTab tech={tech} reload={loadTech} setTech={setTech} save={saveProfile} saving={saving} />
+          <AvailabilityTab
+            tech={tech}
+            reload={loadTech}
+            setTech={setTech}
+            save={saveProfile}
+            saving={saving}
+          />
         )}
-
       </div>
+
+      {/* MASKED CALL SETTINGS (WIDER PANEL) */}
+      {tab === "masked-calls" && (
+        <div className="max-w-2xl mt-6">
+          <MaskedCallSettingsTab
+            technician={tech}
+            base={API}
+            onChange={(updates: any) =>
+              setTech((prev: any) => ({ ...prev, ...updates }))
+            }
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useJob } from "./JobProvider";
 import { toast } from "sonner";
+import { useRef } from "react";
 
 export function useJobActions() {
   const jobCtx = useJob();
@@ -37,6 +38,13 @@ export function useJobActions() {
 
   const shortId: string | undefined = job?.shortId;
 
+  const prevTechIdRef = useRef<string | null>(null);
+
+// initialize once job is loaded
+if (job && prevTechIdRef.current === null) {
+  prevTechIdRef.current = job.technicianId || null;
+}
+
   /* ---------------- BASIC EDIT ---------------- */
   function setField(field: string, value: any) {
     setEditableJob((prev: any) => ({
@@ -54,52 +62,48 @@ export function useJobActions() {
     return;
   }
 
+  const prevTechId = prevTechIdRef.current;
+  const newTechId = editableJob.technicianId || null;
+
   try {
+    // 1️⃣ Save job normally
     const res = await fetch(`${base}/jobs/${editableJob.shortId}`, {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-  ...editableJob,
-  closedAt: editableJob.closedAt ? new Date(editableJob.closedAt) : null, // ✅ add this line
-  ...extra,
-}),
+        ...editableJob,
+        closedAt: editableJob.closedAt
+          ? new Date(editableJob.closedAt)
+          : null,
+        ...extra,
+      }),
     });
 
     const data = await res.json();
     if (!res.ok) return toast.error(data.error || "Save failed");
 
-    toast.success("Saved");
-    reload();
-  } catch {
-    toast.error("Save failed");
-  }
-}
-
-  /* ---------------- REFRESH EXT ---------------- */
-  async function refreshExt() {
-    if (!shortId) return;
-    if (!base) {
-      toast.error("API base URL is not configured");
-      return;
-    }
-
-    try {
-      const res = await fetch(
-        `${base}/jobs/${shortId}/refresh-extension`,
+    // 2️⃣ If technician changed → regenerate extensions
+    if (prevTechId && prevTechId !== newTechId) {
+      await fetch(
+        `${base}/jobs/${editableJob.shortId}/refresh-extension`,
         {
           method: "POST",
           credentials: "include",
         }
       );
-
-      if (!res.ok) return toast.error("Failed to refresh");
-      toast.success("Extension refreshed");
-      reload();
-    } catch {
-      toast.error("Error refreshing extension");
     }
+
+    // 3️⃣ Update ref AFTER save
+    prevTechIdRef.current = newTechId;
+
+    toast.success("Saved");
+    reload(); // 🔥 reload AFTER extensions exist
+  } catch {
+    toast.error("Save failed");
   }
+}
+
 
   /* ---------------- PAYMENT FUNCTIONS ---------------- */
 
@@ -453,7 +457,6 @@ payments.forEach((p: any) => {
   return {
     setField,
     saveChanges,
-    refreshExt,
     addPaymentRow,
     removePaymentRow,
     updatePayment,

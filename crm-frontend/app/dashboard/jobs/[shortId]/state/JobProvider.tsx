@@ -76,7 +76,47 @@ export function JobProvider({
   const [result, setResult] = useState<any>(null);
 
   /* ----------------- API LOADERS ----------------- */
+async function refreshExt(options?: { silent?: boolean }) {
+  if (!base || !shortId) return;
 
+  try {
+    const res = await fetch(
+      `${base}/jobs/${shortId}/refresh-extension`,
+      {
+        method: "POST",
+        credentials: "include",
+      }
+    );
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data?.error || "Failed to refresh extensions");
+    }
+
+    // 🔥 UPDATE JOB STATE IMMEDIATELY
+    setJob((prev: any) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        callSessions: data.sessions.map((s: any) => ({
+          clientPhoneType: s.clientPhoneType,
+          extension: s.extension,
+        })),
+      };
+    });
+
+    if (!options?.silent) {
+      toast.success("Extensions refreshed");
+    }
+  } catch (err: any) {
+    console.error("refreshExt error", err);
+    if (!options?.silent) {
+      toast.error(err.message || "Failed to refresh extensions");
+    }
+  }
+}
   async function loadJob() {
     if (!base || !shortId) return;
 
@@ -372,6 +412,7 @@ function setField(field: string, value: any) {
         setDirty,
 
         setField,
+        refreshExt,
 
         tab,
         setTab,

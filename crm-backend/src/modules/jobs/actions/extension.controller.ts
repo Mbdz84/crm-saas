@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 
-
+/**
+ * POST /jobs/:shortId/refresh-extension
+ * Force-regenerate call extensions for the job
+ */
 export async function refreshExtension(req: Request, res: Response) {
   try {
     const shortId = req.params.shortId.toUpperCase();
@@ -11,21 +14,29 @@ export async function refreshExtension(req: Request, res: Response) {
       where: { shortId, companyId },
     });
 
-    if (!job) return res.status(404).json({ error: "Job not found" });
-    if (!job.technicianId)
+    if (!job) {
+      return res.status(404).json({ error: "Job not found" });
+    }
+
+    if (!job.technicianId) {
       return res.status(400).json({ error: "No technician assigned" });
+    }
 
-    // Kill old sessions
+    // 🔥 Deactivate ALL previous sessions for this job
     await prisma.jobCallSession.updateMany({
-  where: { jobId: job.id },
-  data: {
-    active: false,
-    lastCallerPhone: null, // 🔥 VERY IMPORTANT
-  },
-});
+      where: {
+        jobId: job.id,
+        active: true,
+      },
+      data: {
+        active: false,
+        lastCallerPhone: null,
+      },
+    });
 
-    const sessions = [];
+    const sessions: any[] = [];
 
+    // ---------- PRIMARY PHONE ----------
     if (job.customerPhone) {
       sessions.push(
         await prisma.jobCallSession.create({
@@ -34,7 +45,7 @@ export async function refreshExtension(req: Request, res: Response) {
             companyId,
             technicianId: job.technicianId,
             clientPhoneType: "primary",
-            customerPhone: job.customerPhone!.replace(/[^\d]/g, "").slice(-10),
+            customerPhone: job.customerPhone.replace(/[^\d]/g, "").slice(-10),
             extension: generateExtension(),
             active: true,
           },
@@ -42,6 +53,7 @@ export async function refreshExtension(req: Request, res: Response) {
       );
     }
 
+    // ---------- SECONDARY PHONE ----------
     if (job.customerPhone2) {
       sessions.push(
         await prisma.jobCallSession.create({
@@ -50,7 +62,7 @@ export async function refreshExtension(req: Request, res: Response) {
             companyId,
             technicianId: job.technicianId,
             clientPhoneType: "secondary",
-            customerPhone: job.customerPhone2!.replace(/[^\d]/g, "").slice(-10),
+            customerPhone: job.customerPhone2.replace(/[^\d]/g, "").slice(-10),
             extension: generateExtension(),
             active: true,
           },
@@ -58,11 +70,12 @@ export async function refreshExtension(req: Request, res: Response) {
       );
     }
 
+    // ✅ RETURN ONLY WHAT FRONTEND NEEDS
     return res.json({
   sessions: sessions.map((s) => ({
-    phoneType: s.clientPhoneType,
-    phone: s.customerPhone,
+    clientPhoneType: s.clientPhoneType, // ✅ MATCH FRONTEND
     extension: s.extension,
+    active: true,
   })),
 });
   } catch (err) {
@@ -71,33 +84,40 @@ export async function refreshExtension(req: Request, res: Response) {
   }
 }
 
-function generateExtension() {
-  return Math.floor(100 + Math.random() * 9000).toString();
-}
+/**
+ * Ensure extensions exist (used on job open)
+ * Does NOT regenerate unless missing
+ */
 export async function ensureJobExtensions(jobId: string) {
   const job = await prisma.job.findUnique({
     where: { id: jobId },
   });
 
   if (!job || !job.technicianId) return;
-
   if (["Closed", "Canceled"].includes(job.status)) return;
 
   const phones: { phone: string; type: "primary" | "secondary" }[] = [];
 
   if (job.customerPhone) {
-    phones.push({ phone: job.customerPhone, type: "primary" });
+    phones.push({
+      phone: job.customerPhone.replace(/[^\d]/g, "").slice(-10),
+      type: "primary",
+    });
   }
 
   if (job.customerPhone2) {
-    phones.push({ phone: job.customerPhone2, type: "secondary" });
+    phones.push({
+      phone: job.customerPhone2.replace(/[^\d]/g, "").slice(-10),
+      type: "secondary",
+    });
   }
 
   for (const p of phones) {
     const exists = await prisma.jobCallSession.findFirst({
       where: {
         jobId: job.id,
-        customerPhone: p.phone,
+        clientPhoneType: p.type,
+        active: true,
       },
     });
 
@@ -106,13 +126,20 @@ export async function ensureJobExtensions(jobId: string) {
     await prisma.jobCallSession.create({
       data: {
         jobId: job.id,
-        technicianId: job.technicianId,
-        customerPhone: p.phone,
-        clientPhoneType: p.type,
-        extension: Math.floor(1000 + Math.random() * 9000).toString(),
         companyId: job.companyId,
+        technicianId: job.technicianId,
+        clientPhoneType: p.type,
+        customerPhone: p.phone,
+        extension: generateExtension(),
         active: true,
       },
     });
   }
+}
+
+/**
+ * 4-digit extension
+ */
+function generateExtension(): string {
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }

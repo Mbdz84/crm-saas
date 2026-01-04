@@ -1,7 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import bcrypt from "bcryptjs";
+import twilio from "twilio";
 
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
 // GET users for current company
 export async function getUsers(req: Request, res: Response) {
   const users = await prisma.user.findMany({
@@ -13,6 +18,9 @@ export async function getUsers(req: Request, res: Response) {
       role: true,
       active: true,
       createdAt: true,
+      maskedCalls: true,
+  maskedTwilioNumberSid: true,
+  maskedTwilioPhoneNumber: true,
     },
   });
 
@@ -130,21 +138,48 @@ export async function toggleActive(req: Request, res: Response) {
   res.json({ message: "User status updated", user: updated });
 }
 
-// updae technician
+// UPDATE technician (WITH masked Twilio caching)
 export async function updateTechnician(req: Request, res: Response) {
-  const id = req.params.id;
-  const { name, phone, email, active } = req.body;
-
   try {
+    const id = req.params.id;
+    const f = req.body;
+    const data: any = {};
+
+    // Basic fields
+    if (f.name !== undefined) data.name = f.name;
+    if (f.email !== undefined) data.email = f.email;
+    if (f.phone !== undefined) data.phone = f.phone;
+    if (f.active !== undefined) data.active = f.active;
+
+    // Masked calls toggle
+    if (f.maskedCalls !== undefined) {
+      data.maskedCalls = Boolean(f.maskedCalls);
+    }
+
+    // ✅ Masked Twilio Number (CACHE ON SAVE)
+    if (f.maskedTwilioNumberSid !== undefined) {
+      data.maskedTwilioNumberSid = f.maskedTwilioNumberSid || null;
+
+      if (f.maskedTwilioNumberSid) {
+        const num = await twilioClient
+          .incomingPhoneNumbers(f.maskedTwilioNumberSid)
+          .fetch();
+
+        data.maskedTwilioPhoneNumber = num.phoneNumber; // +E164
+      } else {
+        data.maskedTwilioPhoneNumber = null;
+      }
+    }
+
     const tech = await prisma.user.update({
       where: { id },
-      data: { name, phone, email, active },
+      data,
     });
 
     res.json(tech);
   } catch (err) {
-    console.log("UPDATE TECH ERROR:", err);
-    res.status(500).json({ error: "Failed to update" });
+    console.error("🔥 UPDATE TECH ERROR:", err);
+    res.status(500).json({ error: "Failed to update technician" });
   }
 }
 
@@ -182,6 +217,9 @@ export async function getTechnician(req: Request, res: Response) {
         phone: true,
         active: true,
         createdAt: true,
+        maskedCalls: true,
+  maskedTwilioNumberSid: true,
+  maskedTwilioPhoneNumber: true,
       },
     });
 
