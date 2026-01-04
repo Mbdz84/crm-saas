@@ -265,7 +265,7 @@ export default function TechnicianProfilePage() {
         <div className="max-w-2xl mt-6">
           <MaskedCallSettingsTab
             technician={tech}
-            base={API}
+            base={API ?? ""}
             onChange={(updates: any) =>
               setTech((prev: any) => ({ ...prev, ...updates }))
             }
