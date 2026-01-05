@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -1077,7 +1078,33 @@ function ClosingPanel(props: any) {
     cancelReason,
   } = props;
 
-  const router = useRouter();
+  const [splitMode, setSplitMode] = useState<"percent" | "dollar">("percent");
+  const [techDollarInput, setTechDollarInput] = useState("");
+  const [leadDollarInput, setLeadDollarInput] = useState("");
+  const [companyDollarInput, setCompanyDollarInput] = useState("");
+
+const totalAmount =
+  payments.reduce(
+    (sum: number, p: any) => sum + Number(p.amount || 0),
+    0
+  ) || 0;
+
+
+  useEffect(() => {
+  if (splitMode !== "dollar" || !totalAmount) return;
+
+  setTechDollarInput(
+    ((Number(techPercent) / 100) * totalAmount).toFixed(2)
+  );
+  setLeadDollarInput(
+    ((Number(leadPercent) / 100) * totalAmount).toFixed(2)
+  );
+  setCompanyDollarInput(
+    ((Number(companyPercent) / 100) * totalAmount).toFixed(2)
+  );
+}, [splitMode]);
+
+const router = useRouter();
 
   return (
     <div className="border rounded p-4 bg-white space-y-4">
@@ -1304,46 +1331,151 @@ function ClosingPanel(props: any) {
 
           {/* RIGHT SIDE — SUMMARY INFO */}
           <div className="space-y-3">
+
+
+            
             {/* Percentages */}
             <div className="border rounded p-3 bg-gray-50">
-              <h3 className="text-xs font-semibold mb-2">Percentages</h3>
+              <div className="flex items-center justify-between mb-2">
+  <h3 className="text-xs font-semibold">Percentages</h3>
+
+  <div className="flex items-center gap-1">
+    <span className="text-[10px] text-gray-500">Split Mode</span>
+    <button
+      type="button"
+      onClick={() => setSplitMode("percent")}
+      className={`px-2 py-0.5 text-xs rounded ${
+        splitMode === "percent" ? "bg-blue-600 text-white" : "bg-gray-200"
+      }`}
+    >
+      %
+    </button>
+    <button
+      type="button"
+      onClick={() => setSplitMode("dollar")}
+      className={`px-2 py-0.5 text-xs rounded ${
+        splitMode === "dollar" ? "bg-blue-600 text-white" : "bg-gray-200"
+      }`}
+    >
+      $
+    </button>
+  </div>
+</div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] mb-1">Tech %</label>
-                  <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
-                    value={techPercent}
-                    onChange={(e) =>
-                      handlePercentChange("tech", e.target.value)
-                    }
-                    onBlur={() => normalizePercent("tech")}
-                  />
-                </div>
+  <label className="block text-[10px] mb-1">
+    Tech {splitMode === "percent" ? "%" : "$"}
+  </label>
+
+  <input
+    className="border rounded px-1 py-1 w-full text-xs bg-white"
+    value={splitMode === "percent" ? techPercent : techDollarInput}
+    onChange={(e) => {
+  if (splitMode === "percent") {
+    handlePercentChange("tech", e.target.value);
+    return;
+  }
+
+  const val = e.target.value.replace(/[^\d.]/g, "");
+setTechDollarInput(val);
+
+  if (!totalAmount) return;
+
+  const pct = (Number(val) / totalAmount) * 100;
+  handlePercentChange("tech", pct.toFixed(4));
+}}
+    onBlur={() => normalizePercent("tech")}
+  />
+
+  {splitMode === "dollar" ? (
+  <div className="text-[10px] text-gray-500 mt-0.5">
+    = {Number(techPercent).toFixed(2)}%
+  </div>
+) : (
+  totalAmount > 0 && (
+    <div className="text-[10px] text-gray-500 mt-0.5">
+      = ${((Number(techPercent) / 100) * totalAmount).toFixed(2)}
+    </div>
+  )
+)}
+</div>
 
                 <div>
-                  <label className="block text-[10px] mb-1">Lead %</label>
-                  <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
-                    value={leadPercent}
-                    onChange={(e) =>
-                      handlePercentChange("lead", e.target.value)
-                    }
-                    onBlur={() => normalizePercent("lead")}
-                  />
-                </div>
+  <label className="block text-[10px] mb-1">
+    Lead {splitMode === "percent" ? "%" : "$"}
+  </label>
 
-                <div>
-                  <label className="block text-[10px] mb-1">Company %</label>
-                  <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
-                    value={companyPercent}
-                    onChange={(e) =>
-                      handlePercentChange("company", e.target.value)
-                    }
-                    onBlur={() => normalizePercent("company")}
-                  />
-                </div>
+  <input
+  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  value={splitMode === "percent" ? leadPercent : leadDollarInput}
+  onChange={(e) => {
+    if (splitMode === "percent") {
+      handlePercentChange("lead", e.target.value);
+      return;
+    }
+
+    const val = e.target.value.replace(/[^\d.]/g, "");
+setLeadDollarInput(val);
+
+    if (!totalAmount) return;
+
+    const pct = (Number(val) / totalAmount) * 100;
+    handlePercentChange("lead", pct.toFixed(4));
+  }}
+  onBlur={() => normalizePercent("lead")}
+/>
+
+  {splitMode === "dollar" ? (
+  <div className="text-[10px] text-gray-500 mt-0.5">
+    = {Number(leadPercent).toFixed(2)}%
+  </div>
+) : (
+  totalAmount > 0 && (
+    <div className="text-[10px] text-gray-500 mt-0.5">
+      = ${((Number(leadPercent) / 100) * totalAmount).toFixed(2)}
+    </div>
+  )
+)}
+</div>
+
+ <div>
+  <label className="block text-[10px] mb-1">
+    Company {splitMode === "percent" ? "%" : "$"}
+  </label>
+
+  <input
+  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  value={splitMode === "percent" ? companyPercent : companyDollarInput}
+  onChange={(e) => {
+    if (splitMode === "percent") {
+      handlePercentChange("company", e.target.value);
+      return;
+    }
+
+    const val = e.target.value.replace(/[^\d.]/g, "");
+setCompanyDollarInput(val);
+
+    if (!totalAmount) return;
+
+    const pct = (Number(val) / totalAmount) * 100;
+    handlePercentChange("company", pct.toFixed(4));
+  }}
+  onBlur={() => normalizePercent("company")}
+/>
+
+  {splitMode === "dollar" ? (
+  <div className="text-[10px] text-gray-500 mt-0.5">
+    = {Number(companyPercent).toFixed(2)}%
+  </div>
+) : (
+  totalAmount > 0 && (
+    <div className="text-[10px] text-gray-500 mt-0.5">
+      = ${((Number(companyPercent) / 100) * totalAmount).toFixed(2)}
+    </div>
+  )
+)}
+</div>
               </div>
 
               <label className="inline-flex items-center gap-2 mt-2 text-[11px]">
