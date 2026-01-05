@@ -1089,6 +1089,13 @@ const totalAmount =
     0
   ) || 0;
 
+function pctToDollar(pct: number) {
+  if (!totalAmount) return "";
+  return ((pct / 100) * totalAmount).toFixed(2);
+}
+function clamp(n: number) {
+  return Math.max(0, n);
+}
 
   useEffect(() => {
   if (splitMode !== "dollar" || !totalAmount) return;
@@ -1369,24 +1376,37 @@ const router = useRouter();
   </label>
 
   <input
-    className="border rounded px-1 py-1 w-full text-xs bg-white"
-    value={splitMode === "percent" ? techPercent : techDollarInput}
-    onChange={(e) => {
-  if (splitMode === "percent") {
-    handlePercentChange("tech", e.target.value);
-    return;
-  }
+  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  value={splitMode === "percent" ? techPercent : techDollarInput}
+  onChange={(e) => {
+    if (splitMode === "percent") {
+      handlePercentChange("tech", e.target.value);
+      return;
+    }
 
-  const val = e.target.value.replace(/[^\d.]/g, "");
-setTechDollarInput(val);
+    const val = e.target.value.replace(/[^\d.]/g, "");
+    setTechDollarInput(val);
 
-  if (!totalAmount) return;
+    if (!totalAmount) return;
 
-  const pct = (Number(val) / totalAmount) * 100;
-  handlePercentChange("tech", pct.toFixed(4));
-}}
-    onBlur={() => normalizePercent("tech")}
-  />
+    const techDollar = Number(val) || 0;
+    const leadDollar = Number(leadDollarInput) || 0;
+
+    const remaining = clamp(totalAmount - techDollar - leadDollar);
+
+    handlePercentChange(
+      "tech",
+      ((techDollar / totalAmount) * 100).toFixed(4)
+    );
+    handlePercentChange(
+      "company",
+      ((remaining / totalAmount) * 100).toFixed(4)
+    );
+
+    setCompanyDollarInput(remaining.toFixed(2));
+  }}
+  onBlur={() => normalizePercent("tech")}
+/>
 
   {splitMode === "dollar" ? (
   <div className="text-[10px] text-gray-500 mt-0.5">
@@ -1416,12 +1436,25 @@ setTechDollarInput(val);
     }
 
     const val = e.target.value.replace(/[^\d.]/g, "");
-setLeadDollarInput(val);
+    setLeadDollarInput(val);
 
     if (!totalAmount) return;
 
-    const pct = (Number(val) / totalAmount) * 100;
-    handlePercentChange("lead", pct.toFixed(4));
+    const leadDollar = Number(val) || 0;
+    const techDollar = Number(techDollarInput) || 0;
+
+    const remaining = clamp(totalAmount - techDollar - leadDollar);
+
+    handlePercentChange(
+      "lead",
+      ((leadDollar / totalAmount) * 100).toFixed(4)
+    );
+    handlePercentChange(
+      "company",
+      ((remaining / totalAmount) * 100).toFixed(4)
+    );
+
+    setCompanyDollarInput(remaining.toFixed(2));
   }}
   onBlur={() => normalizePercent("lead")}
 />
@@ -1454,12 +1487,26 @@ setLeadDollarInput(val);
     }
 
     const val = e.target.value.replace(/[^\d.]/g, "");
-setCompanyDollarInput(val);
+    setCompanyDollarInput(val);
 
     if (!totalAmount) return;
 
-    const pct = (Number(val) / totalAmount) * 100;
-    handlePercentChange("company", pct.toFixed(4));
+    const companyDollar = Number(val) || 0;
+    const techDollar = Number(techDollarInput) || 0;
+
+    const remaining = clamp(totalAmount - techDollar - companyDollar);
+
+    // tech is FIXED
+    handlePercentChange(
+      "company",
+      ((companyDollar / totalAmount) * 100).toFixed(4)
+    );
+    handlePercentChange(
+      "lead",
+      ((remaining / totalAmount) * 100).toFixed(4)
+    );
+
+    setLeadDollarInput(remaining.toFixed(2));
   }}
   onBlur={() => normalizePercent("company")}
 />
