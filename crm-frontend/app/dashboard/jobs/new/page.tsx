@@ -244,7 +244,7 @@ export default function CreateJobPage() {
     className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
     value={form.customerPhone}
     onChange={handleChange}
-    placeholder="Primary phone (required)"
+    placeholder="Phone 1 (required)"
   />
 </div>
 
@@ -256,13 +256,13 @@ export default function CreateJobPage() {
     className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
     value={form.customerPhone2 || ""}
     onChange={handleChange}
-    placeholder="Optional secondary phone"
+    placeholder="Phone 2"
   />
 </div>
 
               <div>
                 <label className="block text-sm font-medium">
-                  Full Address *
+                  Address *
                 </label>
                 <GoogleAddressInput
   value={form.customerAddress}
@@ -280,18 +280,7 @@ export default function CreateJobPage() {
             <h2 className="font-semibold text-lg mb-1">Job Details</h2>
 
             <div className="space-y-2">
-              <div>
-                <label className="block text-sm font-medium">
-                  Job Title (optional)
-                </label>
-                <input
-                  name="title"
-                  className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
-                  value={form.title}
-                  onChange={handleChange}
-                  placeholder="If empty, we'll auto-generate from name + job type"
-                />
-              </div>
+              
 
               <div>
                 <label className="block text-sm font-medium">Job Type</label>
@@ -317,7 +306,7 @@ export default function CreateJobPage() {
                   className="mt-1 w-full border rounded p-2 dark:bg-gray-800 min-h-[80px]"
                   value={form.description}
                   onChange={handleChange}
-                  placeholder="Internal notes about this job..."
+                  placeholder="Notes about this job..."
                 />
               </div>
             </div>
@@ -328,13 +317,25 @@ export default function CreateJobPage() {
         <div className="space-y-4">
           {/* Technician / assignment */}
           <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 space-y-3">
-            <h2 className="font-semibold text-lg mb-1">Assignment</h2>
 
             <div className="space-y-2">
+              {/* Lead Source */}
+            <h2 className="font-semibold text-sm">Lead Source</h2>
+            <select
+              name="sourceId"
+              className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
+              value={form.sourceId || ""}
+              onChange={handleChange}
+            >
+              <option value="">Select source</option>
+              {leadSources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
               <div>
-                <label className="block text-sm font-medium">
-                  Technician
-                </label>
+               <h2 className="font-semibold text-sm">Technician</h2>
                 <select
                   name="technicianId"
                   className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
@@ -393,23 +394,7 @@ export default function CreateJobPage() {
             </div>
           </div>
 
-          {/* Lead Source */}
-          <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 space-y-2">
-            <h2 className="font-semibold text-sm">Lead Source</h2>
-            <select
-              name="sourceId"
-              className="mt-1 w-full border rounded p-2 dark:bg-gray-800"
-              value={form.sourceId || ""}
-              onChange={handleChange}
-            >
-              <option value="">Select source</option>
-              {leadSources.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          
 
           {/* Submit */}
           <div className="border rounded-lg p-4 bg-white dark:bg-gray-900">
