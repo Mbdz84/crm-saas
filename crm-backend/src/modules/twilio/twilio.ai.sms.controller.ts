@@ -54,30 +54,30 @@ export async function incomingSms(req: Request, res: Response) {
   }
 
   // 🎯 Resolve Job Type (create if missing)
-let jobTypeId: string | null = null;
+  let jobTypeId: string | null = null;
 
-if (parsed.jobType && parsed.jobType.trim()) {
-  const existing = await prisma.jobType.findFirst({
-    where: {
-      companyId,
-      name: parsed.jobType,
-    },
-  });
-
-  if (existing) {
-    jobTypeId = existing.id;
-  } else {
-    const created = await prisma.jobType.create({
-      data: {
+  if (parsed.jobType && parsed.jobType.trim()) {
+    const existing = await prisma.jobType.findFirst({
+      where: {
         companyId,
-        name: parsed.jobType.trim(),
-        active: true,
+        name: parsed.jobType,
       },
     });
 
-    jobTypeId = created.id;
+    if (existing) {
+      jobTypeId = existing.id;
+    } else {
+      const created = await prisma.jobType.create({
+        data: {
+          companyId,
+          name: parsed.jobType.trim(),
+          active: true,
+        },
+      });
+
+      jobTypeId = created.id;
+    }
   }
-}
 
   // 🧾 CREATE JOB
   await prisma.job.create({
