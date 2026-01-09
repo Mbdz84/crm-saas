@@ -76,10 +76,6 @@ app.use(requestLogger);
 // Static uploads path
 app.use("/uploads", express.static("uploads"));
 
-/* ============================================================
-   TWILIO ROUTES — must come AFTER urlencoded()
-============================================================ */
-app.use("/twilio", twilioVoiceRoutes);
 
 /* ============================================================
    PUBLIC ROUTES
