@@ -663,12 +663,16 @@ const selectedStatusIsCanceled = (() => {
     <div className="flex flex-wrap gap-2">
       {[
         "Client not answering",
+        "Clients said they will call back",
         "Doesn’t have the money",
         "Went with different company",
         "We cant do the job",
         "Duplicate lead",
-        "Don't have the key for it",
-        "cx found the keys",
+        "Tech Don't have the key for it",
+        "Client found the keys",
+        "Client canceled",
+        "Client wants to pay $",
+        "Out of area",
         "Client canceled"
       ].map((tag) => (
         <button
