@@ -1,6 +1,7 @@
 // crm-backend/src/modules/jobs/actions/duplicate.controller.ts
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { logJobEvent } from "../../../utils/jobLogger";
 
 export async function duplicateJob(req: Request, res: Response) {
   try {
@@ -48,6 +49,32 @@ export async function duplicateJob(req: Request, res: Response) {
         scheduledAt: original.scheduledAt,
         companyId: original.companyId,
       },
+    });
+
+    // 📝 Log creation on the NEW job (original job stays untouched)
+    // Box 1 — header: where this job came from
+    await logJobEvent({
+      jobId: newJob.id,
+      type: "duplicated",
+      text: `Job created from duplicate of job ${original.shortId}`,
+      userId: req.user?.id,
+    });
+
+    // Box 2 — details copied from the source job
+    const detailsLines = [
+      original.source?.name || "",
+      "",
+      `Name: ${original.customerName || "-"}`,
+      `Address: ${original.customerAddress || "-"}`,
+      `Phone: ${original.customerPhone || "-"}`,
+      `Type: ${original.jobType?.name || "-"}`,
+      `Description: ${original.description || "-"}`,
+    ];
+    await logJobEvent({
+      jobId: newJob.id,
+      type: "duplicated",
+      text: detailsLines.join("\n"),
+      userId: req.user?.id,
     });
 
     res.json({ message: "Job duplicated", job: newJob });

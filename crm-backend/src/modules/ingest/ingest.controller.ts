@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { IngestJobPayload } from "./ingest.types";
-import { nanoid } from "nanoid";
+import { generateUniqueShortId } from "../jobs/utils/shortId";
 
 type JobOrigin = "ai_generated" | "incoming_sms" | "external_api";
 
@@ -61,7 +61,7 @@ export async function ingestJob(req: Request, res: Response) {
 
   const job = await prisma.job.create({
     data: {
-      shortId: nanoid(6).toUpperCase(),
+      shortId: await generateUniqueShortId(),
       title: payload.jobType || "New Job",
       description: payload.description || null,
 

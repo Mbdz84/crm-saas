@@ -11,8 +11,9 @@ type LogInput = {
     | "scheduled"
     | "closed"
     | "canceled"
-    | "reopened" 
+    | "reopened"
     | "parsed_sms"
+    | "duplicated"
     | "system";
   text: string;
   userId?: string | null;

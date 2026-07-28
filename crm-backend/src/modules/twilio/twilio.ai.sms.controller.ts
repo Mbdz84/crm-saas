@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
-import { nanoid } from "nanoid";
+import { generateUniqueShortId } from "../jobs/utils/shortId";
 import { parseTextWithAI } from "../jobs/actions/parse.helper";
 
 /* ============================================================
@@ -87,7 +87,7 @@ export async function incomingSms(req: Request, res: Response) {
   // 🧾 CREATE JOB
   await prisma.job.create({
     data: {
-      shortId: nanoid(6).toUpperCase(),
+      shortId: await generateUniqueShortId(),
 
       title: parsed.jobType || "Incoming SMS Job",
       description: parsed.description || null,

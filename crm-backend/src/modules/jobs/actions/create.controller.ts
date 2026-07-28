@@ -91,6 +91,23 @@ export async function createJob(req: Request, res: Response) {
     userId: req.user?.id,
   });
 
+  // Details box — same format as the SMS / duplicate logs
+  const detailsLines = [
+    job.source?.name || "",
+    "",
+    `Name: ${job.customerName || "-"}`,
+    `Address: ${job.customerAddress || "-"}`,
+    `Phone: ${job.customerPhone || "-"}`,
+    `Type: ${job.jobType?.name || "-"}`,
+    `Description: ${job.description || "-"}`,
+  ];
+  await logJobEvent({
+    jobId: job.id,
+    type: "created",
+    text: detailsLines.join("\n"),
+    userId: req.user?.id,
+  });
+
     if (sendSmsToTech && technicianId) {
       await sendTechSms(technicianId, job);
     }
