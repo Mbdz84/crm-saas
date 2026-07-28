@@ -79,6 +79,11 @@ export async function incomingSms(req: Request, res: Response) {
     }
   }
 
+  // 🎯 Resolve Accepted status so the job lands correctly on the board
+  const acceptedStatus = await prisma.jobStatus.findFirst({
+    where: { name: "Accepted", active: true },
+  });
+
   // 🧾 CREATE JOB
   await prisma.job.create({
     data: {
@@ -96,6 +101,7 @@ export async function incomingSms(req: Request, res: Response) {
       companyId,
       sourceId: leadSourceId,
       status: "Accepted",
+      statusId: acceptedStatus?.id ?? null,
 
       logs: {
         createMany: {

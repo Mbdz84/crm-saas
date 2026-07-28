@@ -25,6 +25,11 @@ export async function duplicateJob(req: Request, res: Response) {
     // Generate new short ID
     const newShortId = Math.random().toString(36).substring(2, 7).toUpperCase();
 
+    // 🎯 Resolve Accepted status so the duplicate lands correctly on the board
+    const acceptedStatus = await prisma.jobStatus.findFirst({
+      where: { name: "Accepted", active: true },
+    });
+
     // Create duplicated job
     const newJob = await prisma.job.create({
       data: {
@@ -39,7 +44,7 @@ export async function duplicateJob(req: Request, res: Response) {
         technicianId: original.technicianId,
         sourceId: original.sourceId,
         status: "Accepted",
-        statusId: null,
+        statusId: acceptedStatus?.id ?? null,
         scheduledAt: original.scheduledAt,
         companyId: original.companyId,
       },

@@ -54,6 +54,11 @@ export async function ingestJob(req: Request, res: Response) {
   /* ------------------------------------------
      CREATE JOB
   ------------------------------------------ */
+  // 🎯 Resolve Accepted status so the job lands correctly on the board
+  const acceptedStatus = await prisma.jobStatus.findFirst({
+    where: { name: "Accepted", active: true },
+  });
+
   const job = await prisma.job.create({
     data: {
       shortId: nanoid(6).toUpperCase(),
@@ -79,6 +84,7 @@ export async function ingestJob(req: Request, res: Response) {
       jobTypeId,
 
       status: "Accepted",
+      statusId: acceptedStatus?.id ?? null,
 
       logs: {
         create: {
