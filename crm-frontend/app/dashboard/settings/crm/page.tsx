@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function CRMSettingsPage() {
-  const [mode, setMode] = useState("modal"); // ✅ default
-
+  // Report rows always open in a new tab now (modal option removed).
   useEffect(() => {
-    const saved = localStorage.getItem("rowClickMode");
-    setMode(saved || "modal"); // ✅ fallback to modal
+    localStorage.setItem("rowClickMode", "newtab");
   }, []);
-
-  function updateMode(value: string) {
-    setMode(value);
-    localStorage.setItem("rowClickMode", value);
-  }
 
   return (
     <div className="p-6">
@@ -25,21 +18,8 @@ export default function CRMSettingsPage() {
         </h2>
 
         <label className="flex items-center gap-2 mb-2">
-          <input
-            type="radio"
-            checked={mode === "newtab"}
-            onChange={() => updateMode("newtab")}
-          />
+          <input type="radio" checked readOnly />
           Open in new tab
-        </label>
-
-        <label className="flex items-center gap-2 mb-2">
-          <input
-            type="radio"
-            checked={mode === "modal"}
-            onChange={() => updateMode("modal")}
-          />
-          Open popup modal (default)
         </label>
       </div>
     </div>

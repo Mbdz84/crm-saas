@@ -33,22 +33,8 @@ const bg = highlighted
     // ignore checkbox clicks
     if ((e.target as HTMLElement).tagName.toLowerCase() === "input") return;
 
-    const mode = localStorage.getItem("rowClickMode") || "off";
-
-    if (mode === "off") return;
-
-    if (mode === "newtab") {
-      window.open(`/dashboard/jobs/${shortId}`, "_blank");
-      return;
-    }
-
-    if (mode === "modal") {
-      window.dispatchEvent(
-        new CustomEvent("open-job-modal", {
-          detail: { jobId: shortId },
-        })
-      );
-    }
+    // Report rows always open the job in a new tab.
+    window.open(`/dashboard/jobs/${shortId}`, "_blank");
   }
 
   /* ------------------------------------------
