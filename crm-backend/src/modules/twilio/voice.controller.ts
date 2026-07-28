@@ -77,7 +77,7 @@ export async function inboundVoice(req: Request, res: Response) {
 
       const dial = twiml.dial({
         callerId,
-        record: "record-from-answer",
+        record: "record-from-ringing",
         recordingStatusCallback: "/twilio/recording",
         recordingStatusCallbackMethod: "POST",
         action: "/twilio/voice/dial-complete",
@@ -143,7 +143,7 @@ console.log("📞 FORCED TECH CALLER ID =", callerId);
 
 const dial = twiml.dial({
   callerId, // ✅ ALWAYS technician’s assigned masked number
-  record: "record-from-answer",
+  record: "record-from-ringing",
   recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
   recordingStatusCallbackMethod: "POST",
   action: "/twilio/voice/dial-complete",
@@ -226,40 +226,66 @@ export async function handleRecording(req: Request, res: Response) {
    DIAL COMPLETE (FAILED CALLS)
 ----------------------------------------------------------- */
 export async function dialComplete(req: Request, res: Response) {
-  const {
-    DialCallStatus,
-    DialCallSid,
-    DialCallDuration,
-    CallSid,
-  } = req.body;
+  // Never let this webhook crash the process or return non-200 to Twilio —
+  // that's what caused missed-call attempts to be dropped (HTTP 503).
+  try {
+    const {
+      DialCallStatus,
+      DialCallSid,
+      DialCallDuration,
+      CallSid,
+      From,
+      To,
+    } = req.body;
 
-  if (DialCallStatus === "completed") {
-    return res.send("<Response />");
-  }
+    console.log("📞 DIAL-COMPLETE", {
+      DialCallStatus,
+      CallSid,
+      DialCallSid,
+      DialCallDuration,
+    });
 
-  const session = await prisma.jobCallSession.findFirst({
-    where: {
-      OR: [
-        { lastInboundCallSid: CallSid },
-        { lastOutboundCallSid: CallSid },
-      ],
-    },
-  });
+    // Answered calls are logged via the recording callback, not here.
+    if (DialCallStatus === "completed") {
+      return res.send("<Response />");
+    }
 
-  if (!session) {
-    return res.send("<Response />");
-  }
+    const session = await prisma.jobCallSession.findFirst({
+      where: {
+        OR: [
+          { lastInboundCallSid: CallSid },
+          { lastOutboundCallSid: CallSid },
+        ],
+      },
+    });
 
-  await prisma.jobRecord.create({
-    data: {
+    if (!session) {
+      console.warn("⚠️ DIAL-COMPLETE: no session matched CallSid", CallSid);
+      return res.send("<Response />");
+    }
+
+    const record = await prisma.jobRecord.create({
+      data: {
+        jobId: session.jobId,
+        callSid: DialCallSid || CallSid,
+        recordingSid: null,
+        url: null,
+        from: From || null,
+        to: To || session.customerPhone || null,
+        duration: Number(DialCallDuration) || 0,
+        status: DialCallStatus,
+      },
+    });
+
+    console.log("✅ DIAL-COMPLETE: saved missed-call record", {
       jobId: session.jobId,
-      callSid: DialCallSid || CallSid,
-      recordingSid: null,
-      url: null,
-      duration: Number(DialCallDuration) || 0,
       status: DialCallStatus,
-    },
-  });
+      recordId: record.id,
+    });
+  } catch (err) {
+    console.error("🔥 DIAL-COMPLETE ERROR:", err);
+  }
 
+  // Always ACK Twilio with a valid 200 response.
   return res.send("<Response />");
 }
