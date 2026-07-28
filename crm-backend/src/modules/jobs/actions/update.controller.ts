@@ -143,6 +143,15 @@ console.log("🟡 INVALIDATION FLAGS:", {
       },
     });
 
+    // Closing/canceling a job (via the status dropdown) terminates its active
+    // call sessions and frees the extension for open jobs.
+    if (isCanceled || isClosed) {
+      await prisma.jobCallSession.updateMany({
+        where: { jobId: job.id, active: true },
+        data: { active: false, lastCallerPhone: null },
+      });
+    }
+
 /* ======================================================
    📝 LOG EVENTS
 ====================================================== */

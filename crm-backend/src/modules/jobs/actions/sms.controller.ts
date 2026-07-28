@@ -1,7 +1,6 @@
 import prisma from "../../../prisma/client";
 import twilio from "twilio";
 import { Request, Response } from "express";
-import { normalizePhone } from "../utils/phone";
 import { defaultSmsSettings } from "../../smsSettings/smsSettings.controller";
 
 /* TWILIO */
@@ -26,63 +25,6 @@ async function getTechMaskedNumber(tech: any) {
 /* ============================================================
    SEND TECH SMS  (honors maskedCalls flag)
 ============================================================ */
-async function createMaskedSessions(job: any, technicianId: string) {
-  const phones: { phone: string; type: "primary" | "secondary" }[] = [];
-
-  if (job.customerPhone) {
-  const p1 = normalizePhone(job.customerPhone);
-  if (p1) {
-    phones.push({
-      phone: p1,
-      type: "primary",
-    });
-  }
-}
-
-if (job.customerPhone2) {
-  const p2 = normalizePhone(job.customerPhone2);
-  if (p2) {
-    phones.push({
-      phone: p2,
-      type: "secondary",
-    });
-  }
-}
-
-  if (!phones.length) return [];
-
-  // Clear old sessions for this job + tech
-  await prisma.jobCallSession.deleteMany({
-    where: {
-      jobId: job.id,
-      technicianId,
-    },
-  });
-
-  const baseExt = Math.floor(100 + Math.random() * 9000);
-
-  const sessions = [];
-
-  for (let i = 0; i < phones.length; i++) {
-    const s = await prisma.jobCallSession.create({
-      data: {
-        jobId: job.id,
-        technicianId,
-        companyId: job.companyId,
-
-        customerPhone: phones[i].phone!,
-        clientPhoneType: phones[i].type,
-        extension: String(baseExt + i),
-        active: true,
-      },
-    });
-
-    sessions.push(s);
-  }
-
-  return sessions;
-}
-
 export async function sendTechSms(techId: string, job: any) {
   const tech = await prisma.user.findUnique({ where: { id: techId } });
 

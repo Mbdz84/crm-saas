@@ -89,6 +89,13 @@ export async function closeJob(req: Request, res: Response) {
         },
       });
 
+      // Terminate active call sessions — a closed job is no longer reachable,
+      // and this frees its extension for reuse by open jobs.
+      await tx.jobCallSession.updateMany({
+        where: { jobId: job.id, active: true },
+        data: { active: false, lastCallerPhone: null },
+      });
+
       // ❗ Fix #3 — if any leftover closing data exists but status ≠ Closed, clear it
       if (updatedJob.statusId !== closedStatus.id) {
         await tx.jobClosing.deleteMany({ where: { jobId: job.id } });

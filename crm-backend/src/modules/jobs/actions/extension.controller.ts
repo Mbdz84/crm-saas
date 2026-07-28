@@ -46,7 +46,7 @@ export async function refreshExtension(req: Request, res: Response) {
             technicianId: job.technicianId,
             clientPhoneType: "primary",
             customerPhone: job.customerPhone.replace(/[^\d]/g, "").slice(-10),
-            extension: generateExtension(),
+            extension: await generateExtension(),
             active: true,
           },
         })
@@ -63,7 +63,7 @@ export async function refreshExtension(req: Request, res: Response) {
             technicianId: job.technicianId,
             clientPhoneType: "secondary",
             customerPhone: job.customerPhone2.replace(/[^\d]/g, "").slice(-10),
-            extension: generateExtension(),
+            extension: await generateExtension(),
             active: true,
           },
         })
@@ -130,7 +130,7 @@ export async function ensureJobExtensions(jobId: string) {
         technicianId: job.technicianId,
         clientPhoneType: p.type,
         customerPhone: p.phone,
-        extension: generateExtension(),
+        extension: await generateExtension(),
         active: true,
       },
     });
@@ -138,8 +138,23 @@ export async function ensureJobExtensions(jobId: string) {
 }
 
 /**
- * 4-digit extension
+ * Unique 4-digit extension.
+ * Only ACTIVE sessions need distinct extensions (the inbound router matches on
+ * `active: true`), and open jobs never approach the 9000-value space — so we
+ * just retry until we find a number no active session is using.
  */
-function generateExtension(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+async function generateExtension(): Promise<string> {
+  // Safety cap so a pathological state can never spin forever.
+  for (let attempt = 0; attempt < 50; attempt++) {
+    const candidate = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const taken = await prisma.jobCallSession.findFirst({
+      where: { extension: candidate, active: true },
+      select: { id: true },
+    });
+
+    if (!taken) return candidate;
+  }
+
+  throw new Error("Could not generate a unique call extension");
 }
