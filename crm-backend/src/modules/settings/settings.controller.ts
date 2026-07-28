@@ -41,11 +41,17 @@ export async function getCompany(req: Request, res: Response) {
 export async function updateCompany(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
-    const { name, phone, address } = req.body;
+    const { name, phone, address, logoUrl } = req.body;
 
     const updated = await prisma.company.update({
       where: { id: companyId },
-      data: { name, phone, address },
+      data: {
+        name,
+        phone,
+        address,
+        // Only touch logoUrl when the client sends it (string, incl. "" to clear)
+        ...(logoUrl !== undefined ? { logoUrl } : {}),
+      },
     });
 
     return res.json(updated);

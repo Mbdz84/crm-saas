@@ -9,6 +9,7 @@ export default function SettingsPage() {
     name: "",
     phone: "",
     address: "",
+    logoUrl: "",
     notifyTechOnJobCreate: false,
   });
 
@@ -25,6 +26,7 @@ export default function SettingsPage() {
       name: data.name || "",
       phone: data.phone || "",
       address: data.address || "",
+      logoUrl: data.logoUrl || "",
       notifyTechOnJobCreate: data.notifyTechOnJobCreate || false,
     });
   };
@@ -45,16 +47,16 @@ export default function SettingsPage() {
     load();
   };
 
-  // Upload logo
-  const uploadLogo = async (e: any) => {
-    const file = e.target.files[0];
-    const fd = new FormData();
-    fd.append("logo", file);
+  // Remove logo (clears the URL and saves immediately)
+  const removeLogo = async () => {
+    const next = { ...form, logoUrl: "" };
+    setForm(next);
 
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/logo`, {
-      method: "POST",
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings`, {
+      method: "PUT",
       credentials: "include",
-      body: fd,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(next),
     });
 
     load();
@@ -70,13 +72,36 @@ export default function SettingsPage() {
       {/* Logo */}
       <div className="mb-4">
         <label className="block font-medium mb-1">Company Logo</label>
-        {company.logoUrl && (
+
+        {form.logoUrl && (
           <img
-            src={company.logoUrl}
-            className="h-20 w-20 rounded-full mb-2 border"
+            src={form.logoUrl}
+            alt="Company logo"
+            className="h-20 w-20 rounded-full mb-2 border object-cover"
           />
         )}
-        <input type="file" onChange={uploadLogo} />
+
+        <div className="flex items-center gap-2">
+          <input
+            className="flex-1 border p-2"
+            type="url"
+            placeholder="Paste logo image URL (https://...)"
+            value={form.logoUrl}
+            onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+          />
+          {form.logoUrl && (
+            <button
+              type="button"
+              onClick={removeLogo}
+              className="px-3 py-2 bg-red-600 text-white rounded whitespace-nowrap"
+            >
+              Remove logo
+            </button>
+          )}
+        </div>
+        <p className="text-xs text-gray-500 mt-1">
+          Enter a public image URL, then click Save Changes.
+        </p>
       </div>
 
       {/* Name */}

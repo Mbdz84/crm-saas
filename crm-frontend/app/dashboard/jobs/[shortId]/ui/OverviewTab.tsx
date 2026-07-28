@@ -151,7 +151,12 @@ useEffect(() => {
 }, [job?.reminders]);
 
   // ✅ always safe array
-  const techList = Array.isArray(techs) ? techs : [];
+  // Hide inactive technicians, but keep the one already assigned to THIS job
+  // so an existing assignment (tech since deactivated) still shows.
+  const assignedTechId = editableJob?.technicianId || job?.technicianId;
+  const techList = (Array.isArray(techs) ? techs : []).filter(
+    (t: any) => t.active !== false || t.id === assignedTechId
+  );
   
   const selectedTech =
   editableJob?.technicianId
