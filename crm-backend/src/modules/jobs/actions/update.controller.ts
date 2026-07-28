@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { isTerminalCallStatus } from "../../../constants/jobStatus";
 
 
 export async function updateJobByShortId(req: Request, res: Response) {
@@ -25,11 +26,15 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
     ====================================================== */
     let isCanceled = false;
     let isClosed = false;
+    // Whether the new status ends the job for call-routing purposes
+    // (Closed / Canceled / Pending Close / Pending Cancel).
+    let isTerminal = false;
 
     if (typeof updates.status === "string") {
       const clean = updates.status.toLowerCase();
       isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
       isClosed = clean === "closed";
+      isTerminal = isTerminalCallStatus(updates.status);
     }
 
     if (updates.statusId) {
@@ -41,6 +46,7 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
         const clean = statusRow.name.toLowerCase();
         isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
         isClosed = clean === "closed";
+        isTerminal = isTerminalCallStatus(statusRow.name);
       }
     }
 
@@ -143,9 +149,9 @@ console.log("🟡 INVALIDATION FLAGS:", {
       },
     });
 
-    // Closing/canceling a job (via the status dropdown) terminates its active
-    // call sessions and frees the extension for open jobs.
-    if (isCanceled || isClosed) {
+    // A terminal status (Closed/Canceled/Pending Close/Pending Cancel) ends the
+    // job — terminate its active call sessions and free the extension.
+    if (isTerminal) {
       await prisma.jobCallSession.updateMany({
         where: { jobId: job.id, active: true },
         data: { active: false, lastCallerPhone: null },

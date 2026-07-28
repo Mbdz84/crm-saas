@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import twilio from "twilio";
 import prisma from "../../prisma/client";
+import { TERMINAL_CALL_STATUSES } from "../../constants/jobStatus";
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID!,
@@ -61,7 +62,7 @@ export async function inboundVoice(req: Request, res: Response) {
         customerPhone: { endsWith: from },
         lastCallerPhone: { not: null },
         active: true,
-        job: { status: { notIn: ["Closed", "Canceled"] } },
+        job: { jobStatus: { name: { notIn: [...TERMINAL_CALL_STATUSES] } } },
       },
       orderBy: { updatedAt: "desc" },
     });
@@ -121,7 +122,7 @@ export async function handleExtension(req: Request, res: Response) {
     where: {
       extension: digits,
       active: true,
-      job: { status: { notIn: ["Closed", "Canceled"] } },
+      job: { jobStatus: { name: { notIn: [...TERMINAL_CALL_STATUSES] } } },
     },
   });
 

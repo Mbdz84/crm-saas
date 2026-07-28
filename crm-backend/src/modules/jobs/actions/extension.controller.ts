@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { isTerminalCallStatus } from "../../../constants/jobStatus";
 
 /**
  * POST /jobs/:shortId/refresh-extension
@@ -91,10 +92,13 @@ export async function refreshExtension(req: Request, res: Response) {
 export async function ensureJobExtensions(jobId: string) {
   const job = await prisma.job.findUnique({
     where: { id: jobId },
+    include: { jobStatus: true },
   });
 
   if (!job || !job.technicianId) return;
-  if (["Closed", "Canceled"].includes(job.status)) return;
+  // Use the REAL status (statusId → JobStatus), falling back to the legacy text
+  // field. Prevents regenerating sessions when a job is closed/canceled/pending.
+  if (isTerminalCallStatus(job.jobStatus?.name || job.status)) return;
 
   const phones: { phone: string; type: "primary" | "secondary" }[] = [];
 
