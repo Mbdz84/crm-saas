@@ -83,8 +83,25 @@ export default function ChatPage() {
   const [loadingList, setLoadingList] = useState(false);
   const [sending, setSending] = useState(false);
   const [archiveUnread, setArchiveUnread] = useState(0);
+  const [callerMap, setCallerMap] = useState<Record<string, string>>({});
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  // Caller ID directory (number → name)
+  useEffect(() => {
+    if (!base) return;
+    fetch(`${base}/caller-ids`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: { number: string; name: string }[]) => {
+        const m: Record<string, string> = {};
+        for (const c of rows || [])
+          m[(c.number || "").replace(/[^\d]/g, "").slice(-10)] = c.name;
+        setCallerMap(m);
+      })
+      .catch(() => {});
+  }, []);
+  const callerName = (num?: string) =>
+    callerMap[(num || "").replace(/[^\d]/g, "").slice(-10)] || "";
 
   const loadBoxUnread = useCallback(async () => {
     if (!base) return;
@@ -322,14 +339,30 @@ export default function ChatPage() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 min-w-0">
-                    <span className="font-medium truncate">{label(c)}</span>
+                  <div className="flex items-baseline gap-1.5 min-w-0">
+                    <span className="font-medium truncate">
+                      {fmtPhone(c.clientNumber)}
+                    </span>
                     {c.muted && (
                       <BellOff
                         size={12}
-                        className="text-amber-600 shrink-0"
+                        className="text-amber-600 shrink-0 self-center"
                       />
                     )}
+                    {(() => {
+                      const names = Array.from(
+                        new Set(
+                          [c.customerName, callerName(c.clientNumber)].filter(
+                            Boolean
+                          )
+                        )
+                      );
+                      return names.length ? (
+                        <span className="text-xs text-gray-400 truncate">
+                          {names.join(" · ")}
+                        </span>
+                      ) : null;
+                    })()}
                   </div>
                   <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
                     {fmtTime(c.lastMessageAt)}
