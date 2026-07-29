@@ -125,25 +125,21 @@ export default function Sidebar() {
             collapsed={collapsed}
           />
         </SidebarSection>
-
-
-        
-
-        <SidebarSection title="Company" collapsed={collapsed}>
-          <SidebarLink
-            href="/dashboard/settings/crm"
-            label="CRM Settings"
-            icon={<Settings size={18} />}
-            collapsed={collapsed}
-          />
-        </SidebarSection>
       </nav>
-<SidebarLink
-  href="/logout"
-  label="Logout"
-  icon={<Settings size={18} />}
-  collapsed={collapsed}
-/>
+
+      {/* Bottom links */}
+      <SidebarLink
+        href="/dashboard/settings/crm"
+        label="CRM Settings"
+        icon={<Settings size={18} />}
+        collapsed={collapsed}
+      />
+      <SidebarLink
+        href="/logout"
+        label="Logout"
+        icon={<Settings size={18} />}
+        collapsed={collapsed}
+      />
       {!collapsed && (
         <div className="px-4 text-xs text-gray-500 mt-auto py-4">
           © {new Date().getFullYear()} CRM Platform
