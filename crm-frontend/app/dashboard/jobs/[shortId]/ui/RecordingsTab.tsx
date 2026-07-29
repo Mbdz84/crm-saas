@@ -5,9 +5,10 @@ import { toast } from "sonner";
 import { useJob } from "../state/JobProvider";
 
 const SMS_PRESETS = [
-  "It's the locksmith — please call me back.",
-  "Hi, this is your technician. Please call me back to schedule.",
+  "It's the locksmith, please call me back.",
+  "Hi, this is your locksmith technician. Please call me back.",
   "We tried reaching you about your service. Please call back.",
+  "Call me",
 ];
 
 // Phone values may carry a ",ext" suffix — strip it for SMS
@@ -29,7 +30,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function RecordingsTab() {
-  const { job, tab, base, shortId } = useJob();
+  const { job, tab, base, shortId, reload } = useJob();
 
   const [recordings, setRecordings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -138,6 +139,8 @@ function labelPhone(phone?: string) {
       toast.success("SMS sent");
       setSmsBody("");
       setSmsOpen(false);
+      // Refresh the job so the new sms_sent log appears in the timeline now
+      reload?.();
     } catch {
       toast.error("Failed to send");
     } finally {
@@ -194,7 +197,10 @@ function labelPhone(phone?: string) {
           </button>
           <button
             type="button"
-            onClick={() => loadRecordings(true)}
+            onClick={() => {
+              loadRecordings(true);
+              reload?.();
+            }}
             className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm"
           >
             {loading ? "Refreshing…" : "Refresh"}
