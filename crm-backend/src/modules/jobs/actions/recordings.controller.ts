@@ -56,21 +56,35 @@ async function resolveFromTo(callSid: string, customerPhone?: string | null) {
   return { from: call.from, to: call.to };
 }
 
-export async function getJobRecordings(req: Request, res: Response) {
-  console.log("📞 GET /jobs/:shortId/recordings HIT", {
-    shortId: req.params.shortId,
-    companyId: req.user?.companyId,
-  });
+function recordingUrl(recordingSid?: string | null) {
+  return recordingSid
+    ? `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${recordingSid}`
+    : null;
+}
 
+// Map a (cached) JobRecord row to the shape the frontend expects
+function buildResult(rec: any) {
+  return {
+    recordingSid: rec.recordingSid || null,
+    callSid: rec.callSid,
+    createdAt: rec.createdAt,
+    from: rec.from || null,
+    to: rec.to || null,
+    status: rec.status || null,
+    duration: rec.duration || 0,
+    transcript: rec.transcript || null,
+    url: recordingUrl(rec.recordingSid),
+  };
+}
+
+export async function getJobRecordings(req: Request, res: Response) {
   try {
     const job = await prisma.job.findFirst({
       where: {
         shortId: req.params.shortId.toUpperCase(),
         companyId: req.user!.companyId,
       },
-      include: {
-        records: true,
-      },
+      include: { records: true },
     });
 
     if (!job) {
@@ -80,60 +94,77 @@ export async function getJobRecordings(req: Request, res: Response) {
     const results: any[] = [];
 
     for (const rec of job.records) {
+      /* --------------------------------------------------------
+         CACHED: already enriched (from/to resolved before).
+         Serve straight from our DB — no Twilio calls.
+      -------------------------------------------------------- */
+      if (rec.from) {
+        // One-time transcript backfill if a recording exists but the
+        // transcript wasn't ready yet last time.
+        if (rec.recordingSid && !rec.transcript) {
+          try {
+            const trs = await twilioClient
+              .recordings(rec.recordingSid)
+              .transcriptions.list();
+            const t = trs[0]?.transcriptionText || "";
+            if (t) {
+              await prisma.jobRecord.update({
+                where: { id: rec.id },
+                data: { transcript: t },
+              });
+              rec.transcript = t;
+            }
+          } catch {}
+        }
+        results.push(buildResult(rec));
+        continue;
+      }
+
+      /* --------------------------------------------------------
+         NEW: enrich once from Twilio, then persist onto the row.
+      -------------------------------------------------------- */
       try {
         const call = await twilioClient.calls(rec.callSid).fetch();
-const { from, to } = await resolveFromTo(rec.callSid, job.customerPhone);
+        const { from, to } = await resolveFromTo(rec.callSid, job.customerPhone);
 
-        const twilioRecordings = await twilioClient
-          .calls(rec.callSid)
-          .recordings.list();
-
-        // ✅ HAS RECORDINGS
-        if (twilioRecordings.length > 0) {
-          for (const r of twilioRecordings) {
-            let transcript = "";
-
-            try {
-              const transcriptions = await twilioClient
-                .recordings(r.sid)
-                .transcriptions.list();
-
-              if (transcriptions.length > 0) {
-                transcript = transcriptions[0].transcriptionText || "";
-              }
-            } catch {}
-
-            results.push({
-  recordingSid: r.sid,
-  callSid: rec.callSid,
-  createdAt: rec.createdAt,
-  from,
-  to,
-  status: call.status,
-duration: call.duration || 0,
-  transcript,
-  url: `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Recordings/${r.sid}`,
-});
-          }
+        let recordingSid = rec.recordingSid || null;
+        if (!recordingSid) {
+          const recs = await twilioClient.calls(rec.callSid).recordings.list();
+          if (recs.length > 0) recordingSid = recs[0].sid;
         }
-        // ❌ FAILED / NO ANSWER
-        else {
-  results.push({
-    recordingSid: null,
-    callSid: rec.callSid,
-    createdAt: rec.createdAt,
-    from,
-    to,
-    status: call.status,
-    duration: call.duration || 0,
-    transcript: null,
-    url: null,
-  });
-}
+
+        let transcript = rec.transcript || "";
+        if (recordingSid && !transcript) {
+          try {
+            const trs = await twilioClient
+              .recordings(recordingSid)
+              .transcriptions.list();
+            transcript = trs[0]?.transcriptionText || "";
+          } catch {}
+        }
+
+        const data = {
+          from: from || null,
+          to: to || null,
+          status: call.status || null,
+          duration: call.duration ? Number(call.duration) : rec.duration || 0,
+          recordingSid,
+          url: recordingUrl(recordingSid),
+          transcript: transcript || null,
+        };
+
+        await prisma.jobRecord.update({ where: { id: rec.id }, data });
+        results.push(buildResult({ ...rec, ...data }));
       } catch (err) {
-        console.error("❌ Twilio call fetch error", err);
+        console.error("❌ recordings enrich error:", err);
+        results.push(buildResult(rec)); // serve whatever we already have
       }
     }
+
+    results.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
     return res.json(results);
   } catch (err) {
