@@ -49,12 +49,17 @@ export async function incomingSms(req: Request, res: Response) {
     companyId = leadSource.companyId;
     leadSourceId = leadSource.id;
   } else {
-    const company = await prisma.company.findFirst({
-      orderBy: { createdAt: "asc" },
-    });
+    // Non-lead-source SMS → route to the configured CRM company.
+    // Falls back to the oldest company only if SMS_DEFAULT_COMPANY_ID is unset.
+    const configuredId = process.env.SMS_DEFAULT_COMPANY_ID;
+    const company = configuredId
+      ? await prisma.company.findUnique({ where: { id: configuredId } })
+      : await prisma.company.findFirst({ orderBy: { createdAt: "asc" } });
 
     if (!company) {
-      console.error("❌ No company found for incoming SMS");
+      console.error(
+        "❌ No company for incoming SMS (check SMS_DEFAULT_COMPANY_ID)"
+      );
       return res.type("text/xml").send("<Response></Response>");
     }
 
