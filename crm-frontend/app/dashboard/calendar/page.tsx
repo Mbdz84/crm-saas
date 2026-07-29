@@ -101,9 +101,9 @@ export default function CalendarPage() {
   return (
     <div className="p-4 md:p-6 space-y-4">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="text-2xl font-semibold">Calendar</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => {
               setMonthDate(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -119,7 +119,9 @@ export default function CalendarPage() {
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="font-medium w-40 text-center">{monthLabel}</span>
+          <span className="font-medium min-w-[8rem] text-center flex-1 md:flex-none">
+            {monthLabel}
+          </span>
           <button
             onClick={() => shiftMonth(1)}
             className="p-1.5 border rounded hover:bg-gray-50 dark:hover:bg-gray-800"
