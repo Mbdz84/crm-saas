@@ -24,7 +24,6 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     next();
   } catch (err: any) {
     console.error("❌ AUTH ERROR:", err?.name, err?.message);
-    console.error("❌ TOKEN USED:", token);
     return res.status(401).json({ error: "Invalid token" });
   }
 }

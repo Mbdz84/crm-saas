@@ -105,24 +105,4 @@ app.get("/", (_, res) => {
   res.send("CRM API is running 🚀");
 });
 
-/* ============================================================
-   OPENAI TEST
-============================================================ */
-app.get("/test-openai", async (req, res) => {
-  try {
-    const client = new (require("openai")).OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const r = await client.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: [{ role: "user", content: "Say OK" }],
-    });
-
-    res.send(r.choices?.[0]?.message?.content || "No content returned");
-  } catch (err: unknown) {
-    res.status(500).send("OpenAI test failed");
-  }
-});
-
 export default app;
