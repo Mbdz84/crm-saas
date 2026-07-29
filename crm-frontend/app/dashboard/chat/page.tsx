@@ -127,10 +127,22 @@ export default function ChatPage() {
     if (activeId) loadThread(activeId);
   }, [loadConversations, loadThread, activeId]);
 
-  // Auto-refresh every 10s (near real-time without websockets)
+  // Auto-refresh every 10s — but ONLY while the tab is visible, so a chat
+  // left open in a background tab doesn't keep hitting Cloud Run.
   useEffect(() => {
-    const iv = setInterval(refreshAll, 10000);
-    return () => clearInterval(iv);
+    const tick = () => {
+      if (document.visibilityState === "visible") refreshAll();
+    };
+    const iv = setInterval(tick, 10000);
+    // Refresh immediately when the tab regains focus
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refreshAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [refreshAll]);
 
   // Auto-scroll to the newest message when the count changes
