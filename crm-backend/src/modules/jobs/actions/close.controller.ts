@@ -86,6 +86,36 @@ export async function closeJob(req: Request, res: Response) {
           isClosingLocked: true,
           closedAt: closedAtDate,
           statusId: newStatusId,
+
+          // Persist any job-field edits made while the closing panel was open
+          // (e.g. reassigned technician). Only overwrite when the client sends
+          // the field, and never wipe with an empty value unintentionally.
+          technicianId:
+            body.technicianId !== undefined
+              ? body.technicianId || null
+              : job.technicianId,
+          scheduledAt:
+            body.scheduledAt !== undefined
+              ? body.scheduledAt
+                ? new Date(body.scheduledAt)
+                : null
+              : job.scheduledAt,
+          jobTypeId:
+            body.jobTypeId !== undefined
+              ? body.jobTypeId || null
+              : job.jobTypeId,
+          sourceId:
+            body.sourceId !== undefined ? body.sourceId || null : job.sourceId,
+          title: body.title ?? job.title,
+          description: body.description ?? job.description,
+          customerName: body.customerName ?? job.customerName,
+          customerPhone: body.customerPhone ?? job.customerPhone,
+          customerPhone2:
+            body.customerPhone2 !== undefined
+              ? body.customerPhone2 || null
+              : job.customerPhone2,
+          customerAddress: body.customerAddress ?? job.customerAddress,
+          timezone: body.timezone ?? job.timezone,
         },
       });
 
@@ -174,12 +204,37 @@ export async function closeJob(req: Request, res: Response) {
       return { job: updatedJob, closing };
     });
 
+    // Build a closing summary for the log (mirrors the closing panel:
+    // per-party dollars = percent × totalAmount, plus collected-by-method).
+    const num = (v: any) => Number(v) || 0;
+    const money = (v: number) => `$${v.toFixed(2)}`;
+    const totalForSplit = num(totalAmount);
+    const share = (pct: any) => (num(pct) / 100) * totalForSplit;
+
+    const collected = cashTotal + creditTotal + checkTotal + zelleTotal;
+    const methodParts = [
+      cashTotal ? `Cash ${money(cashTotal)}` : null,
+      creditTotal ? `Credit ${money(creditTotal)}` : null,
+      checkTotal ? `Check ${money(checkTotal)}` : null,
+      zelleTotal ? `Zelle ${money(zelleTotal)}` : null,
+    ].filter(Boolean);
+
+    const closeText = [
+      "Job closed",
+      `Collected: ${money(collected)}${
+        methodParts.length ? ` (${methodParts.join(", ")})` : ""
+      }`,
+      `Tech ${num(techPercent)}% — ${money(share(techPercent))}`,
+      `Lead ${num(leadPercent)}% — ${money(share(leadPercent))}`,
+      `Company ${num(companyPercent)}% — ${money(share(companyPercent))}`,
+    ].join("\n");
+
     await logJobEvent({
-  jobId: job.id,
-  type: "closed",
-  text: "Job closed",
-  userId: user.id,
-});
+      jobId: job.id,
+      type: "closed",
+      text: closeText,
+      userId: user.id,
+    });
 
     return res.json(result);
   } catch (err) {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { logJobEvent } from "../../../utils/jobLogger";
 
 /* ------------------------------------------
    Generate 5-char uppercase Job ID
@@ -139,6 +140,39 @@ export async function createJobFromParse(req: Request, res: Response) {
           text: __rawText,
         },
       });
+    }
+
+    /* ------------------------------------------
+       6) Log the selected lead source & technician
+    ------------------------------------------ */
+    if (finalSourceId) {
+      const lead = await prisma.leadSource.findUnique({
+        where: { id: finalSourceId },
+        select: { name: true },
+      });
+      if (lead) {
+        await logJobEvent({
+          jobId: job.id,
+          type: "system",
+          text: `Lead source: ${lead.name}`,
+          userId: req.user.id,
+        });
+      }
+    }
+
+    if (technicianId) {
+      const tech = await prisma.user.findUnique({
+        where: { id: technicianId },
+        select: { name: true },
+      });
+      if (tech) {
+        await logJobEvent({
+          jobId: job.id,
+          type: "assigned_technician",
+          text: `Technician assigned: ${tech.name}`,
+          userId: req.user.id,
+        });
+      }
     }
 
     return res.json({

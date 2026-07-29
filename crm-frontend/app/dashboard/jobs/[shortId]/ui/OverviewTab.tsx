@@ -1132,6 +1132,11 @@ const router = useRouter();
           <p className="text-sm text-gray-500">
             Status: <b>{currentStatusName}</b>
           </p>
+          {job.closedAt && (
+            <p className="text-sm text-gray-500">
+              Closed: {formatWithTimezone(job.closedAt, job.timezone)}
+            </p>
+          )}
         </div>
 
         {editingLocked && (
@@ -1185,8 +1190,8 @@ const router = useRouter();
         </div>
       )}
 
-      {/* Disabled UI when job is locked */}
-      <div className={editingLocked ? "opacity-50 pointer-events-none" : ""}>
+      {/* Closing panel stays editable even after the job is locked */}
+      <div>
         {/* PAYMENT + RIGHT INFO */}
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           {/* LEFT — PAYMENTS */}
@@ -1732,7 +1737,33 @@ const router = useRouter();
     }}
     className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
   >
-    Close Job (Admin Only)
+    Close Job &amp; Stay
+  </button>
+)}
+
+{userRole !== "technician" && (
+  <button
+    type="button"
+    onClick={async () => {
+      const r = calculateSplit();
+      if (!r) return toast.error("Run calculation first");
+
+      const ok = await closeJob(
+        r,
+        {
+          statusNote: cancelReason,
+          closedAt: editableJob.closedAt
+            ? new Date(editableJob.closedAt).toISOString()
+            : null,
+        },
+        { skipReload: true }
+      );
+
+      if (ok) router.push("/dashboard/jobs");
+    }}
+    className="mt-2 w-full bg-green-600 hover:bg-green-500 text-white text-xs font-semibold py-2 rounded"
+  >
+    Close Job &amp; Exit
   </button>
 )}
 

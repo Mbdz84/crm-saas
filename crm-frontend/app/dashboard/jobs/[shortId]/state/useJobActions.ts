@@ -392,11 +392,15 @@ payments.forEach((p: any) => {
 
   /* ---------------- CLOSE JOB ---------------- */
 
-  async function closeJob(r: any, extra: any = {}) {
-  if (!job) return;
+  async function closeJob(
+    r: any,
+    extra: any = {},
+    opts: { skipReload?: boolean } = {}
+  ): Promise<boolean> {
+  if (!job) return false;
   if (!base) {
     toast.error("API base URL is not configured");
-    return;
+    return false;
   }
 
   try {
@@ -432,6 +436,19 @@ payments.forEach((p: any) => {
       sumCheck: r.sumCheck,
 
       statusId: editableJob?.statusId,
+
+      // Persist job-field edits made in the closing panel (e.g. technician)
+      technicianId: editableJob?.technicianId ?? null,
+      scheduledAt: editableJob?.scheduledAt ?? null,
+      jobTypeId: editableJob?.jobTypeId ?? null,
+      sourceId: editableJob?.sourceId ?? null,
+      title: editableJob?.title,
+      description: editableJob?.description,
+      customerName: editableJob?.customerName,
+      customerPhone: editableJob?.customerPhone,
+      customerPhone2: editableJob?.customerPhone2 ?? null,
+      customerAddress: editableJob?.customerAddress,
+      timezone: editableJob?.timezone,
     };
 
     const res = await fetch(`${base}/jobs/${job.shortId}/close`, {
@@ -445,12 +462,17 @@ payments.forEach((p: any) => {
     });
 
     const data = await res.json();
-    if (!res.ok) return toast.error(data.error || "Close failed");
+    if (!res.ok) {
+      toast.error(data.error || "Close failed");
+      return false;
+    }
 
     toast.success("Job closed");
-    reload();
+    if (!opts.skipReload) reload();
+    return true;
   } catch {
     toast.error("Error closing job");
+    return false;
   }
 }
 
