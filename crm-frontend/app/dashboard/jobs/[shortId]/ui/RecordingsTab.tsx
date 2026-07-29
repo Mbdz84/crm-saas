@@ -25,6 +25,8 @@ export default function RecordingsTab() {
   const [recordings, setRecordings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [openTranscript, setOpenTranscript] = useState<string | null>(null);
+  // Map of normalized number → saved name (from the Caller IDs directory)
+  const [callerMap, setCallerMap] = useState<Record<string, string>>({});
 
   /* ----------------------------------------------------------
      AUTO LOAD WHEN TAB OPENS
@@ -32,6 +34,16 @@ export default function RecordingsTab() {
   useEffect(() => {
     if (tab === "recordings") {
       loadRecordings(false);
+      // Load the caller-ID directory for name lookups
+      fetch(`${base}/caller-ids`, { credentials: "include" })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((rows: { number: string; name: string }[]) => {
+          const map: Record<string, string> = {};
+          for (const c of rows || [])
+            map[(c.number || "").replace(/[^\d]/g, "").slice(-10)] = c.name;
+          setCallerMap(map);
+        })
+        .catch(() => {});
     }
   }, [tab]);
 
@@ -53,14 +65,21 @@ const sortedRecordings = recordings
 function labelPhone(phone?: string) {
   if (!phone) return "Unknown";
 
-  const customer = normalizePhone(job?.customerPhone);
   const current = normalizePhone(phone);
+  const customer = normalizePhone(job?.customerPhone);
+  const customer2 = normalizePhone(job?.customerPhone2);
 
-  if (customer && current === customer) {
-    return `${phone} (Customer)`;
+  const tags: string[] = [];
+  if (
+    current &&
+    ((customer && current === customer) || (customer2 && current === customer2))
+  ) {
+    tags.push("(Customer)");
   }
+  const savedName = callerMap[current];
+  if (savedName) tags.push(`(${savedName})`);
 
-  return phone;
+  return tags.length ? `${phone} ${tags.join("")}` : phone;
 }
 
   /* ----------------------------------------------------------

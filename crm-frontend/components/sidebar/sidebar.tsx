@@ -173,6 +173,12 @@ export default function Sidebar() {
   collapsed={collapsed}
 />
 <SidebarLink
+  href="/dashboard/settings/caller-ids"
+  label="Caller IDs"
+  icon={<Users size={18} />}
+  collapsed={collapsed}
+/>
+<SidebarLink
   href="/dashboard/reports"
   label="Reports"
   icon={<Settings size={18} />}

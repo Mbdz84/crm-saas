@@ -25,6 +25,7 @@ model Company {
   leadSources           LeadSource[]
   users                 User[]
   smsConversations      SmsConversation[]
+  callerIds             CallerId[]
 }
 
 model User {
@@ -269,6 +270,18 @@ model SmsConversation {
 
   @@unique([companyId, clientNumber, crmNumber])
   @@index([companyId, box, lastMessageAt])
+}
+
+model CallerId {
+  id        String   @id @default(cuid())
+  companyId String
+  number    String // normalized to last 10 digits for matching
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, number])
 }
 
 model SmsMessage {

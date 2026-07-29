@@ -28,6 +28,7 @@ import systemRouter from "./modules/system/system.routes";
 
 import reportsRoutes from "./modules/reports/reports.routes";
 import messagesRoutes from "./modules/messages/messages.routes";
+import callerIdRoutes from "./modules/callerIds/callerId.routes";
 
 import { authMiddleware } from "./middleware/auth";
 import { tenantMiddleware } from "./middleware/tenant";
@@ -99,6 +100,7 @@ app.use("/lead-sources", leadSourceRoutes);
 app.use("/sms-settings", authMiddleware, tenantMiddleware, smsSettingsRouter);
 app.use("/reports", reportsRoutes);
 app.use("/messages", authMiddleware, tenantMiddleware, messagesRoutes);
+app.use("/caller-ids", authMiddleware, tenantMiddleware, callerIdRoutes);
 
 /* ============================================================
    HEALTH CHECK
