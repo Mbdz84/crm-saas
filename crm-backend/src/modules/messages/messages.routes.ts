@@ -4,9 +4,14 @@ import {
   getThread,
   sendReply,
   updateConversation,
+  unreadCount,
 } from "./messages.controller";
 
 const router = Router();
+
+// GET /messages/unread-count  → total unread in the inbox
+// (must be BEFORE the "/:id" route so it isn't captured as an id)
+router.get("/unread-count", unreadCount);
 
 // GET /messages?box=inbox|blocked|archive  → conversation list
 router.get("/", listConversations);

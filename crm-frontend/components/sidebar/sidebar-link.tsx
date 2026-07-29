@@ -10,6 +10,7 @@ interface SidebarLinkProps {
   icon: React.ReactNode;
   collapsed?: boolean;
   onNavigate?: () => void;
+  badge?: number;
 }
 
 
@@ -19,6 +20,7 @@ export default function SidebarLink({
   icon,
   collapsed = false,
   onNavigate,
+  badge = 0,
 }: SidebarLinkProps) {
   const pathname = usePathname();
   const isActive = pathname === href;
@@ -28,16 +30,28 @@ export default function SidebarLink({
   href={href}
   onClick={onNavigate}
   className={clsx(
-    "flex items-center gap-3 px-4 py-2 rounded-md transition-colors",
+    "relative flex items-center gap-3 px-4 py-2 rounded-md transition-colors",
     isActive
       ? "bg-blue-600 text-white"
       : "text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800"
   )}
 >
-      <span className="flex-shrink-0">{icon}</span>
+      <span className="relative flex-shrink-0">
+        {icon}
+        {/* Collapsed: small dot on the icon */}
+        {collapsed && badge > 0 && (
+          <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-600" />
+        )}
+      </span>
       {!collapsed && (
-        <span className="text-sm font-medium whitespace-nowrap">
+        <span className="text-sm font-medium whitespace-nowrap flex-1">
           {label}
+        </span>
+      )}
+      {/* Expanded: numeric badge */}
+      {!collapsed && badge > 0 && (
+        <span className="ml-auto text-[10px] font-semibold bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+          {badge > 99 ? "99+" : badge}
         </span>
       )}
     </Link>

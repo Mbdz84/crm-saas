@@ -63,6 +63,23 @@ export async function recordInboundSms(input: {
 }
 
 /* ============================================================
+   GET /messages/unread-count  → total unread in the inbox
+============================================================ */
+export async function unreadCount(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const result = await prisma.smsConversation.aggregate({
+      where: { companyId, box: "inbox" },
+      _sum: { unread: true },
+    });
+    return res.json({ count: result._sum.unread || 0 });
+  } catch (err) {
+    console.error("🔥 unreadCount error:", err);
+    return res.json({ count: 0 });
+  }
+}
+
+/* ============================================================
    GET /messages?box=inbox|blocked|archive  → conversation list
 ============================================================ */
 export async function listConversations(req: Request, res: Response) {

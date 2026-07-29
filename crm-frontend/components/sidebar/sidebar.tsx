@@ -20,10 +20,42 @@ import {
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved) setCollapsed(saved === "true");
+  }, []);
+
+  // Poll unread SMS count for the Chat badge (only while the tab is visible)
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL;
+    if (!base) return;
+    const load = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch(`${base}/messages/unread-count`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setUnread(d.count || 0);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    load();
+    const iv = setInterval(load, 20000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   const toggle = () => {
@@ -67,6 +99,7 @@ export default function Sidebar() {
             label="Chat"
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
+            badge={unread}
           />
 
           <SidebarLink
