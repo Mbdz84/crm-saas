@@ -15,6 +15,7 @@ import {
   GitBranch,
   CheckCircle,
   Search,
+  MessageSquare,
   } from "lucide-react";
 
 export default function Sidebar() {
@@ -58,6 +59,13 @@ export default function Sidebar() {
             href="/dashboard"
             label="Dashboard"
             icon={<Home size={18} />}
+            collapsed={collapsed}
+          />
+
+          <SidebarLink
+            href="/dashboard/chat"
+            label="Chat"
+            icon={<MessageSquare size={18} />}
             collapsed={collapsed}
           />
 

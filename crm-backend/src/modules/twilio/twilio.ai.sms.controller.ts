@@ -2,18 +2,34 @@ import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { generateUniqueShortId } from "../jobs/utils/shortId";
 import { parseTextWithAI } from "../jobs/actions/parse.helper";
+import { recordInboundSms } from "../messages/messages.controller";
 
 /* ============================================================
-   INCOMING SMS → PARSE → CREATE JOB
+   INCOMING SMS
+   - Always recorded in the chat inbox.
+   - A job is created ONLY when the sender is a registered lead
+     source (matched by phone). Unknown senders → chat only, no
+     job and no AI call (prevents junk jobs / OpenAI abuse).
 ============================================================ */
 export async function incomingSms(req: Request, res: Response) {
   const fromRaw = req.body?.From || req.body?.from;
+  const toRaw = req.body?.To || req.body?.to;
   const bodyRaw = req.body?.Body || req.body?.body;
+  const messageSid = req.body?.MessageSid || req.body?.SmsSid || null;
 
-  const from = normalizePhone(fromRaw);
-  const body = bodyRaw?.trim();
+  const from = normalizePhone(fromRaw); // client number (E.164)
+  const crmNumber = normalizePhone(toRaw) || process.env.TWILIO_NUMBER || "";
+  const body = bodyRaw?.trim() || "";
 
-  if (!from || !body) {
+  // Collect MMS media URLs (NumMedia + MediaUrl0..N)
+  const numMedia = parseInt(req.body?.NumMedia || "0", 10) || 0;
+  const mediaUrls: string[] = [];
+  for (let i = 0; i < numMedia; i++) {
+    const u = req.body?.[`MediaUrl${i}`];
+    if (u) mediaUrls.push(u);
+  }
+
+  if (!from || (!body && mediaUrls.length === 0)) {
     console.warn("⚠️ Incoming SMS missing data", req.body);
     return res.type("text/xml").send("<Response></Response>");
   }
@@ -25,6 +41,7 @@ export async function incomingSms(req: Request, res: Response) {
     },
   });
 
+  // Determine which company this conversation belongs to
   let companyId: string;
   let leadSourceId: string | null = null;
 
@@ -44,7 +61,26 @@ export async function incomingSms(req: Request, res: Response) {
     companyId = company.id;
   }
 
-  // 🧠 AI PARSE
+  // 💬 Always record the message into the chat inbox
+  try {
+    await recordInboundSms({
+      companyId,
+      clientNumber: from,
+      crmNumber,
+      body,
+      mediaUrls,
+      twilioSid: messageSid,
+    });
+  } catch (err) {
+    console.error("❌ Failed to record inbound SMS to chat", err);
+  }
+
+  // 🚫 Not a registered lead source → chat only (no job, no AI parse)
+  if (!leadSource) {
+    return res.type("text/xml").send("<Response></Response>");
+  }
+
+  // 🧠 AI PARSE (lead-source path only)
   let parsed: any = {};
   try {
     parsed = await parseTextWithAI(body);

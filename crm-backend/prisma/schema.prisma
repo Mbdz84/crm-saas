@@ -24,6 +24,7 @@ model Company {
   jobTypes              JobType[]
   leadSources           LeadSource[]
   users                 User[]
+  smsConversations      SmsConversation[]
 }
 
 model User {
@@ -248,4 +249,36 @@ model JobReminder {
   @@index([jobId], map: "job_reminder_job_id_idx")
   @@index([scheduledFor], map: "job_reminder_scheduled_for_idx")
   @@map("JobReminder")
+}
+
+model SmsConversation {
+  id              String       @id @default(cuid())
+  companyId       String
+  clientNumber    String // the customer's phone number
+  crmNumber       String // which of our CRM numbers received/sent it (the "via")
+  customerName    String?
+  box             String       @default("inbox") // inbox | blocked | archive
+  unread          Int          @default(0)
+  lastMessageText String?
+  lastMessageAt   DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  company         Company      @relation(fields: [companyId], references: [id])
+  messages        SmsMessage[]
+
+  @@unique([companyId, clientNumber, crmNumber])
+  @@index([companyId, box, lastMessageAt])
+}
+
+model SmsMessage {
+  id             String          @id @default(cuid())
+  conversationId String
+  direction      String // inbound | outbound
+  body           String?
+  mediaUrls      String[] // Twilio MMS media URLs
+  twilioSid      String?
+  createdAt      DateTime        @default(now())
+  conversation   SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

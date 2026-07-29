@@ -1,0 +1,203 @@
+import { Request, Response } from "express";
+import twilio from "twilio";
+import prisma from "../../prisma/client";
+
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID!,
+  process.env.TWILIO_AUTH_TOKEN!
+);
+
+const BOXES = ["inbox", "blocked", "archive"];
+
+/* ============================================================
+   SHARED HELPER — record an inbound SMS into a conversation.
+   Called by the Twilio inbound webhook (twilio.ai.sms.controller).
+============================================================ */
+export async function recordInboundSms(input: {
+  companyId: string;
+  clientNumber: string; // E.164
+  crmNumber: string; // E.164 — which of our numbers received it
+  body?: string | null;
+  mediaUrls?: string[];
+  twilioSid?: string | null;
+  customerName?: string | null;
+}) {
+  const { companyId, clientNumber, crmNumber } = input;
+  const now = new Date();
+  const preview =
+    input.body?.trim() || (input.mediaUrls?.length ? "📷 Media" : "");
+
+  const conversation = await prisma.smsConversation.upsert({
+    where: {
+      companyId_clientNumber_crmNumber: { companyId, clientNumber, crmNumber },
+    },
+    create: {
+      companyId,
+      clientNumber,
+      crmNumber,
+      customerName: input.customerName || null,
+      unread: 1,
+      lastMessageText: preview,
+      lastMessageAt: now,
+    },
+    update: {
+      unread: { increment: 1 },
+      lastMessageText: preview,
+      lastMessageAt: now,
+      // only fill name if we don't already have one and one was provided
+      ...(input.customerName ? { customerName: input.customerName } : {}),
+    },
+  });
+
+  await prisma.smsMessage.create({
+    data: {
+      conversationId: conversation.id,
+      direction: "inbound",
+      body: input.body?.trim() || null,
+      mediaUrls: input.mediaUrls || [],
+      twilioSid: input.twilioSid || null,
+    },
+  });
+
+  return conversation;
+}
+
+/* ============================================================
+   GET /messages?box=inbox|blocked|archive  → conversation list
+============================================================ */
+export async function listConversations(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const box = (req.query.box as string) || "inbox";
+    if (!BOXES.includes(box))
+      return res.status(400).json({ error: "Invalid box" });
+
+    const conversations = await prisma.smsConversation.findMany({
+      where: { companyId, box },
+      orderBy: { lastMessageAt: "desc" },
+    });
+
+    return res.json(conversations);
+  } catch (err) {
+    console.error("🔥 listConversations error:", err);
+    return res.status(500).json({ error: "Failed to load conversations" });
+  }
+}
+
+/* ============================================================
+   GET /messages/:id  → full thread (and mark as read)
+============================================================ */
+export async function getThread(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const { id } = req.params;
+
+    const conversation = await prisma.smsConversation.findFirst({
+      where: { id, companyId },
+    });
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    const messages = await prisma.smsMessage.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (conversation.unread > 0) {
+      await prisma.smsConversation.update({
+        where: { id },
+        data: { unread: 0 },
+      });
+    }
+
+    return res.json({ conversation: { ...conversation, unread: 0 }, messages });
+  } catch (err) {
+    console.error("🔥 getThread error:", err);
+    return res.status(500).json({ error: "Failed to load thread" });
+  }
+}
+
+/* ============================================================
+   POST /messages/:id/reply  { body }  → send outbound SMS
+============================================================ */
+export async function sendReply(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const { id } = req.params;
+    const body = (req.body?.body || "").trim();
+
+    if (!body) return res.status(400).json({ error: "Message is empty" });
+
+    const conversation = await prisma.smsConversation.findFirst({
+      where: { id, companyId },
+    });
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+    if (conversation.box === "blocked")
+      return res
+        .status(400)
+        .json({ error: "This conversation is blocked. Unblock to reply." });
+
+    let twilioSid: string | null = null;
+    try {
+      const sent = await twilioClient.messages.create({
+        from: conversation.crmNumber, // the number the client texted
+        to: conversation.clientNumber,
+        body,
+      });
+      twilioSid = sent.sid;
+    } catch (err: any) {
+      console.error("🔥 SMS reply send failed:", err?.message);
+      return res.status(502).json({ error: "Failed to send SMS" });
+    }
+
+    const message = await prisma.smsMessage.create({
+      data: {
+        conversationId: id,
+        direction: "outbound",
+        body,
+        twilioSid,
+      },
+    });
+
+    await prisma.smsConversation.update({
+      where: { id },
+      data: { lastMessageText: body, lastMessageAt: new Date() },
+    });
+
+    return res.json(message);
+  } catch (err) {
+    console.error("🔥 sendReply error:", err);
+    return res.status(500).json({ error: "Failed to send reply" });
+  }
+}
+
+/* ============================================================
+   PATCH /messages/:id  { box }  → move (inbox | blocked | archive)
+============================================================ */
+export async function updateConversation(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const { id } = req.params;
+    const { box } = req.body || {};
+
+    if (!BOXES.includes(box))
+      return res.status(400).json({ error: "Invalid box" });
+
+    const conversation = await prisma.smsConversation.findFirst({
+      where: { id, companyId },
+    });
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    const updated = await prisma.smsConversation.update({
+      where: { id },
+      data: { box },
+    });
+
+    return res.json(updated);
+  } catch (err) {
+    console.error("🔥 updateConversation error:", err);
+    return res.status(500).json({ error: "Failed to update conversation" });
+  }
+}
