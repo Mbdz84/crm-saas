@@ -15,6 +15,7 @@ import {
 } from "./index";
 import { createJobFromParse } from "./actions/create-from-parse.controller";
 import { sendClientSms } from "./actions/send-sms.controller";
+import { getCalendarJobs } from "./actions/calendar.controller";
 import { authMiddleware } from "../../middleware/auth";
 import { tenantMiddleware } from "../../middleware/tenant";
 import { searchJobs } from "./actions/search.controller";
@@ -80,6 +81,9 @@ router.get("/search", searchJobs);
 
 // Bulk delete (literal route — must be before "/:shortId")
 router.post("/bulk-delete", DeleteController.bulkDeleteJobs);
+
+// Calendar appointments (literal route — must be before "/:shortId")
+router.get("/calendar", getCalendarJobs);
 
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);
