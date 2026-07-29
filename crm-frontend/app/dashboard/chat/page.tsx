@@ -198,7 +198,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+    <div className="flex h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)] border rounded-lg overflow-hidden bg-white dark:bg-gray-900">
       {/* LEFT — tabs + conversation list */}
       <div
         className={`${
