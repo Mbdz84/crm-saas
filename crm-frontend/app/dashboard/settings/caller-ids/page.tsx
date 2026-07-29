@@ -128,7 +128,7 @@ export default function CallerIdsPage() {
         <input
           className="border p-2 rounded flex-1 dark:bg-gray-800"
           value={number}
-          placeholder="Phone number (e.g. 7738829766)"
+          placeholder="Phone number (e.g. 7735551234)"
           onChange={(e) => setNumber(e.target.value)}
         />
         <input

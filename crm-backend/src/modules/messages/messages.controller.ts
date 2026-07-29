@@ -63,6 +63,54 @@ export async function recordInboundSms(input: {
 }
 
 /* ============================================================
+   SHARED HELPER — record an outbound SMS into a conversation.
+   Used when sending a text to a client from a job (call-me-back, etc).
+============================================================ */
+export async function recordOutboundSms(input: {
+  companyId: string;
+  clientNumber: string; // E.164
+  crmNumber: string; // E.164
+  body?: string | null;
+  twilioSid?: string | null;
+  customerName?: string | null;
+}) {
+  const { companyId, clientNumber, crmNumber } = input;
+  const now = new Date();
+  const preview = input.body?.trim() || "";
+
+  const conversation = await prisma.smsConversation.upsert({
+    where: {
+      companyId_clientNumber_crmNumber: { companyId, clientNumber, crmNumber },
+    },
+    create: {
+      companyId,
+      clientNumber,
+      crmNumber,
+      customerName: input.customerName || null,
+      unread: 0,
+      lastMessageText: preview,
+      lastMessageAt: now,
+    },
+    update: {
+      lastMessageText: preview,
+      lastMessageAt: now,
+      ...(input.customerName ? { customerName: input.customerName } : {}),
+    },
+  });
+
+  await prisma.smsMessage.create({
+    data: {
+      conversationId: conversation.id,
+      direction: "outbound",
+      body: input.body?.trim() || null,
+      twilioSid: input.twilioSid || null,
+    },
+  });
+
+  return conversation;
+}
+
+/* ============================================================
    GET /messages/unread-count  → total unread in the inbox
 ============================================================ */
 export async function unreadCount(req: Request, res: Response) {

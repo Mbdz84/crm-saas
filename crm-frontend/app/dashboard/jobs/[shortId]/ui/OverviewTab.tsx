@@ -136,6 +136,23 @@ type Reminder = {
 
 const [reminders, setReminders] = useState<Reminder[]>([]);
 
+// Caller ID directory (number → name) for showing names next to phone fields
+const [callerMap, setCallerMap] = useState<Record<string, string>>({});
+useEffect(() => {
+  if (!base) return;
+  fetch(`${base}/caller-ids`, { credentials: "include" })
+    .then((r) => (r.ok ? r.json() : []))
+    .then((rows: { number: string; name: string }[]) => {
+      const m: Record<string, string> = {};
+      for (const c of rows || [])
+        m[(c.number || "").replace(/[^\d]/g, "").slice(-10)] = c.name;
+      setCallerMap(m);
+    })
+    .catch(() => {});
+}, [base]);
+const callerName = (p?: string) =>
+  callerMap[(p || "").replace(/[^\d]/g, "").slice(-10)] || "";
+
 useEffect(() => {
   if (!job?.reminders) return;
 
@@ -396,6 +413,13 @@ const selectedStatusIsCanceled = (() => {
             )
           }
         />
+
+        {/* Caller ID name (from directory) */}
+        {callerName(phone) && (
+          <span className="self-center text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+            {callerName(phone)}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -437,6 +461,13 @@ const selectedStatusIsCanceled = (() => {
             )
           }
         />
+
+        {/* Caller ID name (from directory) */}
+        {callerName(phone) && (
+          <span className="self-center text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+            {callerName(phone)}
+          </span>
+        )}
       </div>
     </div>
   );

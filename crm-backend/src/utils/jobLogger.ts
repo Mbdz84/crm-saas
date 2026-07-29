@@ -14,6 +14,7 @@ type LogInput = {
     | "reopened"
     | "parsed_sms"
     | "duplicated"
+    | "sms_sent"
     | "system";
   text: string;
   userId?: string | null;

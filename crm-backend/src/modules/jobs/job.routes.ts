@@ -14,6 +14,7 @@ import {
   previewTechSms,
 } from "./index";
 import { createJobFromParse } from "./actions/create-from-parse.controller";
+import { sendClientSms } from "./actions/send-sms.controller";
 import { authMiddleware } from "../../middleware/auth";
 import { tenantMiddleware } from "../../middleware/tenant";
 import { searchJobs } from "./actions/search.controller";
@@ -65,6 +66,7 @@ router.post("/:shortId/reopen", ReopenController.reopenJob);
 /* --------------- SMS ---------------------------------------- */
 router.post("/:shortId/preview-sms", authMiddleware, tenantMiddleware, previewTechSms);
 router.post("/:shortId/resend-sms", SmsController.resendJobSms);
+router.post("/:shortId/send-sms", authMiddleware, tenantMiddleware, sendClientSms);
 
 
 /* --------------- RECORDINGS --------------------------------- */
