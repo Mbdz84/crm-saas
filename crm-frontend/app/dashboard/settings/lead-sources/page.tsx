@@ -111,14 +111,26 @@ export default function LeadSourcesPage() {
               router.push(`/dashboard/settings/lead-sources/${s.id}`)
             }
           >
-            <span className="font-medium">{s.name}</span>
+            <div className="min-w-0">
+              <span className="font-medium">{s.name}</span>
+              {Array.isArray(s.incomingSmsNumbers) &&
+              s.incomingSmsNumbers.length > 0 ? (
+                <div className="text-xs text-gray-500 mt-1 truncate">
+                  Incoming SMS: {s.incomingSmsNumbers.join(", ")}
+                </div>
+              ) : (
+                <div className="text-xs text-gray-400 mt-1">
+                  No incoming SMS numbers
+                </div>
+              )}
+            </div>
 
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 deleteSource(s.id);
               }}
-              className="px-3 py-2 bg-red-600 text-white rounded"
+              className="px-3 py-2 bg-red-600 text-white rounded shrink-0 ml-3"
             >
               Delete
             </button>
