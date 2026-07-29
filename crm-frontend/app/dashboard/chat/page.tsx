@@ -338,42 +338,47 @@ export default function ChatPage() {
                     : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 }`}
               >
+                {/* Line 1: number + time */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="font-medium truncate">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-medium whitespace-nowrap">
                       {fmtPhone(c.clientNumber)}
                     </span>
                     {c.muted && (
                       <BellOff
                         size={12}
-                        className="text-amber-600 shrink-0 self-center"
+                        className="text-amber-600 shrink-0"
                       />
                     )}
-                    {(() => {
-                      const names = Array.from(
-                        new Set(
-                          [c.customerName, callerName(c.clientNumber)].filter(
-                            Boolean
-                          )
-                        )
-                      );
-                      return names.length ? (
-                        <span className="text-xs text-gray-400 truncate">
-                          {names.join(" · ")}
-                        </span>
-                      ) : null;
-                    })()}
                   </div>
                   <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
                     {fmtTime(c.lastMessageAt)}
                   </span>
                 </div>
+
+                {/* Line 2: job name · caller ID */}
+                {(() => {
+                  const names = Array.from(
+                    new Set(
+                      [c.customerName, callerName(c.clientNumber)].filter(
+                        Boolean
+                      )
+                    )
+                  );
+                  return names.length ? (
+                    <div className="text-xs text-gray-400 truncate">
+                      {names.join(" · ")}
+                    </div>
+                  ) : null;
+                })()}
+
+                {/* Line 3: last message + unread */}
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-gray-500 truncate">
                     {c.lastMessageText || ""}
                   </span>
                   {c.unread > 0 && (
-                    <span className="text-[10px] bg-green-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                    <span className="text-[10px] bg-green-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center shrink-0">
                       {c.unread}
                     </span>
                   )}
