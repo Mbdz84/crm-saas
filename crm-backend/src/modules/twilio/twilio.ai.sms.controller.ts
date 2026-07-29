@@ -75,6 +75,8 @@ export async function incomingSms(req: Request, res: Response) {
       body,
       mediaUrls,
       twilioSid: messageSid,
+      // Known lead-source number → label the conversation with its name
+      customerName: leadSource?.name || null,
     });
   } catch (err) {
     console.error("❌ Failed to record inbound SMS to chat", err);

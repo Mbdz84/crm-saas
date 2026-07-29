@@ -8,7 +8,7 @@
  *   PATCH /messages/:id  { box }              → block / archive / move
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowLeft, Ban, Archive, Inbox, RotateCcw, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
@@ -121,6 +121,24 @@ export default function ChatPage() {
     else setThread([]);
   }, [activeId, loadThread]);
 
+  // Refresh both the list and the open thread
+  const refreshAll = useCallback(() => {
+    loadConversations();
+    if (activeId) loadThread(activeId);
+  }, [loadConversations, loadThread, activeId]);
+
+  // Auto-refresh every 10s (near real-time without websockets)
+  useEffect(() => {
+    const iv = setInterval(refreshAll, 10000);
+    return () => clearInterval(iv);
+  }, [refreshAll]);
+
+  // Auto-scroll to the newest message when the count changes
+  const bottomRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [thread.length]);
+
   async function handleSend() {
     if (!draft.trim() || !active || sending) return;
     setSending(true);
@@ -193,7 +211,7 @@ export default function ChatPage() {
             <p className="text-xs text-gray-500">Incoming SMS to your CRM numbers</p>
           </div>
           <button
-            onClick={loadConversations}
+            onClick={refreshAll}
             className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500"
             title="Refresh"
           >
@@ -352,6 +370,7 @@ export default function ChatPage() {
                   </div>
                 );
               })}
+              <div ref={bottomRef} />
             </div>
 
             {/* reply box */}
