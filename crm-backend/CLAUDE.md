@@ -17,7 +17,7 @@ No test framework is configured. Money values are Prisma `Decimal` — construct
 
 ## Module structure
 
-- `src/server.ts` — boot + schedules the reminder cron. `src/app.ts` — all middleware wiring and route mounting.
+- `src/server.ts` — boots the HTTP server. `src/app.ts` — all middleware wiring and route mounting.
 - Feature modules live in `src/modules/<feature>/` as `<feature>.routes.ts` + `<feature>.controller.ts`. `app.ts` mounts each router under a path prefix.
 - **The `jobs` module is the exception**: one controller file per action under `modules/jobs/actions/` (`create`, `update`, `close`, `reopen`, `parse`, `duplicate`, `delete`, `get`, `search`, `recordings`, `sms`, `extension`), re-exported through `jobs/index.ts` (a barrel) and wired in `jobs/job.routes.ts`.
 - In `job.routes.ts`, **literal routes (`/parse`, `/create-from-parse`, `/search`) must be declared before the `:shortId` routes** or Express shadows them.
@@ -66,7 +66,9 @@ Recent commits fixed bugs caused by reordering these — preserve the sequence.
 
 ## Cron / reminders
 
-`server.ts` schedules `processJobReminders` (`modules/reminders/reminder.cron.ts`) every 10 minutes; it self-guards with a `running` flag to avoid overlapping runs, finds due `JobReminder`s, sends SMS, and marks them sent. The Supabase edge function `../supabase/functions/send-job-reminders` is a **parallel implementation** — if you change reminder behavior, check whether both need updating.
+Reminders are sent by `processJobReminders` (`modules/reminders/reminder.cron.ts`) — finds due `JobReminder`s, sends via `sendTechSms` (masking + company SMS template), marks them sent; self-guards with a `running` flag.
+
+**It is triggered by an external scheduler, NOT in-process cron.** In-process `node-cron` was removed from `server.ts` because it dies whenever Cloud Run scales to zero. Instead, **Supabase `pg_cron` POSTs to `/cron/run-reminders`** (`modules/cron/`) on a schedule; that endpoint is protected by the `CRON_SECRET` header and calls `processJobReminders`. The old parallel Supabase edge function was retired — this is now the single sender.
 
 ## Deployment
 

@@ -30,6 +30,7 @@ import reportsRoutes from "./modules/reports/reports.routes";
 import messagesRoutes from "./modules/messages/messages.routes";
 import callerIdRoutes from "./modules/callerIds/callerId.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
+import cronRoutes from "./modules/cron/cron.routes";
 
 import { authMiddleware } from "./middleware/auth";
 import { tenantMiddleware } from "./middleware/tenant";
@@ -72,6 +73,9 @@ app.use("/api/ingest", ingestRoutes);
 
 // logout
 app.use("/logout", logoutRoutes);
+
+// external scheduler (Supabase pg_cron) → reminders; secret-protected inside
+app.use("/cron", cronRoutes);
 
 // Request logging
 app.use(requestLogger);

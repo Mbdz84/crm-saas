@@ -2,18 +2,12 @@ import { config } from "dotenv";
 config();
 
 import app from "./app";
-import cron from "node-cron";
-import { processJobReminders } from "./modules/reminders/reminder.cron";
 
 const PORT = process.env.PORT || 8080;
 
+// NOTE: Reminders are no longer run by in-process node-cron (unreliable on
+// Cloud Run — the timer dies when the instance scales to zero). They are now
+// triggered by Supabase pg_cron → POST /cron/run-reminders.
 app.listen(PORT, () => {
   console.log(`🚀 CRM Backend running on port ${PORT}`);
-
-  // ⏰ Reminder cron — every 10 minutes
-  cron.schedule("*/10 * * * *", async () => {
-    await processJobReminders();
-  });
-
-  console.log("⏰ Reminder cron scheduled (every 10 minutes)");
 });
