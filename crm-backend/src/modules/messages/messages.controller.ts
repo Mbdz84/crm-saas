@@ -248,6 +248,28 @@ export async function sendReply(req: Request, res: Response) {
 }
 
 /* ============================================================
+   DELETE /messages/:id  → delete conversation + its messages
+============================================================ */
+export async function deleteConversation(req: Request, res: Response) {
+  try {
+    const companyId = req.user!.companyId;
+    const { id } = req.params;
+
+    const conversation = await prisma.smsConversation.findFirst({
+      where: { id, companyId },
+    });
+    if (!conversation)
+      return res.status(404).json({ error: "Conversation not found" });
+
+    await prisma.smsConversation.delete({ where: { id } });
+    return res.json({ message: "Deleted" });
+  } catch (err) {
+    console.error("🔥 deleteConversation error:", err);
+    return res.status(500).json({ error: "Failed to delete conversation" });
+  }
+}
+
+/* ============================================================
    PATCH /messages/:id  { box }  → move (inbox | blocked | archive)
 ============================================================ */
 export async function updateConversation(req: Request, res: Response) {

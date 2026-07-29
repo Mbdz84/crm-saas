@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface JobStatusMeta {
   id: string;
@@ -117,6 +118,54 @@ export default function JobsPage() {
   });
 
   const base = process.env.NEXT_PUBLIC_API_URL;
+
+  // Multi-select delete
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+
+  function toggleSelect(shortId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(shortId)) next.delete(shortId);
+      else next.add(shortId);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+    setShowDeleteModal(false);
+    setDeleteConfirm("");
+  }
+
+  async function handleBulkDelete() {
+    const shortIds = Array.from(selectedIds);
+    if (shortIds.length === 0) return;
+    try {
+      const res = await fetch(`${base}/jobs/bulk-delete`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shortIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Failed to delete");
+        return;
+      }
+      toast.success(`Deleted ${data.deleted} job(s)`);
+      // Remove them from the board immediately
+      setJobs((prev: any[]) =>
+        prev.filter((j) => !selectedIds.has(j.shortId))
+      );
+      exitSelectMode();
+    } catch {
+      toast.error("Failed to delete");
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -340,6 +389,19 @@ function formatAddress(addr?: string | null) {
           </button>
 
           <button
+            onClick={() =>
+              selectMode ? exitSelectMode() : setSelectMode(true)
+            }
+            className={`px-3 py-2 border rounded text-sm ${
+              selectMode
+                ? "bg-gray-100 hover:bg-gray-200"
+                : "bg-white hover:bg-gray-50 text-red-600 border-red-300"
+            }`}
+          >
+            {selectMode ? "Cancel" : "Delete Jobs"}
+          </button>
+
+          <button
             onClick={() => router.push("/dashboard/jobs/new")}
             className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
           >
@@ -399,6 +461,25 @@ function formatAddress(addr?: string | null) {
        </div>
       )}
 
+      {/* SELECT / DELETE TOOLBAR */}
+      {selectMode && (
+        <div className="flex items-center justify-between border border-red-300 rounded p-2 bg-red-50 dark:bg-red-950/30">
+          <span className="text-sm">
+            Select jobs to delete — <b>{selectedIds.size}</b> selected
+          </span>
+          <button
+            disabled={selectedIds.size === 0}
+            onClick={() => {
+              setDeleteConfirm("");
+              setShowDeleteModal(true);
+            }}
+            className="px-3 py-1.5 bg-red-600 text-white rounded text-sm disabled:opacity-50"
+          >
+            Delete Selected
+          </button>
+        </div>
+      )}
+
       {/* NO JOBS */}
       {groupedByStatus.length === 0 && (
         <div className="border rounded p-4 text-center text-gray-500">
@@ -434,6 +515,7 @@ function formatAddress(addr?: string | null) {
             <table className="w-full text-sm table-fixed min-w-[1100px]">
               <thead className="bg-gray-100 dark:bg-gray-800">
   <tr>
+    {selectMode && <th className="p-2 w-8"></th>}
     {columnsVisible.shortId && (
       <th className="p-2 text-left w-20">Job ID</th>
     )}
@@ -498,8 +580,16 @@ onClick={() => toggleSort("createdAt")}
                   return (
                     <tr
                       key={job.id}
-                      className="border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      className={`border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${
+                        selectMode && selectedIds.has(short)
+                          ? "bg-red-50 dark:bg-red-950/30"
+                          : ""
+                      }`}
                       onClick={(e) => {
+                        if (selectMode) {
+                          toggleSelect(short);
+                          return;
+                        }
                         // prevent row click when clicking on actions
                         const target = e.target as HTMLElement;
                         if (
@@ -512,6 +602,18 @@ onClick={() => toggleSort("createdAt")}
                         router.push(`/dashboard/jobs/${short}`);
                       }}
                     >
+                      {selectMode && (
+                        <td
+                          className="p-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(short)}
+                            onChange={() => toggleSelect(short)}
+                          />
+                        </td>
+                      )}
                       {columnsVisible.shortId && (
                         <td className="p-2 font-mono text-xs">{short}</td>
                       )}
@@ -672,6 +774,52 @@ onClick={() => toggleSort("createdAt")}
           </div>
         </section>
       ))}
+
+      {/* DELETE CONFIRM MODAL (type DELETE) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg p-5 w-[420px] max-w-full space-y-3 shadow-xl">
+            <h3 className="text-lg font-semibold text-red-600">
+              Delete {selectedIds.size} job{selectedIds.size === 1 ? "" : "s"}?
+            </h3>
+            <p className="text-sm text-gray-500">
+              This permanently deletes the selected job
+              {selectedIds.size === 1 ? "" : "s"} and all related data (logs,
+              recordings, closings, reminders). This cannot be undone.
+            </p>
+            <p className="text-sm">
+              Type <b>DELETE</b> to confirm:
+            </p>
+            <input
+              autoFocus
+              className="border rounded p-2 w-full dark:bg-gray-800"
+              placeholder="DELETE"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                deleteConfirm === "DELETE" &&
+                handleBulkDelete()
+              }
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-3 py-1.5 rounded bg-gray-200 dark:bg-gray-700 text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={deleteConfirm !== "DELETE"}
+                className="px-3 py-1.5 rounded bg-red-600 text-white text-sm disabled:opacity-50"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

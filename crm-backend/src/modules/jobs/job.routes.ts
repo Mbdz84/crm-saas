@@ -78,6 +78,9 @@ router.post("/:shortId/duplicate", DuplicateController.duplicateJob);
 // GET /jobs/search?q=&from=&to=
 router.get("/search", searchJobs);
 
+// Bulk delete (literal route — must be before "/:shortId")
+router.post("/bulk-delete", DeleteController.bulkDeleteJobs);
+
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);
 router.put("/:shortId", UpdateController.updateJobByShortId);

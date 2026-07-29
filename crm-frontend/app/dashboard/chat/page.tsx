@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Bell,
   BellOff,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -250,6 +251,31 @@ export default function ChatPage() {
     }
   }
 
+  async function deleteConversation() {
+    if (!active) return;
+    if (
+      !confirm(
+        "Delete this conversation and all its messages? This cannot be undone."
+      )
+    )
+      return;
+    try {
+      const res = await fetch(`${base}/messages/${active.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        toast.error("Failed to delete");
+        return;
+      }
+      setConversations((prev) => prev.filter((c) => c.id !== active.id));
+      setActiveId("");
+      toast.success("Deleted");
+    } catch {
+      toast.error("Failed to delete");
+    }
+  }
+
   async function moveActive(target: Box) {
     if (!active) return;
     try {
@@ -447,6 +473,14 @@ export default function ChatPage() {
                   <RotateCcw size={14} /> Inbox
                 </button>
               )}
+
+              <button
+                onClick={deleteConversation}
+                className="p-2 rounded hover:bg-red-50 text-red-600"
+                title="Delete conversation"
+              >
+                <Trash2 size={16} />
+              </button>
             </div>
 
             {/* messages */}

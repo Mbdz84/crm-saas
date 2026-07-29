@@ -4,6 +4,7 @@ import {
   getThread,
   sendReply,
   updateConversation,
+  deleteConversation,
   unreadCount,
 } from "./messages.controller";
 
@@ -24,5 +25,8 @@ router.post("/:id/reply", sendReply);
 
 // PATCH /messages/:id  → move box (inbox | blocked | archive)
 router.patch("/:id", updateConversation);
+
+// DELETE /messages/:id  → delete conversation + messages
+router.delete("/:id", deleteConversation);
 
 export default router;
