@@ -70,7 +70,7 @@ export async function sendClientSms(req: Request, res: Response) {
     await logJobEvent({
       jobId: job.id,
       type: "sms_sent",
-      text: `Sent to ${to}\n\n${body}`,
+      text: `To: ${to}\nFrom: ${CRM_NUMBER}\n\n${body}`,
       userId: req.user?.id,
     });
 

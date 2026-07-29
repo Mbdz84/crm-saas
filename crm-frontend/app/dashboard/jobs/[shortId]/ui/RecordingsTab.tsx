@@ -115,6 +115,22 @@ function labelPhone(phone?: string) {
   return tags.length ? `${phone} ${tags.join("")}` : phone;
 }
 
+// Append "(Customer)" and the saved Caller ID name after any phone number
+function annotatePhones(text?: string) {
+  if (!text) return "";
+  const customer = normalizePhone(job?.customerPhone);
+  const customer2 = normalizePhone(job?.customerPhone2);
+  return text.replace(/\+?\d{10,11}/g, (m) => {
+    const norm = m.replace(/[^\d]/g, "").slice(-10);
+    const tags: string[] = [];
+    if (norm && (norm === customer || norm === customer2))
+      tags.push("(Customer)");
+    const name = callerMap[norm];
+    if (name) tags.push(`(${name})`);
+    return tags.length ? `${m} ${tags.join("")}` : m;
+  });
+}
+
   function openSmsPanel() {
     setSmsTo(barePhone(job?.customerPhone) || barePhone(job?.customerPhone2));
     setSmsBody("");
@@ -300,7 +316,9 @@ function labelPhone(phone?: string) {
               <span className="text-sm font-medium text-gray-600 block">
                 {new Date(rec.createdAt).toLocaleString()}
               </span>
-              <div className="text-sm mt-2 whitespace-pre-wrap">{rec.text}</div>
+              <div className="text-sm mt-2 whitespace-pre-wrap">
+                {annotatePhones(rec.text)}
+              </div>
             </div>
           ) : (
           <div
