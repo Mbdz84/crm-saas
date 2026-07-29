@@ -40,7 +40,7 @@ export default function Sidebar() {
         });
         if (res.ok) {
           const d = await res.json();
-          setUnread(d.count || 0);
+          setUnread(d.inbox || 0);
         }
       } catch {
         /* ignore */

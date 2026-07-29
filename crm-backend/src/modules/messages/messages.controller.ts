@@ -68,14 +68,24 @@ export async function recordInboundSms(input: {
 export async function unreadCount(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
-    const result = await prisma.smsConversation.aggregate({
-      where: { companyId, box: "inbox" },
-      _sum: { unread: true },
+    // Muted conversations never count toward badges.
+    const [inbox, archive] = await Promise.all([
+      prisma.smsConversation.aggregate({
+        where: { companyId, box: "inbox", muted: false },
+        _sum: { unread: true },
+      }),
+      prisma.smsConversation.aggregate({
+        where: { companyId, box: "archive", muted: false },
+        _sum: { unread: true },
+      }),
+    ]);
+    return res.json({
+      inbox: inbox._sum.unread || 0,
+      archive: archive._sum.unread || 0,
     });
-    return res.json({ count: result._sum.unread || 0 });
   } catch (err) {
     console.error("🔥 unreadCount error:", err);
-    return res.json({ count: 0 });
+    return res.json({ inbox: 0, archive: 0 });
   }
 }
 
@@ -196,10 +206,18 @@ export async function updateConversation(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
     const { id } = req.params;
-    const { box } = req.body || {};
+    const { box, muted } = req.body || {};
 
-    if (!BOXES.includes(box))
-      return res.status(400).json({ error: "Invalid box" });
+    const data: { box?: string; muted?: boolean } = {};
+    if (box !== undefined) {
+      if (!BOXES.includes(box))
+        return res.status(400).json({ error: "Invalid box" });
+      data.box = box;
+    }
+    if (muted !== undefined) data.muted = !!muted;
+
+    if (Object.keys(data).length === 0)
+      return res.status(400).json({ error: "Nothing to update" });
 
     const conversation = await prisma.smsConversation.findFirst({
       where: { id, companyId },
@@ -209,7 +227,7 @@ export async function updateConversation(req: Request, res: Response) {
 
     const updated = await prisma.smsConversation.update({
       where: { id },
-      data: { box },
+      data,
     });
 
     return res.json(updated);

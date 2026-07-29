@@ -9,7 +9,16 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, Ban, Archive, Inbox, RotateCcw, RefreshCw } from "lucide-react";
+import {
+  ArrowLeft,
+  Ban,
+  Archive,
+  Inbox,
+  RotateCcw,
+  RefreshCw,
+  Bell,
+  BellOff,
+} from "lucide-react";
 import { toast } from "sonner";
 
 const base = process.env.NEXT_PUBLIC_API_URL;
@@ -22,6 +31,7 @@ interface Conversation {
   crmNumber: string;
   customerName: string | null;
   box: Box;
+  muted: boolean;
   unread: number;
   lastMessageText: string | null;
   lastMessageAt: string | null;
@@ -72,8 +82,25 @@ export default function ChatPage() {
   const [draft, setDraft] = useState("");
   const [loadingList, setLoadingList] = useState(false);
   const [sending, setSending] = useState(false);
+  const [archiveUnread, setArchiveUnread] = useState(0);
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  const loadBoxUnread = useCallback(async () => {
+    if (!base) return;
+    try {
+      const res = await fetch(`${base}/messages/unread-count`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setArchiveUnread(d.archive || 0);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const loadConversations = useCallback(async () => {
     if (!base) return;
@@ -121,11 +148,35 @@ export default function ChatPage() {
     else setThread([]);
   }, [activeId, loadThread]);
 
-  // Refresh both the list and the open thread
+  // Refresh the list, the open thread, and the per-box unread counts
   const refreshAll = useCallback(() => {
     loadConversations();
     if (activeId) loadThread(activeId);
-  }, [loadConversations, loadThread, activeId]);
+    loadBoxUnread();
+  }, [loadConversations, loadThread, activeId, loadBoxUnread]);
+
+  async function toggleMute() {
+    if (!active) return;
+    const newMuted = !active.muted;
+    try {
+      const res = await fetch(`${base}/messages/${active.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ muted: newMuted }),
+      });
+      if (!res.ok) {
+        toast.error("Action failed");
+        return;
+      }
+      setConversations((prev) =>
+        prev.map((c) => (c.id === active.id ? { ...c, muted: newMuted } : c))
+      );
+      toast.success(newMuted ? "Muted" : "Unmuted");
+    } catch {
+      toast.error("Action failed");
+    }
+  }
 
   // Auto-refresh every 10s — but ONLY while the tab is visible, so a chat
   // left open in a background tab doesn't keep hitting Cloud Run.
@@ -245,6 +296,9 @@ export default function ChatPage() {
             >
               {t.icon}
               {t.label}
+              {t.key === "archive" && archiveUnread > 0 && (
+                <span className="h-2 w-2 rounded-full bg-red-600" />
+              )}
             </button>
           ))}
         </div>
@@ -310,6 +364,16 @@ export default function ChatPage() {
                   via {fmtPhone(active.crmNumber)}
                 </div>
               </div>
+
+              <button
+                onClick={toggleMute}
+                className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${
+                  active.muted ? "text-amber-600" : "text-gray-500"
+                }`}
+                title={active.muted ? "Unmute (counts toward unread)" : "Mute (hide from unread)"}
+              >
+                {active.muted ? <BellOff size={16} /> : <Bell size={16} />}
+              </button>
 
               {active.box === "inbox" ? (
                 <>
