@@ -321,9 +321,17 @@ export default function ChatPage() {
                     : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium truncate">{label(c)}</span>
-                  <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="font-medium truncate">{label(c)}</span>
+                    {c.muted && (
+                      <BellOff
+                        size={12}
+                        className="text-amber-600 shrink-0"
+                      />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-400 whitespace-nowrap shrink-0">
                     {fmtTime(c.lastMessageAt)}
                   </span>
                 </div>
