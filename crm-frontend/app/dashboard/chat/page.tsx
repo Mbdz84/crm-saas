@@ -31,6 +31,7 @@ interface Conversation {
   clientNumber: string;
   crmNumber: string;
   customerName: string | null;
+  displayName: string | null;
   box: Box;
   muted: boolean;
   unread: number;
@@ -71,9 +72,6 @@ function fmtTime(iso?: string | null) {
   });
 }
 
-function label(c: Conversation) {
-  return c.customerName || fmtPhone(c.clientNumber);
-}
 
 export default function ChatPage() {
   const [box, setBox] = useState<Box>("inbox");
@@ -85,6 +83,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [archiveUnread, setArchiveUnread] = useState(0);
   const [callerMap, setCallerMap] = useState<Record<string, string>>({});
+  const [leadSourceMap, setLeadSourceMap] = useState<Record<string, string>>({});
 
   const active = conversations.find((c) => c.id === activeId) || null;
 
@@ -103,6 +102,23 @@ export default function ChatPage() {
   }, []);
   const callerName = (num?: string) =>
     callerMap[(num || "").replace(/[^\d]/g, "").slice(-10)] || "";
+
+  // Lead sources → map each of their Incoming SMS Numbers to the source name
+  useEffect(() => {
+    if (!base) return;
+    fetch(`${base}/lead-sources`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: { name: string; incomingSmsNumbers?: string[] }[]) => {
+        const m: Record<string, string> = {};
+        for (const s of rows || [])
+          for (const n of s.incomingSmsNumbers || [])
+            m[(n || "").replace(/[^\d]/g, "").slice(-10)] = s.name;
+        setLeadSourceMap(m);
+      })
+      .catch(() => {});
+  }, []);
+  const leadSourceName = (num?: string) =>
+    leadSourceMap[(num || "").replace(/[^\d]/g, "").slice(-10)] || "";
 
   const loadBoxUnread = useCallback(async () => {
     if (!base) return;
@@ -251,6 +267,29 @@ export default function ChatPage() {
     }
   }
 
+  async function setDisplayLabel(value: string | null) {
+    if (!active) return;
+    try {
+      const res = await fetch(`${base}/messages/${active.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ displayName: value }),
+      });
+      if (!res.ok) {
+        toast.error("Failed to update");
+        return;
+      }
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === active.id ? { ...c, displayName: value } : c
+        )
+      );
+    } catch {
+      toast.error("Failed to update");
+    }
+  }
+
   async function deleteConversation() {
     if (!active) return;
     if (
@@ -367,8 +406,8 @@ export default function ChatPage() {
                 {/* Line 1: number + time */}
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="font-medium whitespace-nowrap">
-                      {fmtPhone(c.clientNumber)}
+                    <span className="font-medium truncate">
+                      {c.displayName || fmtPhone(c.clientNumber)}
                     </span>
                     {c.muted && (
                       <BellOff
@@ -382,18 +421,24 @@ export default function ChatPage() {
                   </span>
                 </div>
 
-                {/* Line 2: job name · caller ID */}
+                {/* Line 2: the other labels (number + names), excluding the primary */}
                 {(() => {
-                  const names = Array.from(
+                  const primary = c.displayName || fmtPhone(c.clientNumber);
+                  const items = Array.from(
                     new Set(
-                      [c.customerName, callerName(c.clientNumber)].filter(
-                        Boolean
-                      )
+                      [
+                        c.displayName ? fmtPhone(c.clientNumber) : "",
+                        c.customerName,
+                        callerName(c.clientNumber),
+                        leadSourceName(c.clientNumber),
+                      ]
+                        .filter(Boolean)
+                        .filter((x) => x !== primary)
                     )
                   );
-                  return names.length ? (
+                  return items.length ? (
                     <div className="text-xs text-gray-400 truncate">
-                      {names.join(" · ")}
+                      {items.join(" · ")}
                     </div>
                   ) : null;
                 })()}
@@ -430,9 +475,51 @@ export default function ChatPage() {
               </button>
 
               <div className="flex-1 min-w-0">
-                <div className="font-semibold truncate">{label(active)}</div>
-                <div className="text-xs text-gray-500 truncate">
-                  {active.customerName ? `${fmtPhone(active.clientNumber)} · ` : ""}
+                {/* Clickable chips — pick which label shows bold in the list */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(() => {
+                    const opts: {
+                      key: string;
+                      label: string;
+                      value: string | null;
+                    }[] = [
+                      {
+                        key: "__num__",
+                        label: fmtPhone(active.clientNumber),
+                        value: null,
+                      },
+                    ];
+                    const seen = new Set<string>();
+                    for (const nm of [
+                      active.customerName,
+                      callerName(active.clientNumber),
+                      leadSourceName(active.clientNumber),
+                    ]) {
+                      if (nm && !seen.has(nm)) {
+                        seen.add(nm);
+                        opts.push({ key: nm, label: nm, value: nm });
+                      }
+                    }
+                    return opts.map((o) => {
+                      const selected = (active.displayName || null) === o.value;
+                      return (
+                        <button
+                          key={o.key}
+                          onClick={() => setDisplayLabel(o.value)}
+                          title="Show this as the label in the chat list"
+                          className={`text-sm px-2 py-0.5 rounded border transition-colors ${
+                            selected
+                              ? "bg-blue-600 text-white border-blue-600 font-semibold"
+                              : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          {o.label}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                <div className="text-xs text-gray-500 truncate mt-0.5">
                   via {fmtPhone(active.crmNumber)}
                 </div>
               </div>

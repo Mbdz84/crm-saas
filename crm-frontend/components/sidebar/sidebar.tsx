@@ -10,12 +10,9 @@ import {
   Briefcase,
   Calendar,
   Settings,
-  Users,
-  UserCog,
-  GitBranch,
-  CheckCircle,
   Search,
   MessageSquare,
+  BarChart3,
   } from "lucide-react";
 
 export default function Sidebar() {
@@ -120,6 +117,13 @@ export default function Sidebar() {
             icon={<Search size={18} />}
             collapsed={collapsed}
           />
+
+          <SidebarLink
+            href="/dashboard/reports"
+            label="Reports"
+            icon={<BarChart3 size={18} />}
+            collapsed={collapsed}
+          />
         </SidebarSection>
 
 
@@ -127,69 +131,11 @@ export default function Sidebar() {
 
         <SidebarSection title="Company" collapsed={collapsed}>
           <SidebarLink
-            href="/dashboard/settings"
-            label="Company Profile"
+            href="/dashboard/settings/crm"
+            label="CRM Settings"
             icon={<Settings size={18} />}
             collapsed={collapsed}
           />
-
-          <SidebarLink
-            href="/dashboard/settings/job-types"
-            label="Job Types"
-            icon={<GitBranch size={18} />}
-            collapsed={collapsed}
-          />
-
-          <SidebarLink
-            href="/dashboard/settings/lead-sources"
-            label="Lead Sources"
-            icon={<GitBranch size={18} />}
-            collapsed={collapsed}
-          />
-
-          <SidebarLink
-            href="/dashboard/technicians"
-            label="Technicians"
-            icon={<Users size={18} />}
-            collapsed={collapsed}
-          />
-
-          <SidebarLink
-            href="/dashboard/users"
-            label="Users"
-            icon={<UserCog size={18} />}
-            collapsed={collapsed}
-          />
-          <SidebarLink
-  href="/dashboard/settings/statuses"
-  label="Job Status"
-  icon={<CheckCircle size={18} />}
-  collapsed={collapsed}
-/>
-<SidebarLink
-  href="/dashboard/settings/sms"
-  label="SMS Settings"
-  icon={<Settings size={18} />}
-  collapsed={collapsed}
-/>
-<SidebarLink
-  href="/dashboard/settings/caller-ids"
-  label="Caller IDs"
-  icon={<Users size={18} />}
-  collapsed={collapsed}
-/>
-<SidebarLink
-  href="/dashboard/reports"
-  label="Reports"
-  icon={<Settings size={18} />}
-  collapsed={collapsed}
-/>
-<SidebarLink
-  href="/dashboard/settings/crm/"
-  label="CRM settings"
-  icon={<Settings size={18} />}
-  collapsed={collapsed}
-/>
         </SidebarSection>
       </nav>
 <SidebarLink

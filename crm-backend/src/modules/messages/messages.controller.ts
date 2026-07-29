@@ -276,15 +276,21 @@ export async function updateConversation(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
     const { id } = req.params;
-    const { box, muted } = req.body || {};
+    const body = req.body || {};
+    const { box, muted } = body;
 
-    const data: { box?: string; muted?: boolean } = {};
+    const data: { box?: string; muted?: boolean; displayName?: string | null } =
+      {};
     if (box !== undefined) {
       if (!BOXES.includes(box))
         return res.status(400).json({ error: "Invalid box" });
       data.box = box;
     }
     if (muted !== undefined) data.muted = !!muted;
+    if ("displayName" in body) {
+      const dn = (body.displayName || "").toString().trim();
+      data.displayName = dn || null; // empty/number-choice clears it
+    }
 
     if (Object.keys(data).length === 0)
       return res.status(400).json({ error: "Nothing to update" });

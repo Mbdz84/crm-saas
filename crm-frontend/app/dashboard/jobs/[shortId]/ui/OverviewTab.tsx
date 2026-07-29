@@ -698,7 +698,7 @@ const selectedStatusIsCanceled = (() => {
     {/* Suggested Cancel Reasons */}
     <div className="flex flex-wrap gap-2">
       {[
-        "Client not answering",
+        "Not answering",
         "Clients said they will call back",
         "Doesn’t have the money",
         "Went with different company",
@@ -706,9 +706,10 @@ const selectedStatusIsCanceled = (() => {
         "Duplicate lead",
         "Tech Don't have the key for it",
         "Client found the keys",
-        "Client canceled",
         "Client wants to pay $",
+        "Tech have the job already",
         "Out of area",
+        "Spam",
         "Client canceled"
       ].map((tag) => (
         <button

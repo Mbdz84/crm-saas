@@ -258,6 +258,7 @@ model SmsConversation {
   clientNumber    String // the customer's phone number
   crmNumber       String // which of our CRM numbers received/sent it (the "via")
   customerName    String?
+  displayName     String? // user-chosen label shown bold in the chat list
   box             String       @default("inbox") // inbox | blocked | archive
   muted           Boolean      @default(false) // muted → excluded from unread badges
   unread          Int          @default(0)
