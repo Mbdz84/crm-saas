@@ -138,6 +138,10 @@ const bg = highlighted
         <td className="border px-2 py-1">{job.technician?.name || "—"}</td>
       )}
 
+      {visible.technician && (
+        <td className="border px-2 py-1">{job.technician?.name || "—"}</td>
+      )}
+
       {visible.total && (
         <td className="border px-2 py-1">{money(c?.totalAmount)}</td>
       )}

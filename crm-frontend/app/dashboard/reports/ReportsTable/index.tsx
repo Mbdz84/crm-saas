@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import TableHeader from "./TableHeader";
 import TableRow from "./TableRow";
 import TotalsRow from "./TotalsRow";
@@ -18,6 +18,7 @@ export default function ReportsTable({
   expandedTechName,
   expandedSourceName,
   defaultVisibleKeys,
+  storageKey = "report_column_defaults",
 }: {
   rows: any[];
   from?: string;
@@ -25,6 +26,7 @@ export default function ReportsTable({
   expandedTechName?: string | null;
   expandedSourceName?: string | null;
   defaultVisibleKeys?: string[];
+  storageKey?: string;
 }) {
   const [highlighted, setHighlighted] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<string>("date");
@@ -54,10 +56,24 @@ const [visible, setVisible] = useState<Record<string, boolean>>(
   buildDefaultVisibility
 );
 const [showColumns, setShowColumns] = useState(false);
+const columnsRef = useRef<HTMLDivElement>(null);
+
+// Close the Columns popup when clicking anywhere outside it.
+useEffect(() => {
+  if (!showColumns) return;
+  function onPointerDown(e: MouseEvent) {
+    if (columnsRef.current && !columnsRef.current.contains(e.target as Node)) {
+      setShowColumns(false);
+    }
+  }
+  document.addEventListener("mousedown", onPointerDown);
+  return () => document.removeEventListener("mousedown", onPointerDown);
+}, [showColumns]);
 
 // Apply the user's saved layout (if any) after mount.
+// storageKey is per-report, so technician and lead-source layouts are separate.
 useEffect(() => {
-  const saved = localStorage.getItem("report_column_defaults");
+  const saved = localStorage.getItem(storageKey);
   if (!saved) return;
   try {
     const stored = JSON.parse(saved);
@@ -69,7 +85,7 @@ useEffect(() => {
   } catch {
     /* ignore malformed saved layout */
   }
-}, []);
+}, [storageKey]);
 
 
   function onSort(field: string) {
@@ -102,6 +118,7 @@ useEffect(() => {
     date: job.closedAt,
     jobType: job.jobType?.name,
     collectedBy: job.technician?.name,
+    technician: job.technician?.name,
     totalAmount: c.totalAmount,
 
     cashTotal: c.cashTotal,
@@ -180,7 +197,7 @@ useEffect(() => {
   return (
     <div className="mt-6">
       <div className="flex justify-between mb-3">
-        <div className="relative">
+        <div className="relative" ref={columnsRef}>
           <button
             onClick={() => setShowColumns(!showColumns)}
             className="px-3 py-1 text-xs border rounded bg-white"
@@ -194,6 +211,7 @@ useEffect(() => {
                 visible={visible}
                 setVisible={setVisible}
                 columnDefs={columnDefs}
+                storageKey={storageKey}
               />
             </div>
           )}

@@ -4,14 +4,15 @@ import { useState } from "react";
 import { columnDefs } from "./utils/columnDefs";
 import { toast } from "sonner";
 
-export default function ColumnVisibility({ visible, setVisible }: any) {
-  // Save current layout as the user's default
+export default function ColumnVisibility({
+  visible,
+  setVisible,
+  storageKey = "report_column_defaults",
+}: any) {
+  // Save current layout as the user's default (per-report storageKey)
   function saveDefaults() {
     try {
-      localStorage.setItem(
-        "report_column_defaults",
-        JSON.stringify(visible)
-      );
+      localStorage.setItem(storageKey, JSON.stringify(visible));
       toast.success("Saved as your default layout.");
     } catch (err) {
       console.error("Save default layout error:", err);
@@ -20,7 +21,7 @@ export default function ColumnVisibility({ visible, setVisible }: any) {
 
   // Reset default layout (delete from localStorage)
   function resetDefaults() {
-    localStorage.removeItem("report_column_defaults");
+    localStorage.removeItem(storageKey);
     alert("Reset to system defaults. Reloading…");
     window.location.reload();
   }

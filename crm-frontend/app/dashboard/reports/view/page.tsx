@@ -154,6 +154,7 @@ function ReportView() {
         "date",
         "address",
         "type",
+        "technician",
         "total",
         "leadProfit",
         "leadBal",
@@ -242,6 +243,11 @@ function ReportView() {
           expandedTechName={isTech ? name : null}
           expandedSourceName={isTech ? null : name}
           defaultVisibleKeys={defaultVisibleKeys}
+          storageKey={
+            isTech
+              ? "report_column_defaults_tech"
+              : "report_column_defaults_lead"
+          }
         />
       )}
 

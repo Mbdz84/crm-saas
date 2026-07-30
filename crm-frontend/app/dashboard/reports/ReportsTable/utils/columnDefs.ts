@@ -8,6 +8,7 @@ export const columnDefs = [
   { key: "date", label: "Date" },
   { key: "type", label: "Job Type" },
   { key: "tech", label: "Collected By" },
+  { key: "technician", label: "Technician" },
   { key: "total", label: "Total Amount" },
   { key: "cashTotal", label: "Cash" },
   { key: "creditTotal", label: "Credit" },

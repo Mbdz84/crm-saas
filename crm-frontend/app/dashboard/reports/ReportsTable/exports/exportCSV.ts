@@ -169,6 +169,7 @@ function formatCell(job: any, key: string) {
 
     type: job.jobType?.name,
     tech: job.technician?.name,
+    technician: job.technician?.name,
 
     total: c.totalAmount,
     cashTotal: payments.cash,
