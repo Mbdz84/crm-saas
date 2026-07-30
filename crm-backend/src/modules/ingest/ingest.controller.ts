@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { IngestJobPayload } from "./ingest.types";
 import { generateUniqueShortId } from "../jobs/utils/shortId";
+import { timezoneFromAddress } from "../../utils/timezone";
 
 type JobOrigin = "ai_generated" | "incoming_sms" | "external_api";
 
@@ -75,6 +76,7 @@ export async function ingestJob(req: Request, res: Response) {
         : null,
 
       timezone:
+        timezoneFromAddress(payload.customerAddress) ||
         payload.timezone ||
         leadSource.company.timezone ||
         "America/Chicago",

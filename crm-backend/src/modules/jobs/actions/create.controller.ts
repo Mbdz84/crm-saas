@@ -3,6 +3,7 @@ import prisma from "../../../prisma/client";
 import { generateUniqueShortId } from "../utils/shortId";
 import { sendTechSms } from "./sms.controller";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { resolveTimezoneForJob } from "../../../utils/timezone";
 
 
 /* ============================================================
@@ -53,6 +54,13 @@ export async function createJob(req: Request, res: Response) {
       throw new Error("Accepted status not found");
     }
 
+    // Resolve timezone: address (state) → tech → company → default
+    const timezone = await resolveTimezoneForJob(
+      req.user!.companyId,
+      customerAddress,
+      technicianId
+    );
+
     /* -----------------------------
        CREATE JOB
     ------------------------------ */
@@ -68,6 +76,7 @@ export async function createJob(req: Request, res: Response) {
         jobTypeId: jobTypeId || null,
         technicianId: technicianId || null,
         scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        timezone,
 
         // ✅ CRITICAL FIX
         statusId: acceptedStatus.id,

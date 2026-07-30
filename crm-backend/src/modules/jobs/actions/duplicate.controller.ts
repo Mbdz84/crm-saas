@@ -41,6 +41,7 @@ export async function duplicateJob(req: Request, res: Response) {
         customerPhone: original.customerPhone,
         customerPhone2: original.customerPhone2,
         customerAddress: original.customerAddress,
+        timezone: original.timezone,
         jobTypeId: original.jobTypeId,
         technicianId: original.technicianId,
         sourceId: original.sourceId,

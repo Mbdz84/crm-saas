@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { toZonedTime, format } from "date-fns-tz";
 import { formatPhone } from "@/utils/formatPhone";
+import { timezoneFromAddress, TIMEZONE_OPTIONS } from "@/utils/timezone";
 
 
 function splitPhoneExt(value?: string) {
@@ -222,6 +223,21 @@ useEffect(() => {
     setPrevTechId(editableJob.technicianId);
   }
 }, [editableJob?.technicianId]);
+
+  // Auto-resolve the job timezone: address (state) is the source of truth
+  useEffect(() => {
+    const tz = timezoneFromAddress(editableJob?.customerAddress);
+    if (tz && tz !== editableJob?.timezone) setField("timezone", tz);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableJob?.customerAddress]);
+
+  // Fallback: if the address doesn't resolve, use the assigned tech's timezone
+  useEffect(() => {
+    if (timezoneFromAddress(editableJob?.customerAddress)) return;
+    const techTz = selectedTech?.timezone;
+    if (techTz && techTz !== editableJob?.timezone) setField("timezone", techTz);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editableJob?.technicianId]);
 
   if (!job || !editableJob || tab !== "overview") return null;
 
@@ -534,11 +550,11 @@ const selectedStatusIsCanceled = (() => {
   }}
 >
   <option value="__browser__">Use browser timezone</option>
-  <option value="America/Chicago">America/Chicago</option>
-  <option value="America/New_York">America/New_York</option>
-  <option value="America/Denver">America/Denver</option>
-  <option value="America/Los_Angeles">America/Los_Angeles</option>
-  <option value="America/Phoenix">America/Phoenix</option>
+  {TIMEZONE_OPTIONS.map((tz) => (
+    <option key={tz.value} value={tz.value}>
+      {tz.label}
+    </option>
+  ))}
 </select>
 
   <p className="text-xs text-gray-500 mt-1">

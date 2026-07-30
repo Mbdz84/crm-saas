@@ -8,6 +8,7 @@ import PermissionsTab from "./tabs/PermissionsTab";
 import FinancialTab from "./tabs/FinancialTab";
 import AvailabilityTab from "./tabs/AvailabilityTab";
 import MaskedCallSettingsTab from "./tabs/maskedCallSettings";
+import { TIMEZONE_OPTIONS } from "@/utils/timezone";
 
 export default function TechnicianProfilePage() {
   const params = useParams();
@@ -181,6 +182,27 @@ export default function TechnicianProfilePage() {
                 value={tech.email}
                 onChange={(e) => setTech({ ...tech, email: e.target.value })}
               />
+            </div>
+
+            <div>
+              <label className="font-medium block mb-1">Timezone</label>
+              <select
+                className="w-full border p-2"
+                value={tech.timezone || "America/Chicago"}
+                onChange={(e) =>
+                  setTech({ ...tech, timezone: e.target.value })
+                }
+              >
+                {TIMEZONE_OPTIONS.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Fallback timezone for this tech&apos;s jobs when the address
+                doesn&apos;t resolve one.
+              </p>
             </div>
 
             <label className="flex items-center gap-3">

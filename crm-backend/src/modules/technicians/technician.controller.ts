@@ -65,6 +65,7 @@ export async function getTechnicians(req: any, res: Response) {
         canSeeClosing: true,
         canViewAllJobs: true,
         defaultTechPercent: true,
+        timezone: true,
       },
     });
 
@@ -220,6 +221,7 @@ export async function updateTechnician(req: any, res: Response) {
       canAdjustFees: body.canAdjustFees,
 
       availability: body.availability,
+      timezone: body.timezone,
     };
 
     // Remove keys that are undefined → don’t override with undefined
@@ -238,6 +240,7 @@ if (f.active !== undefined) allowedFields.active = Boolean(f.active);
 // Toggles
 if (f.receiveSms !== undefined) allowedFields.receiveSms = Boolean(f.receiveSms);
 if (f.maskedCalls !== undefined) allowedFields.maskedCalls = Boolean(f.maskedCalls);
+if (f.timezone !== undefined) allowedFields.timezone = f.timezone;
 if (f.maskedTwilioNumberSid !== undefined) {
   allowedFields.maskedTwilioNumberSid = f.maskedTwilioNumberSid || null;
 

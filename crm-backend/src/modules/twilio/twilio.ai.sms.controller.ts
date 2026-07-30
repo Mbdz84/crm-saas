@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { generateUniqueShortId } from "../jobs/utils/shortId";
 import { parseTextWithAI } from "../jobs/actions/parse.helper";
+import { resolveTimezoneForJob } from "../../utils/timezone";
 import { recordInboundSms } from "../messages/messages.controller";
 
 /* ============================================================
@@ -140,6 +141,12 @@ export async function incomingSms(req: Request, res: Response) {
     where: { name: "Accepted", active: true },
   });
 
+  const timezone = await resolveTimezoneForJob(
+    companyId,
+    parsed.customerAddress,
+    null
+  );
+
   // 🧾 CREATE JOB
   await prisma.job.create({
     data: {
@@ -152,6 +159,7 @@ export async function incomingSms(req: Request, res: Response) {
       customerPhone: parsed.customerPhone || from,
       customerPhone2: parsed.customerPhone2 || null,
       customerAddress: parsed.customerAddress || null,
+      timezone,
 
       jobTypeId,
       companyId,

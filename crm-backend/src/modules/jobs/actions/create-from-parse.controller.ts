@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { resolveTimezoneForJob } from "../../../utils/timezone";
 
 /* ------------------------------------------
    Generate 5-char uppercase Job ID
@@ -103,6 +104,12 @@ export async function createJobFromParse(req: Request, res: Response) {
     ------------------------------------------ */
     console.log("📨 CREATE FROM PARSE BODY:", req.body);
 
+    const timezone = await resolveTimezoneForJob(
+      companyId,
+      customerAddress,
+      technicianId
+    );
+
     const job = await prisma.job.create({
       data: {
         shortId: generateShortId(),
@@ -114,6 +121,7 @@ export async function createJobFromParse(req: Request, res: Response) {
         customerPhone: customerPhone || null,
         customerPhone2: customerPhone2 || null,
         customerAddress: customerAddress || null,
+        timezone,
 
         jobTypeId: finalJobTypeId,
         technicianId: technicianId || null,
