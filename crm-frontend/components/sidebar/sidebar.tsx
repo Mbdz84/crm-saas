@@ -92,18 +92,18 @@ export default function Sidebar() {
           />
 
           <SidebarLink
+            href="/dashboard/jobs"
+            label="Jobs"
+            icon={<Briefcase size={18} />}
+            collapsed={collapsed}
+          />
+
+          <SidebarLink
             href="/dashboard/chat"
             label="Chat"
             icon={<MessageSquare size={18} />}
             collapsed={collapsed}
             badge={unread}
-          />
-
-          <SidebarLink
-            href="/dashboard/jobs"
-            label="Jobs"
-            icon={<Briefcase size={18} />}
-            collapsed={collapsed}
           />
 
           <SidebarLink

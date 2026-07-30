@@ -33,6 +33,22 @@ function timeOnly(iso: string) {
   });
 }
 
+// Street on line 1, "City, State ZIP" on line 2 (like the jobs page)
+function formatAddress(addr?: string | null) {
+  if (!addr) return null;
+  const parts = addr.split(",");
+  if (parts.length < 2) return <>{addr}</>;
+  const line1 = parts[0].trim();
+  const line2 = parts.slice(1).join(",").trim();
+  return (
+    <>
+      {line1}
+      <br />
+      {line2}
+    </>
+  );
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const today = useMemo(() => new Date(), []);
@@ -174,7 +190,7 @@ export default function CalendarPage() {
                 {d.getDate()}
               </span>
               {count > 0 && (
-                <span className="mt-auto self-start text-sm md:text-base font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded-full px-3 py-1">
+                <span className="mt-auto self-start text-sm md:text-base font-semibold text-blue-600 dark:text-blue-300">
                   {count} job{count === 1 ? "" : "s"}
                 </span>
               )}
@@ -237,8 +253,8 @@ export default function CalendarPage() {
                     </span>
                   </div>
                   {j.customerAddress && (
-                    <div className="text-xs text-gray-500 truncate">
-                      📍 {j.customerAddress}
+                    <div className="text-xs text-gray-500">
+                      📍 {formatAddress(j.customerAddress)}
                     </div>
                   )}
                   <div className="text-xs text-gray-500 truncate">
@@ -249,7 +265,7 @@ export default function CalendarPage() {
               </div>
 
               {/* DESKTOP: columns spread across the row */}
-              <div className="hidden md:flex md:items-center md:gap-4 text-sm">
+              <div className="hidden md:flex md:items-start md:gap-4 text-sm">
                 <div className="w-20 shrink-0 font-semibold">
                   {timeOnly(j.scheduledAt)}
                 </div>
@@ -259,8 +275,12 @@ export default function CalendarPage() {
                     {j.shortId}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0 truncate text-gray-600 dark:text-gray-300">
-                  {j.customerAddress ? `📍 ${j.customerAddress}` : "—"}
+                <div className="flex-1 min-w-0 text-gray-600 dark:text-gray-300 whitespace-normal break-words">
+                  {j.customerAddress ? (
+                    <>📍 {formatAddress(j.customerAddress)}</>
+                  ) : (
+                    "—"
+                  )}
                 </div>
                 <div className="w-40 shrink-0 truncate text-gray-600 dark:text-gray-300">
                   {j.technician || "Unassigned"}
