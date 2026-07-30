@@ -1,20 +1,17 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
-import { startOfDay, endOfDay, parseISO } from "date-fns";
-import { fromZonedTime, toZonedTime, format } from "date-fns-tz";
+import { formatInTimeZone } from "date-fns-tz";
 
 /* ============================================================
    /reports?from=2025-01-01&to=2025-01-31&status=closed
 ============================================================ */
 export async function getReports(req: Request, res: Response) {
   try {
-    const { from, to, tech, jobType, source, groupBy, tz } = req.query;
+    const { from, to, tech, jobType, source, groupBy } = req.query;
 
-    const reportTz =
-     typeof tz === "string" && tz.length > 0
-      ? tz
-      : "America/Chicago"; // default fallback
-
+    const DEFAULT_TZ = "America/Chicago";
+    const fromStr = typeof from === "string" && from ? from : undefined;
+    const toStr = typeof to === "string" && to ? to : undefined;
 
     // Known status buckets
     const CLOSED_STATUSES = ["Closed"];
@@ -26,18 +23,21 @@ export async function getReports(req: Request, res: Response) {
     const companyId = req.user?.companyId || null;
 
     /* --------------------------------------------------------
-       DATE FILTER (by closedAt)
+       DATE FILTER (widened UTC window)
+       This only narrows the DB query. Exact day membership is
+       decided per job below using each job's OWN timezone, so a
+       job counts for the day it falls on in its own timezone.
+       The ±1 day pad ensures no edge job is dropped early.
     -------------------------------------------------------- */
     const dateFilter: any = {};
-
-if (from) {
-  const fromLocal = startOfDay(parseISO(from as string));
-dateFilter.gte = fromZonedTime(fromLocal, reportTz);
-}
-
-if (to) {
-  const toLocal = endOfDay(parseISO(to as string));
-dateFilter.lte = fromZonedTime(toLocal, reportTz);}
+    if (fromStr)
+      dateFilter.gte = new Date(
+        new Date(`${fromStr}T00:00:00.000Z`).getTime() - 24 * 60 * 60 * 1000
+      );
+    if (toStr)
+      dateFilter.lte = new Date(
+        new Date(`${toStr}T23:59:59.999Z`).getTime() + 24 * 60 * 60 * 1000
+      );
 
     /* --------------------------------------------------------
        WHERE CLAUSE (do NOT use isClosingLocked)
@@ -66,7 +66,7 @@ if (from || to) {
     /* --------------------------------------------------------
        FETCH JOBS
     ------------------------------------------------------------ */
-    const jobs = await prisma.job.findMany({
+    const rawJobs = await prisma.job.findMany({
       where,
       include: {
         closing: true,
@@ -82,6 +82,36 @@ if (from || to) {
     function getStatusName(job: any): string {
       return (job.jobStatus?.name || job.status || "").trim();
     }
+
+    /* --------------------------------------------------------
+       PER-JOB TIMEZONE RANGE FILTER
+       A job belongs to a calendar day based on its OWN timezone.
+       Closed jobs are judged by closedAt, canceled by canceledAt.
+    -------------------------------------------------------- */
+    function jobInRange(job: any): boolean {
+      if (!fromStr && !toStr) return true;
+
+      const status = getStatusName(job);
+      const d = CLOSED_STATUSES.includes(status)
+        ? job.closedAt
+        : CANCELLED_STATUSES.includes(status)
+        ? job.canceledAt
+        : job.closedAt || job.canceledAt;
+
+      if (!d) return false;
+
+      const local = formatInTimeZone(
+        d,
+        job.timezone || DEFAULT_TZ,
+        "yyyy-MM-dd"
+      );
+
+      if (fromStr && local < fromStr) return false;
+      if (toStr && local > toStr) return false;
+      return true;
+    }
+
+    const jobs = rawJobs.filter(jobInRange);
 
     // Jobs that are really CLOSED (used for money + table rows)
     const closedJobs = jobs.filter((job: any) =>
@@ -123,8 +153,11 @@ if (from || to) {
   closedJobs.forEach((job: any) => {
     if (!job.closedAt) return;
 
-    const zoned = toZonedTime(job.closedAt, reportTz);
-    const key = format(zoned, "yyyy-MM-dd");
+    const key = formatInTimeZone(
+      job.closedAt,
+      job.timezone || DEFAULT_TZ,
+      "yyyy-MM-dd"
+    );
 
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(job);
@@ -135,8 +168,11 @@ if (from || to) {
   closedJobs.forEach((job: any) => {
     if (!job.closedAt) return;
 
-    const zoned = toZonedTime(job.closedAt, reportTz);
-    const key = format(zoned, "yyyy-MM");
+    const key = formatInTimeZone(
+      job.closedAt,
+      job.timezone || DEFAULT_TZ,
+      "yyyy-MM"
+    );
 
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(job);
@@ -228,7 +264,6 @@ res.setHeader("Pragma", "no-cache");
       rows: closedJobs,
       technicianSummary: technicianSummary ?? [],
       leadSourceSummary,
-      timezone: reportTz,
     });
   } catch (err) {
     console.error("🔥 REPORTS ERROR:", err);

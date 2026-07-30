@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import TableHeader from "./TableHeader";
 import TableRow from "./TableRow";
 import TotalsRow from "./TotalsRow";
@@ -32,45 +32,44 @@ export default function ReportsTable({
   const [showExportMenu, setShowExportMenu] = useState(false);
 
   /* -----------------------------------------
-   COLUMN VISIBILITY WITH LOCALSTORAGE DEFAULTS
------------------------------------------ */
-let baseVisibility: Record<string, boolean> = {};
+   COLUMN VISIBILITY
 
-// 1️⃣ Try load saved layout  
-let saved: string | null = null;
-if (typeof window !== "undefined") {
-  saved = localStorage.getItem("report_column_defaults");
+   Initial state is deterministic (system defaults) so server and
+   client render match. The saved layout from localStorage is applied
+   in an effect after mount — reading localStorage during render caused
+   a hydration mismatch that discarded the saved layout, which is why
+   "Save as Default" appeared to do nothing.
+----------------------------------------- */
+function buildDefaultVisibility(): Record<string, boolean> {
+  const v: Record<string, boolean> = {};
+  if (defaultVisibleKeys?.length) {
+    columnDefs.forEach((c) => (v[c.key] = defaultVisibleKeys.includes(c.key)));
+  } else {
+    columnDefs.forEach((c) => (v[c.key] = true));
+  }
+  return v;
 }
 
-if (saved) {
+const [visible, setVisible] = useState<Record<string, boolean>>(
+  buildDefaultVisibility
+);
+const [showColumns, setShowColumns] = useState(false);
+
+// Apply the user's saved layout (if any) after mount.
+useEffect(() => {
+  const saved = localStorage.getItem("report_column_defaults");
+  if (!saved) return;
   try {
     const stored = JSON.parse(saved);
-
-    // Merge new keys (such as "phones") with default = true
+    // New columns absent from an older saved layout default to visible.
     columnDefs.forEach((c) => {
-      if (stored[c.key] === undefined) {
-        stored[c.key] = true;
-      }
+      if (stored[c.key] === undefined) stored[c.key] = true;
     });
-
-    baseVisibility = stored;
+    setVisible(stored);
   } catch {
-    columnDefs.forEach((c) => (baseVisibility[c.key] = true));
+    /* ignore malformed saved layout */
   }
-}
-// 2️⃣ No saved layout → check system defaultVisibleKeys
-else if (defaultVisibleKeys?.length) {
-  columnDefs.forEach((c) => {
-    baseVisibility[c.key] = defaultVisibleKeys.includes(c.key);
-  });
-}
-// 3️⃣ No defaults → show ALL columns
-else {
-  columnDefs.forEach((c) => (baseVisibility[c.key] = true));
-}
-
-const [visible, setVisible] = useState<Record<string, boolean>>(baseVisibility);
-const [showColumns, setShowColumns] = useState(false);
+}, []);
 
 
   function onSort(field: string) {
@@ -91,6 +90,7 @@ const [showColumns, setShowColumns] = useState(false);
   const map: Record<string, any> = {
     invoice: c.invoiceNumber,
     jobId: job.shortId,
+    leadSource: job.source?.name,
 
     // ✅ FIXED (must match columnDefs)
     customerName: job.customerName,
@@ -151,15 +151,53 @@ const [showColumns, setShowColumns] = useState(false);
 
   const totals = calculateTotals(sortedRows);
 
+  /* -----------------------------------------
+     ROW SELECTION + JOB COUNTERS
+  ----------------------------------------- */
+  const selectedCount = sortedRows.filter((j: any) => highlighted[j.id]).length;
+  const allSelected =
+    sortedRows.length > 0 && selectedCount === sortedRows.length;
+
+  function toggleAllRows() {
+    setHighlighted(() => {
+      if (allSelected) return {};
+      const next: Record<string, boolean> = {};
+      sortedRows.forEach((j: any) => (next[j.id] = true));
+      return next;
+    });
+  }
+
+  const totalJobs = rows.length;
+  const canceledJobs = rows.filter(
+    (j: any) =>
+      j.jobStatus?.name === "Cancelled" ||
+      j.jobStatus?.name === "Canceled" ||
+      !!j.canceledAt ||
+      !!j.canceledReason
+  ).length;
+  const closedJobs = totalJobs - canceledJobs;
+
   return (
     <div className="mt-6">
       <div className="flex justify-between mb-3">
-        <button
-          onClick={() => setShowColumns(!showColumns)}
-          className="px-3 py-1 text-xs border rounded bg-white"
-        >
-          Columns
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowColumns(!showColumns)}
+            className="px-3 py-1 text-xs border rounded bg-white"
+          >
+            Columns
+          </button>
+
+          {showColumns && (
+            <div className="absolute left-0 top-full mt-1 z-50">
+              <ColumnVisibility
+                visible={visible}
+                setVisible={setVisible}
+                columnDefs={columnDefs}
+              />
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-2">
           <button
@@ -216,24 +254,18 @@ const [showColumns, setShowColumns] = useState(false);
         </div>
       </div>
 
-      {showColumns && (
-        <ColumnVisibility
-          visible={visible}
-          setVisible={setVisible}
-          columnDefs={columnDefs}
-        />
-      )}
-
       {!rows?.length ? (
   <p className="text-gray-500 text-sm mt-4">No closed jobs.</p>
 ) : (
   <div className="relative overflow-auto border rounded max-w-[1600px] max-h-[900px]">
-    <table className="min-w-[2000px] text-sm">
+    <table className="min-w-[2000px] text-base">
       <TableHeader
         visible={visible}
         sortField={sortField}
         sortDir={sortDir}
         onSort={onSort}
+        allSelected={allSelected}
+        onToggleAll={toggleAllRows}
       />
 
       <tbody>
@@ -257,6 +289,12 @@ const [showColumns, setShowColumns] = useState(false);
     </table>
   </div>
 )}
+
+      {/* JOB COUNTER — always visible */}
+      <p className="mt-3 text-sm font-semibold">
+        Total jobs: {selectedCount}/{totalJobs} ({closedJobs} closed,{" "}
+        {canceledJobs} canceled)
+      </p>
     </div>
   );
 }

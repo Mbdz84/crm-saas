@@ -1,5 +1,16 @@
+import { formatInTimeZone } from "date-fns-tz";
 import { money } from "./utils/money";
 import { balanceColor } from "./utils/balanceColor";
+
+const DEFAULT_TZ = "America/Chicago";
+
+// Show the date in the job's own timezone (date only).
+// The underlying value still carries the full timestamp — only the
+// displayed text is trimmed to the date.
+function jobDateTime(date: any, tz?: string) {
+  if (!date) return "-";
+  return formatInTimeZone(new Date(date), tz || DEFAULT_TZ, "MM/dd/yyyy");
+}
 
 export default function TableRow({
   job,
@@ -68,7 +79,8 @@ const bg = highlighted
   }`}
 >
       <td
-  className={`px-2 py-1 text-center sticky left-0 z-10 ${
+  onClick={(e) => e.stopPropagation()}
+  className={`w-6 p-0 text-center sticky left-0 z-10 ${
     isCancelled
       ? "border border-gray-400 bg-red-50"
       : "border border-gray-700 bg-white"
@@ -76,6 +88,7 @@ const bg = highlighted
 >
         <input
           type="checkbox"
+          className="h-5 w-5 m-0 block mx-auto cursor-pointer"
           checked={highlighted}
           onChange={() => toggleRow(job.id)}
         />
@@ -87,6 +100,10 @@ const bg = highlighted
 
       {visible.jobId && (
         <td className="border px-2 py-1">{job.shortId}</td>
+      )}
+
+      {visible.leadSource && (
+        <td className="border px-2 py-1">{job.source?.name || "-"}</td>
       )}
 
       {visible.name && (
@@ -106,14 +123,10 @@ const bg = highlighted
       )}
 
       {visible.date && (
-  <td className="border px-2 py-1">
+  <td className="border px-2 py-1 whitespace-nowrap">
     {job.jobStatus?.name === "Canceled" || job.jobStatus?.name === "Cancelled"
-      ? job.canceledAt
-        ? new Date(job.canceledAt).toLocaleDateString()
-        : "-"
-      : job.closedAt
-      ? new Date(job.closedAt).toLocaleDateString()
-      : "-"}
+      ? jobDateTime(job.canceledAt, job.timezone)
+      : jobDateTime(job.closedAt, job.timezone)}
   </td>
 )}
 

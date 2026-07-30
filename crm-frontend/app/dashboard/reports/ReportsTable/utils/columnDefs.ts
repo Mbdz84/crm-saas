@@ -1,6 +1,7 @@
 export const columnDefs = [
   { key: "invoice", label: "Invoice #" },
   { key: "jobId", label: "Job ID" },
+  { key: "leadSource", label: "Lead Source" },
   { key: "name", label: "Customer Name" },
   { key: "phones", label: "Phones", sortable: false, width: 160 },
   { key: "address", label: "Address" },

@@ -1,4 +1,7 @@
+import { formatInTimeZone } from "date-fns-tz";
 import { columnDefs } from "../utils/columnDefs";
+
+const DEFAULT_TZ = "America/Chicago";
 
 /* ---------------------------------------------
    FIELD GROUPS (same as CSV)
@@ -58,6 +61,7 @@ function extract(job: any, key: string): any {
   const rawMap: any = {
     invoice: c.invoiceNumber,
     jobId: job.shortId,
+    leadSource: job.source?.name,
     name: job.customerName,
     phones:
   (job.customerPhone || "") +
@@ -67,10 +71,18 @@ date:
   job.jobStatus?.name === "Canceled" ||
   job.jobStatus?.name === "Cancelled"
     ? job.canceledAt
-      ? new Date(job.canceledAt).toLocaleDateString()
+      ? formatInTimeZone(
+          new Date(job.canceledAt),
+          job.timezone || DEFAULT_TZ,
+          "MM/dd/yyyy"
+        )
       : ""
     : job.closedAt
-    ? new Date(job.closedAt).toLocaleDateString()
+    ? formatInTimeZone(
+        new Date(job.closedAt),
+        job.timezone || DEFAULT_TZ,
+        "MM/dd/yyyy"
+      )
     : "",    type: job.jobType?.name,
     tech: job.technician?.name,
 
@@ -114,17 +126,21 @@ function htmlCell(key: string, raw: any): string {
   if (moneyFields.has(key)) {
     const num = Number(raw);
     const formatted = fmtMoney(num);
+    const attrs = `data-col="${key}" data-val="${num}"`;
 
     if (num > 0)
-      return `<td><span style="color:#15803d;font-weight:bold;">${formatted}</span></td>`;
+      return `<td ${attrs}><span style="color:#15803d;font-weight:bold;">${formatted}</span></td>`;
     if (num < 0)
-      return `<td><span style="color:#b91c1c;font-weight:bold;">-${fmtMoney(Math.abs(num))}</span></td>`;
+      return `<td ${attrs}><span style="color:#b91c1c;font-weight:bold;">-${fmtMoney(Math.abs(num))}</span></td>`;
 
-    return `<td>${formatted}</td>`;
+    return `<td ${attrs}>${formatted}</td>`;
   }
 
   if (percentFields.has(key)) return `<td>${fmtPercent(raw)}</td>`;
-  if (numericFields.has(key)) return `<td>${fmtCheck(raw)}</td>`;
+  if (numericFields.has(key)) {
+    const num = Number(raw);
+    return `<td data-col="${key}" data-val="${num}">${fmtCheck(num)}</td>`;
+  }
 
   return `<td>${raw ?? ""}</td>`;
 }
@@ -257,12 +273,27 @@ const closedJobs = totalJobs - canceledJobs;
 `;
 
   /* --- FOOTER --- */
+  const selectedRow = `
+      <tr class="selected-total-row">
+        <td style="font-weight:bold;white-space:nowrap;">Sel <span id="sel-count">0</span></td>
+        ${cols
+          .map((c) => {
+            if (moneyFields.has(c.key))
+              return `<td data-total-col="${c.key}" data-fmt="money" style="font-weight:bold;">$0.00</td>`;
+            if (numericFields.has(c.key))
+              return `<td data-total-col="${c.key}" data-fmt="check" style="font-weight:bold;">0.0000</td>`;
+            return `<td></td>`;
+          })
+          .join("")}
+      </tr>`;
+
   const tfoot = `
     <tfoot>
       <tr>
         <td></td>
         ${cols.map((c) => htmlTotalCell(c.key, computeTotal(c.key, rows, totals))).join("")}
       </tr>
+      ${selectedRow}
     </tfoot>
   `;
 
@@ -276,6 +307,19 @@ const jobCountLine = `
 `;
 
   /* --- SUMMARY BOXES --- */
+const balanceVal = Number(
+  meta.tech ? totals.techBalance || 0 : totals.leadBalance || 0
+);
+const balanceEntity = meta.tech ? "tech" : "lead";
+const balanceColorHex =
+  balanceVal > 0 ? "#15803d" : balanceVal < 0 ? "#b91c1c" : "#064e3b";
+const balanceNote =
+  balanceVal > 0
+    ? `${balanceEntity} need to pay`
+    : balanceVal < 0
+    ? `${balanceEntity} getting paid`
+    : "";
+
 const summaryBoxes = `
 <div class="summary-container">
 
@@ -295,11 +339,10 @@ const summaryBoxes = `
 
   <div class="summary-box">
     <div class="label">Balance</div>
-    <div class="value">${
-      meta.tech
-        ? fmtMoney(totals.techBalance || 0)
-        : fmtMoney(totals.leadBalance || 0)
-    }</div>
+    <div class="value" style="color:${balanceColorHex}">${fmtMoney(
+  balanceVal
+)}</div>
+    ${balanceNote ? `<div class="note">(${balanceNote})</div>` : ""}
   </div>
 
 </div>
@@ -352,6 +395,51 @@ document.addEventListener("DOMContentLoaded", function () {
   if (checkAll) {
     checkAll.addEventListener("change", updateSelectedCount);
   }
+
+  /* --- SELECTED-ROWS TOTALS --- */
+  function fmtSel(v, fmt) {
+    if (fmt === "check") return v.toFixed(4);
+    var abs = Math.abs(v).toLocaleString("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    });
+    return v < 0 ? "-" + abs : abs;
+  }
+
+  function updateSelectedTotals() {
+    var sums = {};
+    document.querySelectorAll(".row-check:checked").forEach(function (chk) {
+      var idx = chk.getAttribute("data-row");
+      var tr = document.querySelector("tr[data-row='" + idx + "']");
+      if (!tr) return;
+      tr.querySelectorAll("td[data-col]").forEach(function (td) {
+        var col = td.getAttribute("data-col");
+        var v = parseFloat(td.getAttribute("data-val")) || 0;
+        sums[col] = (sums[col] || 0) + v;
+      });
+    });
+
+    document.querySelectorAll("[data-total-col]").forEach(function (cell) {
+      var col = cell.getAttribute("data-total-col");
+      var fmt = cell.getAttribute("data-fmt");
+      var val = sums[col] || 0;
+      cell.textContent = fmtSel(val, fmt);
+      if (fmt === "money") {
+        cell.style.color = val > 0 ? "#15803d" : val < 0 ? "#b91c1c" : "";
+      }
+    });
+
+    var selCount = document.getElementById("sel-count");
+    if (selCount)
+      selCount.textContent = document.querySelectorAll(".row-check:checked").length;
+  }
+
+  document.querySelectorAll(".row-check").forEach(function (chk) {
+    chk.addEventListener("change", updateSelectedTotals);
+  });
+  if (checkAll) checkAll.addEventListener("change", updateSelectedTotals);
+  updateSelectedTotals();
 });
 </script>
 `;
@@ -360,6 +448,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const styleExtra = `
 <style>
   tr.highlight { background-color: #d1f7d1 !important; }
+  tfoot tr.selected-total-row td { background:#eef6ff; border-top:2px solid #000; }
 
   .summary-container {
     display:flex;
@@ -384,6 +473,12 @@ document.addEventListener("DOMContentLoaded", function () {
     font-weight:bold;
     color:#064e3b;
   }
+  .summary-box .note {
+    font-size:13px;
+    font-weight:bold;
+    margin-top:4px;
+    color:#374151;
+  }
 </style>
 `;
 
@@ -401,6 +496,9 @@ table { width:100%; border-collapse:collapse; font-size:14px; margin-bottom:20px
 th,td { border:1px solid black; padding:4px 6px; white-space:nowrap; }
 th { border-bottom:3px solid black; }
 tfoot td { border-top:3px solid black; font-weight:bold; }
+/* Checkbox column: bigger box, minimal padding */
+th:first-child, td:first-child { width:1px; padding:0 2px; text-align:center; }
+input[type="checkbox"] { width:18px; height:18px; margin:0; vertical-align:middle; cursor:pointer; }
 </style>
 </head>
 <body>

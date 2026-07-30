@@ -21,16 +21,9 @@ export default function ReportsPage() {
 
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-const [timezone, setTimezone] = useState("America/Chicago");
-
-const TIMEZONES = [
-  { value: "America/New_York", label: "US – Eastern (New York)" },
-  { value: "America/Chicago", label: "US – Central (Chicago)" },
-  { value: "America/Denver", label: "US – Mountain (Denver)" },
-  { value: "America/Los_Angeles", label: "US – Pacific (Los Angeles)" },
-  { value: "Asia/Jerusalem", label: "Israel (Jerusalem)" },
-];
-
+// Reports are filtered/displayed per each job's own saved timezone.
+// This default is only used to compute "today" for the date presets.
+const DEFAULT_TZ = "America/Chicago";
 
 function getNowInTimezone(tz: string) {
   return toZonedTime(new Date(), tz);
@@ -44,7 +37,7 @@ function fmt(d: Date) {
      DATE PRESET LOGIC
   ------------------------------------------------------------ */
   function setPresetRange(preset: string) {
-  const now = getNowInTimezone(timezone);
+  const now = getNowInTimezone(DEFAULT_TZ);
 
   let start: Date | null = null;
   let end: Date | null = null;
@@ -125,7 +118,6 @@ function fmt(d: Date) {
     const baseParams = new URLSearchParams();
     if (f) baseParams.append("from", f);
     if (t) baseParams.append("to", t);
-    baseParams.append("tz", timezone);
 
     // 1️⃣ CLOSED JOBS
     const closedParams = new URLSearchParams(baseParams);
@@ -219,24 +211,6 @@ function fmt(d: Date) {
             className="border rounded px-2 py-1"
           />
         </div>
-        <div className="basis-full h-0" />
-<div className="flex flex-col">
-  <label className="text-sm mb-1">Timezone</label>
-  <select
-    value={timezone}
-    onChange={(e) => setTimezone(e.target.value)}
-    className="border rounded px-2 py-1"
-  >
-    {TIMEZONES.map((tz) => (
-      <option key={tz.value} value={tz.value}>
-        {tz.label}
-      </option>
-    ))}
-  </select>
-  <span className="text-xs text-gray-500 mt-1">
-    Date range is interpreted in this timezone
-  </span>
-</div>
         <button
           onClick={() => loadReport()}
           disabled={loading}

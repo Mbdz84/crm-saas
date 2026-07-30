@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import ReportsTable from "./ReportsTable";
+import React from "react";
 
 export default function LeadSourceSummary({
   data,
@@ -14,11 +13,13 @@ export default function LeadSourceSummary({
   from?: string;
   to?: string;
 }) {
-const [expanded, setExpanded] = useState<string | null>(null);
-const [showCancelled, setShowCancelled] = useState(false);
-
-  function toggle(name: string) {
-    setExpanded(expanded === name ? null : name);
+  function openReport(name: string) {
+    const params = new URLSearchParams();
+    params.append("kind", "lead");
+    params.append("name", name);
+    if (from) params.append("from", from);
+    if (to) params.append("to", to);
+    window.open(`/dashboard/reports/view?${params.toString()}`, "_blank");
   }
 
   /* --------------------------------------------------
@@ -77,88 +78,30 @@ const [showCancelled, setShowCancelled] = useState(false);
                 : "0";
 
             return (
-              <React.Fragment key={row.name}>
-                <tr
-                  onClick={() => toggle(row.name)}
-                  className="cursor-pointer hover:bg-gray-100"
-                >
-                  <td className="border px-2 py-1 font-semibold text-lg flex items-center gap-2">
-                    {expanded === row.name && "▲"} {row.name}
-                  </td>
+              <tr
+                key={row.name}
+                onClick={() => openReport(row.name)}
+                className="cursor-pointer hover:bg-gray-100"
+              >
+                <td className="border px-2 py-1 font-semibold text-lg">
+                  {row.name}
+                </td>
 
-                  <td className="border px-2 py-1 text-center">{Number(row.total || 0)}</td>
-                  <td className="border px-2 py-1 text-center">{Number(row.closed || 0)}</td>
-                  <td className="border px-2 py-1 text-center">{Number(row.cancelled || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(row.total || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(row.closed || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(row.cancelled || 0)}</td>
 
-                  <td className="border px-2 py-1 text-center">{closingPct}%</td>
-                  <td className="border px-2 py-1 text-center">{cancelPct}%</td>
+                <td className="border px-2 py-1 text-center">{closingPct}%</td>
+                <td className="border px-2 py-1 text-center">{cancelPct}%</td>
 
-                  <td className="border px-2 py-1 text-center">
-                    ${totals.totalAmount.toFixed(2)}
-                  </td>
+                <td className="border px-2 py-1 text-center">
+                  ${totals.totalAmount.toFixed(2)}
+                </td>
 
-                  <td className="border px-2 py-1 text-center">
-                    ${totals.leadBalance.toFixed(2)}
-                  </td>
-                </tr>
-
-                {expanded === row.name && (
-                  <tr>
-                    <td colSpan={8} className="p-0 bg-white">
-                      <div
-                        className="overflow-x-auto overflow-y-auto transition-all duration-300"
-                        style={{ maxHeight: "500px", maxWidth: "100%" }}
-                      >
-                        <div className="border rounded bg-gray-50 shadow-inner w-full">
-                          <div className="p-3">
-                            {/* Show Cancelled Toggle */}
-<div className="flex items-center gap-3 mb-3">
-  <label className="flex items-center gap-2 text-sm cursor-pointer">
-    <input
-      type="checkbox"
-      checked={showCancelled}
-      onChange={(e) => setShowCancelled(e.target.checked)}
-    />
-    Show cancelled jobs
-  </label>
-</div>
-
-<ReportsTable
-  rows={jobs
-  .filter((j) => {
-    const isClosed = j.jobStatus?.name === "Closed";
-    const isCancelled = !!j.canceledAt || !!j.canceledReason;
-
-    return showCancelled ? isClosed || isCancelled : isClosed;
-  })
-  .filter((j) =>
-    row.name === "Unknown Source"
-      ? !j.source || !j.source.name
-      : j.source?.name === row.name
-  )}
-  from={from}
-  to={to}
-  expandedTechName={null}
-  expandedSourceName={row.name}
-  defaultVisibleKeys={[
-    "invoice",
-    "jobId",
-    "date",
-    "address",
-    "type",
-    "total",
-    "leadProfit",
-    "leadBal",
-    ...(showCancelled ? ["cancelReason"] : []),
-  ]}
-/>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
+                <td className="border px-2 py-1 text-center">
+                  ${totals.leadBalance.toFixed(2)}
+                </td>
+              </tr>
             );
           })}
         </tbody>

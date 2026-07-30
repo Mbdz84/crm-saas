@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import ReportsTable from "./ReportsTable";
+import React from "react";
 
 export default function TechnicianSummary({
   data,
@@ -14,11 +13,13 @@ export default function TechnicianSummary({
   from?: string;
   to?: string;
 }) {
-  const [showCancelled, setShowCancelled] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  function toggle(name: string) {
-    setExpanded(expanded === name ? null : name);
+  function openReport(name: string) {
+    const params = new URLSearchParams();
+    params.append("kind", "tech");
+    params.append("name", name);
+    if (from) params.append("from", from);
+    if (to) params.append("to", to);
+    window.open(`/dashboard/reports/view?${params.toString()}`, "_blank");
   }
 
   /* --------------------------------------------------
@@ -28,14 +29,16 @@ export default function TechnicianSummary({
     const techJobs = jobs.filter((j) => j.technician?.name === techName);
 
     let totalAmount = 0;
+    let techProfit = 0;
     let techBalance = 0;
 
     techJobs.forEach((j) => {
       totalAmount += Number(j.closing?.totalAmount || 0);
+      techProfit += Number(j.closing?.techProfit || 0);
       techBalance += Number(j.closing?.techBalance || 0);
     });
 
-    return { totalAmount, techBalance };
+    return { totalAmount, techProfit, techBalance };
   }
 
   /* --------------------------------------------------
@@ -47,6 +50,10 @@ export default function TechnicianSummary({
     cancelled: data.reduce((s, r) => s + Number(r.cancelled || 0), 0),
     totalAmount: data.reduce(
       (s, r) => s + Number(getTechTotals(r.name).totalAmount || 0),
+      0
+    ),
+    profit: data.reduce(
+      (s, r) => s + Number(getTechTotals(r.name).techProfit || 0),
       0
     ),
     balance: data.reduce(
@@ -69,6 +76,7 @@ export default function TechnicianSummary({
             <th className="border px-2 py-1 text-center">Closing %</th>
             <th className="border px-2 py-1 text-center">Cancel %</th>
             <th className="border px-2 py-1 text-center">Total Amount</th>
+            <th className="border px-2 py-1 text-center">Tech Profit</th>
             <th className="border px-2 py-1 text-center">Tech Balance</th>
           </tr>
         </thead>
@@ -88,93 +96,32 @@ export default function TechnicianSummary({
                 : "0";
 
             return (
-              <React.Fragment key={t.name}>
-                <tr
-                  onClick={() => toggle(t.name)}
-                  className="cursor-pointer hover:bg-blue-50"
-                >
-                  <td className="border px-2 py-1 font-semibold text-lg flex items-center gap-2">
-                    {expanded === t.name && "▲"} {t.name}
-                  </td>
+              <tr
+                key={t.name}
+                onClick={() => openReport(t.name)}
+                className="cursor-pointer hover:bg-blue-50"
+              >
+                <td className="border px-2 py-1 font-semibold text-lg">
+                  {t.name}
+                </td>
 
-                  <td className="border px-2 py-1 text-center">{Number(t.total || 0)}</td>
-                  <td className="border px-2 py-1 text-center">{Number(t.closed || 0)}</td>
-                  <td className="border px-2 py-1 text-center">{Number(t.cancelled || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(t.total || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(t.closed || 0)}</td>
+                <td className="border px-2 py-1 text-center">{Number(t.cancelled || 0)}</td>
 
-                  <td className="border px-2 py-1 text-center">{closingPct}%</td>
-                  <td className="border px-2 py-1 text-center">{cancelPct}%</td>
+                <td className="border px-2 py-1 text-center">{closingPct}%</td>
+                <td className="border px-2 py-1 text-center">{cancelPct}%</td>
 
-                  <td className="border px-2 py-1 text-center">
-                    ${totals.totalAmount.toFixed(2)}
-                  </td>
-                  <td className="border px-2 py-1 text-center">
-                    ${totals.techBalance.toFixed(2)}
-                  </td>
-                </tr>
-
-                {expanded === t.name && (
-                  <tr>
-                    <td colSpan={8} className="p-0 bg-white">
-                      <div
-                        className="overflow-x-auto overflow-y-auto transition-all duration-300"
-                        style={{ maxHeight: "500px", maxWidth: "100%" }}
-                      >
-                        <div className="border rounded bg-gray-50 shadow-inner w-full">
-                          <div className="p-3">
-                            {/* Show Cancelled Toggle */}
-<div className="flex items-center gap-3 mb-3">
-  <label className="flex items-center gap-2 text-sm cursor-pointer">
-    <input
-      type="checkbox"
-      checked={showCancelled}
-      onChange={(e) => setShowCancelled(e.target.checked)}
-    />
-    Show cancelled jobs
-  </label>
-</div>
-
-<ReportsTable
-  rows={jobs
-  .filter((j) => {
-    const isClosed = j.jobStatus?.name === "Closed";
-    const isCancelled = !!j.canceledAt || !!j.canceledReason;
-
-    return showCancelled ? isClosed || isCancelled : isClosed;
-  })
-  .filter((j) =>
-    t.name === "Unassigned"
-      ? !j.technician || !j.technician.name
-      : j.technician?.name === t.name
-  )}
-  from={from}
-  to={to}
-  expandedTechName={t.name}
-  expandedSourceName={null}
-  defaultVisibleKeys={[
-    "invoice",
-    "jobId",
-    "date",
-    "address",
-    "type",
-    "total",
-    "tech",
-    "techParts",
-    "cc",
-    "addFee",
-    "tech%",
-    "techProfit",
-    "techBal",
-    "leadBal",
-    ...(showCancelled ? ["cancelReason"] : []),
-  ]}
-/>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
+                <td className="border px-2 py-1 text-center">
+                  ${totals.totalAmount.toFixed(2)}
+                </td>
+                <td className="border px-2 py-1 text-center">
+                  ${totals.techProfit.toFixed(2)}
+                </td>
+                <td className="border px-2 py-1 text-center">
+                  ${totals.techBalance.toFixed(2)}
+                </td>
+              </tr>
             );
           })}
         </tbody>
@@ -192,6 +139,10 @@ export default function TechnicianSummary({
 
             <td className="border px-2 py-1 text-center">
               ${grand.totalAmount.toFixed(2)}
+            </td>
+
+            <td className="border px-2 py-1 text-center">
+              ${grand.profit.toFixed(2)}
             </td>
 
             <td className="border px-2 py-1 text-center">

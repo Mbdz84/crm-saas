@@ -5,17 +5,28 @@ export default function TableHeader({
   sortField,
   sortDir,
   onSort,
+  allSelected,
+  onToggleAll,
 }: {
   visible: Record<string, boolean>;
   sortField: string;
   sortDir: "asc" | "desc";
   onSort: (field: string) => void;
+  allSelected: boolean;
+  onToggleAll: () => void;
 }) {
   return (
     <thead className="bg-gray-100 sticky top-0 z-20">
       <tr>
         {/* Sticky checkbox column */}
-        <th className="border border-gray-700 font-semibold px-2 py-1 sticky left-0 z-30 bg-gray-100"></th>
+        <th className="border border-gray-700 font-semibold w-6 p-0 sticky left-0 z-30 bg-gray-100 text-center">
+          <input
+            type="checkbox"
+            className="h-5 w-5 m-0 block mx-auto cursor-pointer"
+            checked={allSelected}
+            onChange={onToggleAll}
+          />
+        </th>
 
         {columnDefs.map((col) =>
           visible[col.key] ? (

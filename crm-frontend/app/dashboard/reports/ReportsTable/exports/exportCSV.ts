@@ -1,4 +1,7 @@
+import { formatInTimeZone } from "date-fns-tz";
 import { columnDefs } from "../utils/columnDefs";
+
+const DEFAULT_TZ = "America/Chicago";
 
 /**
  * Export CSV with:
@@ -153,10 +156,15 @@ function formatCell(job: any, key: string) {
   const rawMap: any = {
     invoice: c.invoiceNumber,
     jobId: job.shortId,
+    leadSource: job.source?.name,
     name: job.customerName,
     address: job.customerAddress,
     date: job.closedAt
-      ? new Date(job.closedAt).toLocaleDateString()
+      ? formatInTimeZone(
+          new Date(job.closedAt),
+          job.timezone || DEFAULT_TZ,
+          "MM/dd/yyyy"
+        )
       : "",
 
     type: job.jobType?.name,

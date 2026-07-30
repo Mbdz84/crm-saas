@@ -25,13 +25,34 @@ export default function ColumnVisibility({ visible, setVisible }: any) {
     window.location.reload();
   }
 
-  return (
-    <div className="p-3 border rounded bg-white shadow-sm w-60 text-sm space-y-3">
+  // Select / deselect all columns
+  const allChecked = columnDefs.every((c) => visible[c.key]);
 
-      {/* Title */}
-      <p className="font-semibold text-gray-700 text-base">
-        Show / Hide Columns
-      </p>
+  function toggleAll() {
+    const next: Record<string, boolean> = {};
+    columnDefs.forEach((c) => (next[c.key] = !allChecked));
+    setVisible((prev: any) => ({ ...prev, ...next }));
+  }
+
+  return (
+    <div className="p-3 border rounded bg-white shadow-lg w-[640px] max-w-[90vw] text-sm space-y-3">
+
+      {/* Title + Select all */}
+      <div className="flex items-center justify-between">
+        <p className="font-semibold text-gray-700 text-base">
+          Show / Hide Columns
+        </p>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer font-medium">
+          <input
+            type="checkbox"
+            className="h-5 w-5 cursor-pointer"
+            checked={allChecked}
+            onChange={toggleAll}
+          />
+          Select all
+        </label>
+      </div>
 
       {/* Save / Reset Buttons */}
       <div className="flex gap-2 pb-2 border-b">
@@ -51,7 +72,7 @@ export default function ColumnVisibility({ visible, setVisible }: any) {
       </div>
 
       {/* Checkbox List */}
-      <div className="space-y-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
         {columnDefs.map((col) => (
           <label
             key={col.key}
@@ -59,6 +80,7 @@ export default function ColumnVisibility({ visible, setVisible }: any) {
           >
             <input
               type="checkbox"
+              className="h-5 w-5 cursor-pointer"
               checked={visible[col.key]}
               onChange={() =>
                 setVisible((prev: any) => ({
