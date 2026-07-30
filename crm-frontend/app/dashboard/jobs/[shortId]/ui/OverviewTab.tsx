@@ -156,13 +156,15 @@ const callerName = (p?: string) =>
 useEffect(() => {
   if (!job?.reminders) return;
 
-  const mapped = job.reminders.map((r: any) => ({
-    id: r.id,
-    minutes: r.minutesBefore,
-    sendSms: !r.canceled,
-    canceled: r.canceled,
-    custom: ![60, 90, 120].includes(r.minutesBefore),
-  }));
+  const mapped = job.reminders
+    .filter((r: any) => !r.canceled && !r.sentAt)
+    .map((r: any) => ({
+      id: r.id,
+      minutes: r.minutesBefore,
+      sendSms: true,
+      canceled: false,
+      custom: ![60, 90, 120].includes(r.minutesBefore),
+    }));
 
   setReminders(mapped);
 }, [job?.reminders]);

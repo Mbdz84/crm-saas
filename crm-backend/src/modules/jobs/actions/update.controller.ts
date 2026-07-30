@@ -338,67 +338,51 @@ if (
 
 
 /* ======================================================
-🧹 CANCEL REMINDERS WHEN INVALID
+   ⏰ REMINDERS
+   Replace the pending (un-sent) reminder set each save.
+   Already-sent reminders are kept as history (they won't re-fire).
+   This prevents canceled rows from piling up.
 ====================================================== */
-    if (appointmentCleared || isCanceled || isClosed || techRemoved) {
-  console.log("🧹 REMINDERS INVALIDATED — CANCELING", { jobId: job.id });
+    const remindersInvalid =
+      appointmentCleared || isCanceled || isClosed || techRemoved;
 
-  await prisma.jobReminder.updateMany({
-    where: { jobId: job.id, canceled: false },
-    data: { canceled: true, sendToTechnician: false },
-  });
-}
+    if (remindersInvalid) {
+      // Job is no longer valid for reminders → drop pending ones
+      await prisma.jobReminder.deleteMany({
+        where: { jobId: job.id, sentAt: null },
+      });
+    } else if (Array.isArray(updates.reminders) && updatedJob.scheduledAt) {
+      const appointmentTime = new Date(updatedJob.scheduledAt);
 
-    /* ======================================================
-       ⏰ PERSIST REMINDERS
-       (ONLY if checkbox was checked)
-    ====================================================== */
-    if (Array.isArray(updates.reminders) && updatedJob.scheduledAt) {
-  const appointmentTime = new Date(updatedJob.scheduledAt);
+      // Wipe pending reminders, then recreate from the current set
+      await prisma.jobReminder.deleteMany({
+        where: { jobId: job.id, sentAt: null },
+      });
 
-  console.log("🟢 PERSIST REMINDERS START", {
-    reminders: updates.reminders,
-    scheduledAt: updatedJob.scheduledAt,
-  });
+      for (const r of updates.reminders) {
+        if (
+          r.canceled === true ||
+          typeof r.minutesBefore !== "number" ||
+          r.minutesBefore <= 0
+        ) {
+          continue;
+        }
 
-  // 🔁 CANCEL EXISTING REMINDERS FIRST (CRITICAL)
-  await prisma.jobReminder.updateMany({
-    where: { jobId: job.id },
-    data: { canceled: true, sendToTechnician: false },
-  });
+        const scheduledFor = new Date(
+          appointmentTime.getTime() - r.minutesBefore * 60 * 1000
+        );
 
-  for (const r of updates.reminders) {
-    console.log("🟣 PROCESSING REMINDER:", r);
-
-    if (
-      r.canceled === true ||
-      typeof r.minutesBefore !== "number" ||
-      r.minutesBefore <= 0
-    ) {
-      continue;
+        await prisma.jobReminder.create({
+          data: {
+            jobId: job.id,
+            minutesBefore: r.minutesBefore,
+            scheduledFor,
+            canceled: false,
+            sendToTechnician: true,
+          },
+        });
+      }
     }
-
-    const scheduledFor = new Date(
-      appointmentTime.getTime() - r.minutesBefore * 60 * 1000
-    );
-
-    console.log("🟢 INSERTING REMINDER:", {
-      jobId: job.id,
-      minutesBefore: r.minutesBefore,
-      scheduledFor,
-    });
-
-    await prisma.jobReminder.create({
-      data: {
-        jobId: job.id,
-        minutesBefore: r.minutesBefore,
-        scheduledFor,
-        canceled: false,
-        sendToTechnician: true,
-      },
-    });
-  }
-}
 
     return res.json({ message: "Job updated", job: updatedJob });
   } catch (err) {
