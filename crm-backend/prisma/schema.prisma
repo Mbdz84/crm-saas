@@ -56,6 +56,7 @@ model User {
   canAdjustFees              Boolean          @default(false)
   availability               Json?            @db.Json
   timezone                   String?          @default("America/Chicago")
+  isOwner                    Boolean          @default(false)
   technicianJobs             Job[]            @relation("TechnicianJobs")
   callSessions               JobCallSession[] @relation("UserCallSessions")
   jobClosingsClosed          JobClosing[]     @relation("JobClosingClosedBy")
@@ -91,6 +92,7 @@ model LeadSource {
   apiKeyLast4             String?
   apiKeyCreatedAt         DateTime? @db.Timestamptz(6)
   incomingSmsNumbers      String[]
+  isOwner                 Boolean   @default(false)
   jobs                    Job[]
   company                 Company   @relation(fields: [companyId], references: [id])
 }

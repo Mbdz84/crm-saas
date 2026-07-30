@@ -27,7 +27,6 @@ export function useJobActions() {
     excludeTechFromParts,
     includePartsInProfit,
     disableAutoAdjust,
-    leadOwnedByCompany,
 
     invoiceNumberState,
     setResult,
@@ -341,11 +340,8 @@ payments.forEach((p: any) => {
         companyProfitDisplay += compP;
       }
 
-      // If company owns the lead, move lead profit into company
-      if (leadOwnedByCompany) {
-        companyProfitDisplay += leadProfitDisplay;
-        leadProfitDisplay = 0;
-      }
+      // (Removed "lead owned by company" fold — ownership is now handled at
+      //  report time via the owner flags in Company Settings.)
 
       // Balances are based on base profit (not display) and parts
       const techBalance = amountHeldByTech - techProfit - techP;
@@ -423,7 +419,6 @@ payments.forEach((p: any) => {
       excludeTechFromParts,
       techPaysAdditionalFee,
       leadAdditionalFee,
-      leadOwnedByCompany,
       techProfit: r.techProfit,
       leadProfit: r.leadProfit,
 

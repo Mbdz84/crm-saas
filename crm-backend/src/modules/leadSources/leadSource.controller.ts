@@ -120,9 +120,12 @@ export async function updateLeadSource(req: Request, res: Response) {
       defaultCcFeePercent,
       defaultCheckFeePercent,
       autoApplyFinancialRules,
+      isOwner,
     } = req.body;
 
     const data: any = {};
+
+    if (isOwner !== undefined) data.isOwner = Boolean(isOwner);
 
     if (incomingSmsNumbers !== undefined) {
   data.incomingSmsNumbers = Array.isArray(incomingSmsNumbers)

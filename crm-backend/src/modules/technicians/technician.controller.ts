@@ -66,6 +66,7 @@ export async function getTechnicians(req: any, res: Response) {
         canViewAllJobs: true,
         defaultTechPercent: true,
         timezone: true,
+        isOwner: true,
       },
     });
 
@@ -256,6 +257,7 @@ if (f.maskedTwilioNumberSid !== undefined) {
 }if (f.payrollEnabled !== undefined) allowedFields.payrollEnabled = Boolean(f.payrollEnabled);
 if (f.canSeeClosing !== undefined) allowedFields.canSeeClosing = Boolean(f.canSeeClosing);
 if (f.canViewAllJobs !== undefined) allowedFields.canViewAllJobs = Boolean(f.canViewAllJobs);
+if (f.isOwner !== undefined) allowedFields.isOwner = Boolean(f.isOwner);
 
 // Financial defaults
 if (f.defaultTechPercent !== undefined) allowedFields.defaultTechPercent = f.defaultTechPercent;

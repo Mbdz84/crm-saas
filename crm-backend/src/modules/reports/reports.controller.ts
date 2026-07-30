@@ -132,7 +132,16 @@ if (from || to) {
       totalRevenue += Number(job.closing.totalAmount || 0);
       totalTechProfit += Number(job.closing.techProfit || 0);
       totalLeadProfit += Number(job.closing.leadProfit || 0);
+
+      // Company Profit = the company's own split, PLUS the profit of any
+      // technician or lead source the company owns (flagged in settings).
       totalCompanyProfit += Number(job.closing.companyProfitDisplay || 0);
+      if (job.technician?.isOwner) {
+        totalCompanyProfit += Number(job.closing.techProfit || 0);
+      }
+      if (job.source?.isOwner) {
+        totalCompanyProfit += Number(job.closing.leadProfit || 0);
+      }
     });
 
     const summary = {

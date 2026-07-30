@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import OwnersTab from "./owners-tab";
 
 export default function SettingsPage() {
+  const [tab, setTab] = useState<"company" | "owners">("company");
   const [company, setCompany] = useState<any>(null);
 
   const [form, setForm] = useState({
@@ -69,6 +71,34 @@ export default function SettingsPage() {
 
       <h1 className="text-2xl font-semibold mb-4">Company Settings</h1>
 
+      {/* Tabs */}
+      <div className="flex gap-2 border-b mb-6">
+        <button
+          onClick={() => setTab("company")}
+          className={`px-4 py-2 -mb-px border-b-2 ${
+            tab === "company"
+              ? "border-blue-600 font-semibold"
+              : "border-transparent text-gray-500"
+          }`}
+        >
+          Company
+        </button>
+        <button
+          onClick={() => setTab("owners")}
+          className={`px-4 py-2 -mb-px border-b-2 ${
+            tab === "owners"
+              ? "border-blue-600 font-semibold"
+              : "border-transparent text-gray-500"
+          }`}
+        >
+          Owners
+        </button>
+      </div>
+
+      {tab === "owners" && <OwnersTab />}
+
+      {tab === "company" && (
+        <>
       {/* Logo */}
       <div className="mb-4">
         <label className="block font-medium mb-1">Company Logo</label>
@@ -160,6 +190,8 @@ export default function SettingsPage() {
       >
         Save Changes
       </button>
+        </>
+      )}
     </div>
   );
 }
