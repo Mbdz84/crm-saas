@@ -15,16 +15,21 @@ export async function getDashboardSummary(req: Request, res: Response) {
     });
     const tz = company?.timezone || "America/Chicago";
 
-    // Start/end of "today" in the company's timezone
+    // Start/end of "today" in the company's timezone (for appointments)
     const zn = toZonedTime(new Date(), tz);
-    const start = fromZonedTime(
+    const todayStart = fromZonedTime(
       new Date(zn.getFullYear(), zn.getMonth(), zn.getDate(), 0, 0, 0, 0),
       tz
     );
-    const end = fromZonedTime(
+    const todayEnd = fromZonedTime(
       new Date(zn.getFullYear(), zn.getMonth(), zn.getDate() + 1, 0, 0, 0, 0),
       tz
     );
+
+    // Range for the Created/Closed/Revenue tiles (from query, default = today)
+    const { from, to } = req.query as { from?: string; to?: string };
+    const rangeStart = from ? new Date(from) : todayStart;
+    const rangeEnd = to ? new Date(to) : todayEnd;
 
     const [
       openJobs,
@@ -39,14 +44,14 @@ export async function getDashboardSummary(req: Request, res: Response) {
         where: { companyId, jobStatus: { name: { notIn: OPEN_EXCLUDE } } },
       }),
       prisma.job.count({
-        where: { companyId, createdAt: { gte: start, lt: end } },
+        where: { companyId, createdAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.job.count({
-        where: { companyId, closedAt: { gte: start, lt: end } },
+        where: { companyId, closedAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.jobClosing.aggregate({
         _sum: { totalAmount: true },
-        where: { job: { companyId }, closedAt: { gte: start, lt: end } },
+        where: { job: { companyId }, closedAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.smsConversation.aggregate({
         _sum: { unread: true },
@@ -72,7 +77,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
       prisma.job.findMany({
         where: {
           companyId,
-          scheduledAt: { gte: start, lt: end },
+          scheduledAt: { gte: todayStart, lt: todayEnd },
           jobStatus: { name: { notIn: OPEN_EXCLUDE } },
         },
         orderBy: { scheduledAt: "asc" },
@@ -90,9 +95,9 @@ export async function getDashboardSummary(req: Request, res: Response) {
 
     return res.json({
       openJobs,
-      createdToday,
-      closedToday,
-      revenueToday: Number(revenueAgg._sum.totalAmount || 0),
+      created: createdToday,
+      closed: closedToday,
+      revenue: Number(revenueAgg._sum.totalAmount || 0),
       unreadSms: unreadAgg._sum.unread || 0,
       unassigned: unassigned.map((j) => ({
         shortId: j.shortId,
