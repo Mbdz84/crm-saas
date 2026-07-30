@@ -10,7 +10,12 @@ interface Props {
 export default function AppointmentPicker({ value, onChange }: Props) {
   const parsed = value ? new Date(value) : null;
 
-  const initialDate = parsed ? parsed.toISOString().slice(0, 10) : "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const initialDate = parsed
+    ? `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(
+        parsed.getDate()
+      )}`
+    : "";
   const initialHour = parsed ? parsed.getHours() : 12;
   const initialMinute = parsed
     ? parsed.getMinutes() - (parsed.getMinutes() % 15)
@@ -24,10 +29,9 @@ export default function AppointmentPicker({ value, onChange }: Props) {
   useEffect(() => {
     if (!date) return;
 
-    const d = new Date(date);
-    d.setHours(hour);
-    d.setMinutes(minute);
-    d.setSeconds(0);
+    // Build in LOCAL time from parts (avoids "YYYY-MM-DD" being parsed as UTC)
+    const [y, m, dd] = date.split("-").map(Number);
+    const d = new Date(y, m - 1, dd, hour, minute, 0, 0);
 
     onChange(d.toISOString());
   }, [date, hour, minute]);
@@ -79,10 +83,8 @@ export default function AppointmentPicker({ value, onChange }: Props) {
             Ends at:{" "}
             {(() => {
               if (!date) return "-";
-              const end = new Date(date);
-              end.setHours(hour);
-              end.setMinutes(minute);
-              end.setSeconds(0);
+              const [y, m, dd] = date.split("-").map(Number);
+              const end = new Date(y, m - 1, dd, hour, minute, 0, 0);
               end.setTime(end.getTime() + 120 * 60 * 1000); // +2 hours
               return end.toLocaleTimeString([], {
                 hour: "2-digit",
