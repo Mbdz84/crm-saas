@@ -59,7 +59,7 @@ export default function LeadSourceSummary({
             <th className="border px-2 py-1 text-center">Closing %</th>
             <th className="border px-2 py-1 text-center">Cancel %</th>
             <th className="border px-2 py-1 text-center">Total Amount</th>
-            <th className="border px-2 py-1 text-center">Lead Balance</th>
+            <th className="border px-0 py-1 text-center">Lead Balance (Profit)</th>
           </tr>
         </thead>
 
@@ -98,7 +98,7 @@ export default function LeadSourceSummary({
                   ${totals.totalAmount.toFixed(2)}
                 </td>
 
-                <td className="border px-2 py-1 text-center">
+                <td className="border px-0 py-1 text-center">
                   ${totals.leadBalance.toFixed(2)}
                 </td>
               </tr>
@@ -130,7 +130,7 @@ export default function LeadSourceSummary({
                 .toFixed(2)}
             </td>
 
-            <td className="border px-2 py-1 text-center">
+            <td className="border px-0 py-1 text-center">
               $
               {data
                 .reduce(

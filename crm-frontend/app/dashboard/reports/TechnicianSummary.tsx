@@ -76,8 +76,8 @@ export default function TechnicianSummary({
             <th className="border px-2 py-1 text-center">Closing %</th>
             <th className="border px-2 py-1 text-center">Cancel %</th>
             <th className="border px-2 py-1 text-center">Total Amount</th>
-            <th className="border px-2 py-1 text-center">Tech Profit</th>
             <th className="border px-2 py-1 text-center">Tech Balance</th>
+            <th className="border px-2 py-1 text-center">Tech Profit</th>
           </tr>
         </thead>
 
@@ -116,10 +116,10 @@ export default function TechnicianSummary({
                   ${totals.totalAmount.toFixed(2)}
                 </td>
                 <td className="border px-2 py-1 text-center">
-                  ${totals.techProfit.toFixed(2)}
+                  ${totals.techBalance.toFixed(2)}
                 </td>
                 <td className="border px-2 py-1 text-center">
-                  ${totals.techBalance.toFixed(2)}
+                  ${totals.techProfit.toFixed(2)}
                 </td>
               </tr>
             );
@@ -142,11 +142,11 @@ export default function TechnicianSummary({
             </td>
 
             <td className="border px-2 py-1 text-center">
-              ${grand.profit.toFixed(2)}
+              ${grand.balance.toFixed(2)}
             </td>
 
             <td className="border px-2 py-1 text-center">
-              ${grand.balance.toFixed(2)}
+              ${grand.profit.toFixed(2)}
             </td>
           </tr>
         </tfoot>
