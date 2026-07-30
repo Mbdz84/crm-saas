@@ -35,12 +35,42 @@ export async function incomingSms(req: Request, res: Response) {
     return res.type("text/xml").send("<Response></Response>");
   }
 
-  // 🔍 Match Lead Source by SMS sender number
-  const leadSource = await prisma.leadSource.findFirst({
-    where: {
-      incomingSmsNumbers: { has: from },
-    },
-  });
+  // 🔍 Match Lead Source by SMS sender number.
+  // Compare on the LAST 10 DIGITS so the saved format (+1, dashes, parens,
+  // with/without country code) never breaks matching.
+  const fromLast10 = last10(from);
+
+  const smsLeadSources = fromLast10
+    ? await prisma.leadSource.findMany({
+        where: { incomingSmsNumbers: { isEmpty: false } },
+      })
+    : [];
+
+  const candidates = smsLeadSources.filter((ls) =>
+    ls.incomingSmsNumbers.some((n) => last10(n) === fromLast10)
+  );
+
+  // If several lead sources share the same office number, pick the one whose
+  // name appears in the SMS text — their template puts the lead-source name on
+  // top of the message. A single match is used directly.
+  let leadSource: (typeof candidates)[number] | null = null;
+
+  if (candidates.length === 1) {
+    leadSource = candidates[0];
+  } else if (candidates.length > 1) {
+    const bodyLc = body.toLowerCase();
+    leadSource =
+      candidates.find((ls) => bodyLc.includes(ls.name.trim().toLowerCase())) ||
+      null;
+
+    if (!leadSource) {
+      console.warn(
+        "⚠️ Multiple lead sources share this number and no name matched the SMS text; using the first.",
+        { from, candidates: candidates.map((c) => c.name) }
+      );
+      leadSource = candidates[0];
+    }
+  }
 
   // Determine which company this conversation belongs to
   let companyId: string;
@@ -200,4 +230,11 @@ function normalizePhone(phone?: string): string | null {
   if (phone.startsWith("+")) return phone;
 
   return null;
+}
+
+// Last 10 digits of any phone string — used for format-agnostic matching.
+function last10(phone?: string | null): string | null {
+  if (!phone) return null;
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 10 ? digits.slice(-10) : null;
 }
