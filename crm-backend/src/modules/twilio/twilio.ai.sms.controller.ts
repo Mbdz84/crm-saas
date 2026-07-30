@@ -87,6 +87,19 @@ export async function incomingSms(req: Request, res: Response) {
     return res.type("text/xml").send("<Response></Response>");
   }
 
+  // 🚫 Real jobs arrive in a lead-source template with a phone line, e.g.
+  // "Phone:", "Phone1:", "Phone 2:", or "Ph:" followed by a number.
+  // Free-text dispatcher notes ("dropped call cb", "spam", "k") don't have
+  // one → those are chat-only (no job, no AI call).
+  const looksLikeJob = /\b(phone|ph)\s*\d?\s*:\s*[+(]?\d/i.test(body);
+  if (!looksLikeJob) {
+    console.log("⏭️ Lead-source SMS without Phone: template — chat only", {
+      from,
+      preview: body.slice(0, 40),
+    });
+    return res.type("text/xml").send("<Response></Response>");
+  }
+
   // 🧠 AI PARSE (lead-source path only)
   let parsed: any = {};
   try {
