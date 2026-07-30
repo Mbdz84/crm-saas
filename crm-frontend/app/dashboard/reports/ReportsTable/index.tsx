@@ -275,7 +275,7 @@ useEffect(() => {
       {!rows?.length ? (
   <p className="text-gray-500 text-sm mt-4">No closed jobs.</p>
 ) : (
-  <div className="relative overflow-auto border rounded max-w-[1600px] max-h-[900px]">
+  <div className="relative overflow-x-auto border rounded max-w-[1600px]">
     <table className="min-w-[2000px] text-base">
       <TableHeader
         visible={visible}
