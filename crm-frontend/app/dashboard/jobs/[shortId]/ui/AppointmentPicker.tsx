@@ -40,6 +40,7 @@ export default function AppointmentPicker({ value, onChange }: Props) {
       : null
   );
   const [open, setOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
 
   const boxRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -99,7 +100,17 @@ export default function AppointmentPicker({ value, onChange }: Props) {
       <div className="relative w-full sm:w-40" ref={boxRef}>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => {
+            setOpen((o) => {
+              const next = !o;
+              if (next && boxRef.current) {
+                const rect = boxRef.current.getBoundingClientRect();
+                // Not enough room below? open upward.
+                setDropUp(window.innerHeight - rect.bottom < 260);
+              }
+              return next;
+            });
+          }}
           className="border rounded p-2 w-full text-left flex justify-between items-center bg-white dark:bg-gray-800"
         >
           <span className={minutesOfDay == null ? "text-gray-400" : ""}>
@@ -111,7 +122,9 @@ export default function AppointmentPicker({ value, onChange }: Props) {
         {open && (
           <div
             ref={listRef}
-            className="absolute z-30 mt-1 w-full max-h-60 overflow-y-auto border rounded bg-white dark:bg-gray-800 shadow-lg"
+            className={`absolute z-30 w-full max-h-60 overflow-y-auto border rounded bg-white dark:bg-gray-800 shadow-lg ${
+              dropUp ? "bottom-full mb-1" : "top-full mt-1"
+            }`}
           >
             {SLOTS.map((s) => {
               const selected = s.total === minutesOfDay;
