@@ -35,6 +35,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
       openJobs,
       createdToday,
       closedToday,
+      canceledInRange,
       revenueAgg,
       unreadAgg,
       unassigned,
@@ -48,6 +49,9 @@ export async function getDashboardSummary(req: Request, res: Response) {
       }),
       prisma.job.count({
         where: { companyId, closedAt: { gte: rangeStart, lt: rangeEnd } },
+      }),
+      prisma.job.count({
+        where: { companyId, canceledAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.jobClosing.aggregate({
         _sum: { totalAmount: true },
@@ -97,6 +101,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
       openJobs,
       created: createdToday,
       closed: closedToday,
+      canceled: canceledInRange,
       revenue: Number(revenueAgg._sum.totalAmount || 0),
       unreadSms: unreadAgg._sum.unread || 0,
       unassigned: unassigned.map((j) => ({

@@ -24,6 +24,7 @@ interface Summary {
   openJobs: number;
   created: number;
   closed: number;
+  canceled: number;
   revenue: number;
   unreadSms: number;
   unassigned: UnassignedJob[];
@@ -139,10 +140,17 @@ export default function DashboardPage() {
     RANGE_OPTIONS.find((o) => o.key === range)?.label.replace("…", "") ??
     "Today";
 
+  const finalized = (data?.closed ?? 0) + (data?.canceled ?? 0);
+  const closeRate =
+    finalized > 0 ? Math.round(((data?.closed ?? 0) / finalized) * 100) : null;
+
   const tiles = [
     { label: "Open Jobs", value: data?.openJobs ?? 0, href: "/dashboard/jobs" },
     { label: "Created", value: data?.created ?? 0 },
-    { label: "Closed", value: data?.closed ?? 0 },
+    {
+      label: closeRate != null ? `Closed (${closeRate}%)` : "Closed",
+      value: data?.closed ?? 0,
+    },
     { label: "Revenue", value: money(data?.revenue ?? 0) },
     {
       label: "Unread SMS",
