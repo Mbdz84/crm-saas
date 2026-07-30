@@ -140,6 +140,7 @@ export function buildSmsText(job: any, settings: any): string {
           ? new Date(job.scheduledAt).toLocaleString("en-US", {
               dateStyle: "short",
               timeStyle: "short",
+              timeZone: job.timezone || "America/Chicago",
             })
           : "";
       case "leadSource":
