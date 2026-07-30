@@ -1,14 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 
-/* -----------------------------------------
-   Normalize phone for flexible searching
------------------------------------------ */
-function normalizePhone(input: string | undefined | null): string {
-  if (!input) return "";
-  return input.replace(/[^\d]/g, ""); // remove anything not a digit
-}
-
 export async function searchJobs(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
@@ -19,7 +11,34 @@ export async function searchJobs(req: Request, res: Response) {
     const from = req.query.from as string | undefined; // YYYY-MM-DD
     const to = req.query.to as string | undefined;     // YYYY-MM-DD
 
-    const normalizedPhone = normalizePhone(q); // <-- key for phone search
+    // Digits of the query; use the LAST 10 when a full number is typed so
+    // country code / formatting never matters.
+    const rawDigits = q.replace(/\D/g, "");
+    const queryDigits =
+      rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
+
+    /* -----------------------------------------
+       FORMAT-PROOF PHONE MATCH
+       Strip non-digits from the stored numbers and compare, so
+       2125551234 / (212) 555-1234 / +12125551234 / 212-555-1234
+       all find the same job.
+    ----------------------------------------- */
+    let phoneMatchIds: string[] = [];
+    if (queryDigits.length >= 4) {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Job"
+        WHERE "companyId" = ${companyId}
+          AND (
+            regexp_replace(COALESCE("customerPhone", ''), '[^0-9]', '', 'g') LIKE ${
+              "%" + queryDigits + "%"
+            }
+            OR regexp_replace(COALESCE("customerPhone2", ''), '[^0-9]', '', 'g') LIKE ${
+              "%" + queryDigits + "%"
+            }
+          )
+      `;
+      phoneMatchIds = rows.map((r) => r.id);
+    }
 
     const where: any = {
       companyId,
@@ -54,17 +73,10 @@ export async function searchJobs(req: Request, res: Response) {
       ];
 
       /* -----------------------------------------
-         SMART PHONE MATCHING  
-         (Match ANY phone format)
+         FORMAT-PROOF PHONE MATCH (ids resolved above)
       ----------------------------------------- */
-      if (normalizedPhone.length >= 3) {
-        // only run if at least 3 digits typed
-        where.OR.push({
-          customerPhone: { contains: normalizedPhone },
-        });
-        where.OR.push({
-          customerPhone2: { contains: normalizedPhone },
-        });
+      if (phoneMatchIds.length) {
+        where.OR.push({ id: { in: phoneMatchIds } });
       }
 
       /* -----------------------------------------
