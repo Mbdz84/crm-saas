@@ -1023,8 +1023,14 @@ const selectedStatusIsCanceled = (() => {
 {/* SMS PREVIEW MODAL */}
 {/* ========================= */}
 {showSmsModal && smsPreview && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white dark:bg-gray-900 rounded p-5 w-full max-w-lg space-y-3">
+  <div
+    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+    onClick={() => setShowSmsModal(false)}
+  >
+    <div
+      className="bg-white dark:bg-gray-900 rounded p-5 w-full max-w-lg space-y-3"
+      onClick={(e) => e.stopPropagation()}
+    >
       <h3 className="font-semibold text-lg">SMS Preview</h3>
 
       <div className="text-xs text-gray-500">
