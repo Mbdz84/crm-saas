@@ -719,6 +719,7 @@ const selectedStatusIsCanceled = (() => {
         "Not answering",
         "Clients said they will call back",
         "Doesn’t have the money",
+        "Doesn’t need the service anymore",
         "Went with different company",
         "We cant do the job",
         "Duplicate lead",
