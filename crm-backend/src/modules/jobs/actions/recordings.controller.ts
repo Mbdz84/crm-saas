@@ -1,6 +1,7 @@
 import prisma from "../../../prisma/client";
 import twilio from "twilio";
 import { Request, Response } from "express";
+import { jobViewer, ownJobsWhere } from "../../../utils/scope";
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID!,
@@ -79,10 +80,15 @@ function buildResult(rec: any) {
 
 export async function getJobRecordings(req: Request, res: Response) {
   try {
+    // Technicians without recordings access get nothing from this endpoint.
+    const viewer = await jobViewer(req);
+    if (!viewer.canSeeRecordings) return res.json([]);
+
     const job = await prisma.job.findFirst({
       where: {
         shortId: req.params.shortId.toUpperCase(),
         companyId: req.user!.companyId,
+        ...(await ownJobsWhere(req)),
       },
       include: { records: true },
     });

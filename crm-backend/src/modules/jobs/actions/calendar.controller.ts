@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { ownJobsWhere, hideClientPhone } from "../../../utils/scope";
 
 /**
  * GET /jobs/calendar?from=ISO&to=ISO
@@ -10,7 +11,7 @@ export async function getCalendarJobs(req: Request, res: Response) {
     const companyId = req.user!.companyId;
     const { from, to } = req.query as { from?: string; to?: string };
 
-    const where: any = { companyId };
+    const where: any = { companyId, ...(await ownJobsWhere(req)) };
     if (from || to) {
       where.scheduledAt = {};
       if (from) where.scheduledAt.gte = new Date(from);
@@ -35,11 +36,13 @@ export async function getCalendarJobs(req: Request, res: Response) {
       },
     });
 
+    const hidePhone = await hideClientPhone(req);
+
     return res.json(
       jobs.map((j) => ({
         shortId: j.shortId,
         customerName: j.customerName,
-        customerPhone: j.customerPhone,
+        customerPhone: hidePhone ? null : j.customerPhone,
         customerAddress: j.customerAddress,
         scheduledAt: j.scheduledAt,
         technician: j.technician?.name || null,

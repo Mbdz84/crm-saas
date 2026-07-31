@@ -114,19 +114,16 @@ export default function PermissionsTab({
           hint="Off = real number hidden; the masked number + extension still shows."
           checked={tech.canSeeClientPhone !== false}
           onChange={(v) => set("canSeeClientPhone", v)}
-          soon
         />
         <Toggle
           label="Can see the Log tab"
           checked={tech.canSeeLogs !== false}
           onChange={(v) => set("canSeeLogs", v)}
-          soon
         />
         <Toggle
           label="Can see the Recordings tab"
           checked={tech.canSeeRecordings !== false}
           onChange={(v) => set("canSeeRecordings", v)}
-          soon
         />
         <Toggle
           label="Can see the closing panel ($)"
@@ -178,10 +175,9 @@ export default function PermissionsTab({
         />
         <Toggle
           label="Can see Reports"
-          hint="On = only their own jobs, with limited columns."
-          checked={!!tech.canSeeReports}
+          hint="On = only their own jobs; lead/company figures hidden."
+          checked={tech.canSeeReports !== false}
           onChange={(v) => set("canSeeReports", v)}
-          soon
         />
       </Section>
 

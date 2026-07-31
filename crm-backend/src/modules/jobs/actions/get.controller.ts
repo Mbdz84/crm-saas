@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { ensureJobExtensions } from "./extension.controller";
+import {
+  ownJobsWhere,
+  hideClientPhone,
+  maskJobPhone,
+  jobViewer,
+} from "../../../utils/scope";
 
 
 /* ============================================================
@@ -9,7 +15,7 @@ import { ensureJobExtensions } from "./extension.controller";
 export async function getJobs(req: Request, res: Response) {
   try {
     const jobs = await prisma.job.findMany({
-      where: { companyId: req.user!.companyId },
+      where: { companyId: req.user!.companyId, ...(await ownJobsWhere(req)) },
 
       orderBy: [
         // Group by status order first
@@ -36,6 +42,8 @@ export async function getJobs(req: Request, res: Response) {
       },
     });
 
+    if (await hideClientPhone(req)) jobs.forEach(maskJobPhone);
+
     res.json(jobs);
   } catch (err) {
     console.error("🔥 GET JOBS ERROR:", err);
@@ -52,6 +60,7 @@ export async function getJobByShortId(req: Request, res: Response) {
       where: {
         shortId: req.params.shortId.toUpperCase(),
         companyId: req.user!.companyId,
+        ...(await ownJobsWhere(req)),
       },
 
       include: {
@@ -105,6 +114,14 @@ export async function getJobByShortId(req: Request, res: Response) {
 
 // ✅ Ensure masked call extensions exist (phone1 + phone2)
 await ensureJobExtensions(job.id);
+
+    if (await hideClientPhone(req)) maskJobPhone(job);
+
+    // Hide Log / Recordings data (and tell the UI to hide those tabs).
+    const viewer = await jobViewer(req);
+    if (!viewer.canSeeLogs) (job as any).logs = [];
+    if (!viewer.canSeeRecordings) (job as any).records = [];
+    (job as any).viewer = viewer;
 
     res.json(job);
   } catch (err) {

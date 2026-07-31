@@ -89,7 +89,8 @@ const timeline = [
   (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
 );
 
-  if (!job || tab !== "recordings") return null;
+  if (!job || tab !== "recordings" || job.viewer?.canSeeRecordings === false)
+    return null;
 
 
   function normalizePhone(phone?: string) {

@@ -1,12 +1,16 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
+import { ownJobsWhere, reportsBlocked } from "../../utils/scope";
 
 const CANCELLED_STATUSES = ["Canceled", "Cancelled", "Cancel"];
 const DEFAULT_TZ = "America/Chicago";
 
 export async function getCanceledJobs(req: Request, res: Response) {
   try {
+    if (await reportsBlocked(req)) {
+      return res.status(403).json({ error: "Reports access disabled" });
+    }
     const { from, to, tech, source } = req.query;
 
     const companyId = req.user?.companyId || null;
@@ -41,6 +45,9 @@ export async function getCanceledJobs(req: Request, res: Response) {
     }
     if (tech) where.technicianId = tech as string;
     if (source) where.sourceId = source as string;
+
+    // Technicians (without "view all jobs") only see their own jobs.
+    Object.assign(where, await ownJobsWhere(req));
 
     // Fetch jobs (including cancel reason)
     const rawJobs = await prisma.job.findMany({

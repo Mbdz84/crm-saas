@@ -125,7 +125,7 @@ export default function LogsTab() {
     setBusy(null);
   }
 
-  if (!job || tab !== "log") return null;
+  if (!job || tab !== "log" || job.viewer?.canSeeLogs === false) return null;
 
   return (
     <div className="mt-6 space-y-4">

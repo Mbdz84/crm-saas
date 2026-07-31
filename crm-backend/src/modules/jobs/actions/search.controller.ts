@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { ownJobsWhere, hideClientPhone } from "../../../utils/scope";
 
 export async function searchJobs(req: Request, res: Response) {
   try {
@@ -42,6 +43,7 @@ export async function searchJobs(req: Request, res: Response) {
 
     const where: any = {
       companyId,
+      ...(await ownJobsWhere(req)),
     };
 
     /* -----------------------------------------
@@ -104,6 +106,13 @@ export async function searchJobs(req: Request, res: Response) {
     },
   },
 });
+
+    if (await hideClientPhone(req)) {
+      results.forEach((r: any) => {
+        r.customerPhone = null;
+        r.customerPhone2 = null;
+      });
+    }
 
     return res.json({ results });
   } catch (err) {

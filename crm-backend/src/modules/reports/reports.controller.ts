@@ -1,12 +1,21 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
+import {
+  ownJobsWhere,
+  reportsBlocked,
+  limitReportToTech,
+  stripJobSecrets,
+} from "../../utils/scope";
 
 /* ============================================================
    /reports?from=2025-01-01&to=2025-01-31&status=closed
 ============================================================ */
 export async function getReports(req: Request, res: Response) {
   try {
+    if (await reportsBlocked(req)) {
+      return res.status(403).json({ error: "Reports access disabled" });
+    }
     const { from, to, tech, jobType, source, groupBy } = req.query;
 
     const DEFAULT_TZ = "America/Chicago";
@@ -49,6 +58,10 @@ export async function getReports(req: Request, res: Response) {
     if (tech) where.technicianId = tech as string;
     if (jobType) where.jobTypeId = jobType as string;
     if (source) where.sourceId = source as string;
+
+    // Technicians (without "view all jobs") only see their own jobs — this
+    // overrides any tech filter above.
+    Object.assign(where, await ownJobsWhere(req));
 
 
     // Date filtering: closed jobs by closedAt, canceled jobs by canceledAt
@@ -257,7 +270,20 @@ if (from || to) {
       }
     });
 
-    const leadSourceSummary = Object.values(leadSourceMap);
+    let leadSourceSummary = Object.values(leadSourceMap);
+
+    /* --------------------------------------------------------
+       RESTRICTED TECHNICIAN — hide lead/company figures.
+       Their own jobs are already the only ones present (own-jobs
+       scope above); here we strip the lead/company money and the
+       lead-source breakdown so only the tech's numbers remain.
+    ------------------------------------------------------------ */
+    if (await limitReportToTech(req)) {
+      closedJobs.forEach(stripJobSecrets);
+      leadSourceSummary = [];
+      summary.totalLeadProfit = 0;
+      summary.totalCompanyProfit = 0;
+    }
 
     /* --------------------------------------------------------
        RESPONSE
