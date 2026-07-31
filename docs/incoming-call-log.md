@@ -72,15 +72,32 @@ Attach to **every** matching job (see multiple-jobs below).
   (the shared attach helper no-ops if it already exists), so re-processing is
   safe.
 
-## Authentication
+## Authentication — per-lead-source API key (as built)
 
-The webhook creates log rows, so it must be protected:
+Each lead source has its own advertised number and its **own Studio flow**, so
+the flow can identify itself. We reuse the existing **lead-source API key**
+(`ls_live_…`, same mechanism as `/api/ingest/job`):
 
-- Studio sends header `X-CRM-Secret: <TWILIO_STUDIO_SECRET>`.
-- The endpoint rejects (403) anything without the exact secret.
-- Use a **new dedicated env var** `TWILIO_STUDIO_SECRET`. Do **not** reuse
-  `JWT_SECRET` (auth signing key) or `CRON_SECRET` (reminder cron trigger) —
-  different purposes, independently rotatable.
+- Generate an API key per lead source (Lead Source settings → generate key).
+- Each lead source's Studio flow sends `Authorization: Bearer ls_live_…`.
+- The endpoint is `POST /api/ingest/call`, protected by the existing
+  `apiKeyAuth` middleware, which resolves `req.leadSource` + `req.company` from
+  the key. The call is tagged to the right lead source automatically; company
+  is derived internally for tenant scoping. Keys are revocable per lead source.
+
+No shared secret and no `to`-number lookup needed. (Do **not** reuse
+`JWT_SECRET` — auth signing — or `CRON_SECRET` — reminder cron.)
+
+## Feature flag / kill switch
+
+Env var `INCOMING_CALL_LOG`:
+- unset or anything except `"off"` → **enabled**
+- `"off"` → the webhook acks but does nothing, the job-creation hook and
+  cleanup are no-ops. Flip it to disable the whole feature instantly, no code
+  changes.
+
+All attach logic is also **fail-safe** (wrapped in try/catch) — a failure here
+can never break job creation or the webhook response.
 
 ## Cleanup (spam / no-job calls)
 
@@ -186,9 +203,31 @@ New log type `incoming_call` renders a box:
 
 Both are trivial given the per-job-row model.
 
-## Open decisions (to settle at build time)
+## How to remove (if it ever misbehaves)
 
-1. **Secret value/storage:** `TWILIO_STUDIO_SECRET` env var (backend + Studio).
-2. **`toNumber` → company / lead-source lookup:** reuse `incomingSmsNumbers`
-   on `LeadSource`, or add a parallel `incomingCallNumbers` field. Falls back
-   to the default company if unmatched (same pattern as inbound SMS).
+Fastest: set env `INCOMING_CALL_LOG=off` — feature goes dormant immediately.
+
+Full removal (self-contained by design):
+1. Backend: delete `src/modules/incomingCall/`, and remove the
+   `router.post("/call", ...)` line in `ingest.routes.ts`.
+2. Remove the two `attachPendingCallsToJob(job)` calls in
+   `create.controller.ts` and `create-from-parse.controller.ts` (+ their
+   imports), and the `cleanupPendingCalls()` call in `cron.controller.ts`.
+3. Frontend: remove the `incoming_call` branch in `LogsTab.tsx`.
+   (`RecordingPlayer.tsx` is shared with the Recordings tab — keep it.)
+4. DB: `DROP TABLE "InboundCall";` and delete the model from `schema.prisma`.
+
+Nothing else references it — no FKs, no shared state.
+
+## Files (as built)
+
+- `crm-backend/src/modules/incomingCall/incomingCall.service.ts` — matching,
+  attach helpers, cleanup, feature flag.
+- `crm-backend/src/modules/incomingCall/incomingCall.controller.ts` — webhook.
+- Route: `POST /api/ingest/call` in `ingest.routes.ts` (apiKeyAuth).
+- Hook: `attachPendingCallsToJob` in `create.controller.ts` +
+  `create-from-parse.controller.ts`; `cleanupPendingCalls` in
+  `cron.controller.ts`.
+- Table: `InboundCall` (migration `20260730010000_add_inbound_call`).
+- Frontend: `LogsTab.tsx` (`incoming_call` branch) + shared
+  `RecordingPlayer.tsx`.

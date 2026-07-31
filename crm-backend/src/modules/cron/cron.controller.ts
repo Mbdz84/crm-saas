@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { processJobReminders } from "../reminders/reminder.cron";
+import { cleanupPendingCalls } from "../incomingCall/incomingCall.service";
 
 /**
  * POST /cron/run-reminders
@@ -17,6 +18,11 @@ export async function runReminders(req: Request, res: Response) {
   // Run in the background; ack the scheduler immediately.
   processJobReminders().catch((err) =>
     console.error("🔥 runReminders error:", err)
+  );
+
+  // Drop pending incoming-call recordings that never became a job (fail-safe).
+  cleanupPendingCalls().catch((err) =>
+    console.error("🔥 cleanupPendingCalls error:", err)
   );
 
   return res.json({ ok: true, startedAt: new Date().toISOString() });

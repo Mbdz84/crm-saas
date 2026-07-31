@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { attachPendingCallsToJob } from "../../incomingCall/incomingCall.service";
 import { resolveTimezoneForJob } from "../../../utils/timezone";
 
 /* ------------------------------------------
@@ -182,6 +183,8 @@ export async function createJobFromParse(req: Request, res: Response) {
         });
       }
     }
+
+    await attachPendingCallsToJob(job);
 
     return res.json({
       message: "Job created from parsed text",

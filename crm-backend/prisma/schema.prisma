@@ -299,3 +299,23 @@ model SmsMessage {
 
   @@index([conversationId, createdAt])
 }
+
+// Incoming dispatch-call recordings, posted by each lead source's Twilio
+// Studio flow. Standalone (no relations) so the whole feature can be dropped
+// by deleting this table + the incomingCall module. See docs/incoming-call-log.md
+model InboundCall {
+  id             String   @id @default(cuid())
+  companyId      String
+  leadSourceId   String?
+  leadSourceName String?
+  callSid        String   @unique
+  fromNumber     String
+  toNumber       String?
+  duration       Int?
+  recordingUrl   String?
+  occurredAt     DateTime @default(now())
+  attached       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@index([companyId, occurredAt])
+}

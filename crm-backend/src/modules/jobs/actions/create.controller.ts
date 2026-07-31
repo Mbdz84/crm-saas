@@ -3,6 +3,7 @@ import prisma from "../../../prisma/client";
 import { generateUniqueShortId } from "../utils/shortId";
 import { sendTechSms } from "./sms.controller";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { attachPendingCallsToJob } from "../../incomingCall/incomingCall.service";
 import { resolveTimezoneForJob } from "../../../utils/timezone";
 
 
@@ -120,6 +121,9 @@ export async function createJob(req: Request, res: Response) {
     if (sendSmsToTech && technicianId) {
       await sendTechSms(technicianId, job);
     }
+
+    // Attach any pending incoming-call recordings (fail-safe / behind flag).
+    await attachPendingCallsToJob(job);
 
     return res.json({ message: "Job created", job });
   } catch (err) {
@@ -256,6 +260,8 @@ export async function createJobFromParsed(req: Request, res: Response) {
         },
       });
     }
+
+    await attachPendingCallsToJob(job);
 
     return res.json({ message: "Job created", job, shortId });
   } catch (err) {

@@ -2,6 +2,22 @@
 
 import { useJob } from "../state/JobProvider";
 import { toZonedTime, format } from "date-fns-tz";
+import RecordingPlayer from "./RecordingPlayer";
+
+function fmtDuration(sec?: number | null) {
+  if (sec == null) return "—";
+  const s = Math.max(0, Math.floor(Number(sec)));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function fmtPhone(n?: string | null) {
+  if (!n) return "—";
+  const d = n.replace(/[^\d]/g, "");
+  const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+  return ten.length === 10
+    ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`
+    : n;
+}
 
 /* =========================
    Helpers
@@ -36,6 +52,8 @@ function getLogActionLabel(type: string) {
       return "✏️ Job Updated";
     case "parsed_sms":
       return "🟦 SMS Parsed";
+    case "incoming_call":
+      return "📞 Incoming Call";
     default:
       return type.toUpperCase();
   }
@@ -79,9 +97,46 @@ export default function LogsTab() {
             )}
 
             {/* Log body */}
-            <div className="whitespace-pre-line text-sm bg-white p-2 rounded border">
-              {log.text}
-            </div>
+            {log.type === "incoming_call" ? (
+              (() => {
+                let call: any = {};
+                try {
+                  call = JSON.parse(log.text);
+                } catch {
+                  return (
+                    <div className="text-sm bg-white p-2 rounded border">
+                      {log.text}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="text-sm bg-white p-3 rounded border space-y-1">
+                    <div>
+                      <b>From:</b> {fmtPhone(call.from)}
+                    </div>
+                    {call.leadSource && (
+                      <div>
+                        <b>To:</b> {call.leadSource}
+                      </div>
+                    )}
+                    <div>
+                      <b>Duration:</b> {fmtDuration(call.duration)}
+                    </div>
+                    {call.recordingUrl ? (
+                      <RecordingPlayer url={call.recordingUrl} />
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">
+                        No recording.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              <div className="whitespace-pre-line text-sm bg-white p-2 rounded border">
+                {log.text}
+              </div>
+            )}
           </div>
         ))
       ) : (
