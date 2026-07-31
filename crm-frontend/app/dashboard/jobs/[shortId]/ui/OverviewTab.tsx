@@ -670,7 +670,14 @@ const selectedStatusIsCanceled = (() => {
               
               {statuses
                 .filter((s: any) => {
-                  if (techRole === "technician" && s.name === "Closed")
+                  // Technicians finalize nothing — they use Pending Close /
+                  // Pending Cancel; an admin sets the real Closed / Canceled.
+                  if (
+                    techRole === "technician" &&
+                    ["closed", "canceled", "cancelled"].includes(
+                      (s.name || "").toLowerCase()
+                    )
+                  )
                     return false;
                   return true;
                 })
@@ -1821,6 +1828,21 @@ const router = useRouter();
     className="mt-2 w-full bg-green-600 hover:bg-green-500 text-white text-xs font-semibold py-2 rounded"
   >
     Close Job &amp; Exit
+  </button>
+)}
+
+{/* Technician: submit/update a PENDING close (only while not finalized). */}
+{userRole === "technician" && !editingLocked && (
+  <button
+    type="button"
+    onClick={() => {
+      const r = calculateSplit();
+      if (!r) return toast.error("Run calculation first");
+      closeJob(r, {});
+    }}
+    className="mt-2 w-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold py-2 rounded"
+  >
+    Save Pending Close
   </button>
 )}
 

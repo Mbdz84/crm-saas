@@ -19,10 +19,15 @@ export async function closeJob(req: Request, res: Response) {
     if (!user || user.companyId !== job.companyId)
       return res.status(403).json({ error: "Forbidden" });
 
-    // ❌ Technicians cannot finalize (only pending close)
-    if (req.user?.role === "technician") {
+    // Technicians submit a PENDING close (saved but editable, not finalized);
+    // admins finalize to Closed. The same closing data is saved either way.
+    const isTech = req.user?.role === "technician";
+
+    // Once a job is finalized (locked), a technician can no longer edit the
+    // closing — only an admin can. While it's pending it stays editable.
+    if (isTech && job.isClosingLocked) {
       return res.status(403).json({
-        error: "Technicians cannot finalize closing. Use Pending Close.",
+        error: "This job is already closed — only an admin can change the closing.",
       });
     }
 
@@ -68,23 +73,24 @@ export async function closeJob(req: Request, res: Response) {
     const { cashTotal, creditTotal, checkTotal, zelleTotal } =
       calcPaymentTotals(payments);
 
-    // Find CLOSED status row
-    const closedStatus = await prisma.jobStatus.findFirst({
-      where: { name: "Closed", active: true },
+    // Tech → "Pending Close" (editable). Admin → "Closed" (final).
+    const targetName = isTech ? "Pending Close" : "Closed";
+    const targetStatus = await prisma.jobStatus.findFirst({
+      where: { name: targetName, active: true },
     });
-    if (!closedStatus)
-      return res.status(400).json({ error: "Closed status not found" });
+    if (!targetStatus)
+      return res.status(400).json({ error: `${targetName} status not found` });
 
     const result = await prisma.$transaction(async (tx: any) => {
-      // ❗ Always force status to CLOSED (Fix #1)
-      const newStatusId = closedStatus.id;
+      const newStatusId = targetStatus.id;
 
-      // Mark job as fully closed
+      // Admin close locks + stamps closedAt. Pending (tech) stays editable
+      // and is not stamped closed until an admin finalizes.
       const updatedJob = await tx.job.update({
         where: { id: job.id },
         data: {
-          isClosingLocked: true,
-          closedAt: closedAtDate,
+          isClosingLocked: !isTech,
+          closedAt: isTech ? null : closedAtDate,
           statusId: newStatusId,
 
           // Persist any job-field edits made while the closing panel was open
@@ -119,19 +125,16 @@ export async function closeJob(req: Request, res: Response) {
         },
       });
 
-      // Terminate active call sessions — a closed job is no longer reachable,
-      // and this frees its extension for reuse by open jobs.
-      await tx.jobCallSession.updateMany({
-        where: { jobId: job.id, active: true },
-        data: { active: false, lastCallerPhone: null },
-      });
-
-      // ❗ Fix #3 — if any leftover closing data exists but status ≠ Closed, clear it
-      if (updatedJob.statusId !== closedStatus.id) {
-        await tx.jobClosing.deleteMany({ where: { jobId: job.id } });
+      // Only a FINAL close frees the extension; a pending close keeps the job
+      // reachable while it's still open.
+      if (!isTech) {
+        await tx.jobCallSession.updateMany({
+          where: { jobId: job.id, active: true },
+          data: { active: false, lastCallerPhone: null },
+        });
       }
 
-      // Create/update closing row
+      // Create/update closing row (kept for both pending and final)
       const closing = await tx.jobClosing.upsert({
         where: { jobId: job.id },
         update: {
@@ -163,7 +166,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: closedAtDate,
+          closedAt: isTech ? null : closedAtDate,
           closedByUserId: user.id,
         },
         create: {
@@ -196,7 +199,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: closedAtDate,
+          closedAt: isTech ? null : closedAtDate,
           closedByUserId: user.id,
         },
       });
@@ -220,7 +223,7 @@ export async function closeJob(req: Request, res: Response) {
     ].filter(Boolean);
 
     const closeText = [
-      "Job closed",
+      isTech ? "Pending Close submitted by technician" : "Job closed",
       `Collected: ${money(collected)}${
         methodParts.length ? ` (${methodParts.join(", ")})` : ""
       }`,
@@ -231,7 +234,7 @@ export async function closeJob(req: Request, res: Response) {
 
     await logJobEvent({
       jobId: job.id,
-      type: "closed",
+      type: isTech ? "updated" : "closed",
       text: closeText,
       userId: user.id,
     });
