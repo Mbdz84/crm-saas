@@ -19,6 +19,7 @@ import { getCalendarJobs } from "./actions/calendar.controller";
 import { authMiddleware } from "../../middleware/auth";
 import { tenantMiddleware } from "../../middleware/tenant";
 import { searchJobs } from "./actions/search.controller";
+import { deleteJobLog, moveJobLog } from "./actions/joblog.controller";
 
 const router = Router();
 
@@ -84,6 +85,10 @@ router.post("/bulk-delete", DeleteController.bulkDeleteJobs);
 
 // Calendar appointments (literal route — must be before "/:shortId")
 router.get("/calendar", getCalendarJobs);
+
+// Job-log audit actions (literal routes — must be before "/:shortId")
+router.delete("/logs/:logId", authMiddleware, tenantMiddleware, deleteJobLog);
+router.post("/logs/:logId/move", authMiddleware, tenantMiddleware, moveJobLog);
 
 /* --------------- GET / UPDATE SINGLE JOB -------------------- */
 router.get("/:shortId", GetController.getJobByShortId);

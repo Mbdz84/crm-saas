@@ -199,13 +199,15 @@ New log type `incoming_call` renders a box:
   `DialCallDuration` / `RecordingUrl` are populated. Put it before/after the
   "text my cell" widget — order doesn't matter — just ensure it's reached.
 
-## Future — audit tools
+## Audit tools (built)
 
-- **"Add call to job"** — button opens the list of jobs with the same phone;
-  pick one → inserts a `JobLog` row.
-- **"Remove from this job"** — deletes that one `JobLog` row.
+On each `incoming_call` log entry in the Log tab:
+- **Move to job** — opens the list of *other* jobs with the same phone; pick one
+  → copies the log there and removes it here (`POST /jobs/logs/:logId/move`).
+- **Delete** — removes the call from this job (`DELETE /jobs/logs/:logId`).
 
-Both are trivial given the per-job-row model.
+Backend: `jobs/actions/joblog.controller.ts`, routes in `job.routes.ts`
+(company-scoped). Frontend: the buttons + picker in `LogsTab.tsx`.
 
 ## How to remove (if it ever misbehaves)
 

@@ -1,8 +1,12 @@
 "use client";
 
+import { useState } from "react";
+import { toast } from "sonner";
 import { useJob } from "../state/JobProvider";
 import { toZonedTime, format } from "date-fns-tz";
 import RecordingPlayer from "./RecordingPlayer";
+
+const base = process.env.NEXT_PUBLIC_API_URL;
 
 function fmtDuration(sec?: number | null) {
   if (sec == null) return "—";
@@ -19,23 +23,13 @@ function fmtPhone(n?: string | null) {
     : n;
 }
 
-/* =========================
-   Helpers
-========================= */
-
-function formatLogTime(
-  date: string | Date,
-  tz?: string
-) {
+function formatLogTime(date: string | Date, tz?: string) {
   if (!date) return "";
-
   const effectiveTz =
     tz && tz.length > 0
       ? tz
       : Intl.DateTimeFormat().resolvedOptions().timeZone;
-
   const zoned = toZonedTime(new Date(date), effectiveTz);
-
   return `${format(zoned, "MM/dd/yyyy, hh:mm:ss a")} (${effectiveTz})`;
 }
 
@@ -64,7 +58,72 @@ function getLogActionLabel(type: string) {
 ========================= */
 
 export default function LogsTab() {
-  const { job, tab } = useJob();
+  const ctx = useJob() as any;
+  const job = ctx.job;
+  const tab = ctx.tab;
+  const reload = ctx.reload;
+
+  const [busy, setBusy] = useState<string | null>(null);
+  const [picker, setPicker] = useState<{
+    logId: string;
+    from: string;
+    jobs: any[];
+  } | null>(null);
+
+  async function deleteLog(logId: string) {
+    if (!confirm("Remove this call from this job?")) return;
+    setBusy(logId);
+    try {
+      const res = await fetch(`${base}/jobs/logs/${logId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Removed");
+      await reload?.();
+    } catch {
+      toast.error("Failed to remove");
+    }
+    setBusy(null);
+  }
+
+  async function openMove(logId: string, from: string) {
+    setBusy(logId);
+    try {
+      const res = await fetch(
+        `${base}/jobs/search?q=${encodeURIComponent(from)}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      const jobs = (data.results || []).filter(
+        (j: any) => j.shortId !== job.shortId
+      );
+      setPicker({ logId, from, jobs });
+    } catch {
+      toast.error("Failed to load jobs");
+    }
+    setBusy(null);
+  }
+
+  async function moveTo(targetShortId: string) {
+    if (!picker) return;
+    setBusy(picker.logId);
+    try {
+      const res = await fetch(`${base}/jobs/logs/${picker.logId}/move`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetShortId }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(`Moved to ${targetShortId}`);
+      setPicker(null);
+      await reload?.();
+    } catch {
+      toast.error("Failed to move");
+    }
+    setBusy(null);
+  }
 
   if (!job || tab !== "log") return null;
 
@@ -79,9 +138,7 @@ export default function LogsTab() {
                 <div className="font-medium text-gray-800">
                   {getLogActionLabel(log.type)}
                 </div>
-                <div>
-                  {formatLogTime(log.createdAt, job.timezone)}
-                </div>
+                <div>{formatLogTime(log.createdAt, job.timezone)}</div>
               </div>
 
               <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">
@@ -125,10 +182,28 @@ export default function LogsTab() {
                     {call.recordingUrl ? (
                       <RecordingPlayer url={call.recordingUrl} />
                     ) : (
-                      <p className="text-xs text-gray-500 mt-1">
-                        No recording.
-                      </p>
+                      <p className="text-xs text-gray-500 mt-1">No recording.</p>
                     )}
+
+                    {/* Audit actions */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => openMove(log.id, call.from)}
+                        disabled={busy === log.id}
+                        className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Move to job
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteLog(log.id)}
+                        disabled={busy === log.id}
+                        className="text-xs px-2 py-1 border border-red-500 text-red-600 rounded hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 );
               })()
@@ -141,6 +216,52 @@ export default function LogsTab() {
         ))
       ) : (
         <p className="text-sm text-gray-500">No logs yet.</p>
+      )}
+
+      {/* MOVE PICKER */}
+      {picker && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setPicker(null)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg p-4 w-full max-w-md max-h-[80vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-semibold mb-3">
+              Move call to which job? ({fmtPhone(picker.from)})
+            </h3>
+            {picker.jobs.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No other jobs found for this number.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {picker.jobs.map((j) => (
+                  <button
+                    key={j.id}
+                    onClick={() => moveTo(j.shortId)}
+                    disabled={busy === picker.logId}
+                    className="w-full text-left border rounded p-2 hover:bg-blue-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    <div className="font-medium">
+                      {j.shortId} — {j.customerName || "No name"}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {j.customerAddress || "No address"}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {j.jobStatus?.name || "—"}
+                      {j.createdAt
+                        ? " · " + new Date(j.createdAt).toLocaleDateString()
+                        : ""}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
