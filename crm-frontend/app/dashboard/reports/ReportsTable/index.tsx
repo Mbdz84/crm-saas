@@ -11,6 +11,67 @@ import { columnDefs } from "./utils/columnDefs";
 import ColumnVisibility from "./ColumnVisibility";
 import { exportHTML } from "./exports/exportHTML";
 
+/* -----------------------------------------
+   SORTING HELPERS
+   Keys MUST match columnDefs keys.
+----------------------------------------- */
+const NUMERIC_SORT_KEYS = new Set([
+  "total", "cashTotal", "creditTotal", "checkTotal", "zelleTotal",
+  "techParts", "leadParts", "compParts", "partsAmt", "cc", "addFee",
+  "adjusted", "tech%", "techProfit", "lead%", "leadProfit", "comp%",
+  "compProfit", "techBal", "leadBal", "compBal", "check",
+]);
+const DATE_SORT_KEYS = new Set(["date"]);
+
+function paymentSum(c: any, method: string): number {
+  if (!Array.isArray(c?.payments)) return 0;
+  return c.payments.reduce(
+    (s: number, p: any) =>
+      s + (p.payment === method ? Number(p.amount) || 0 : 0),
+    0
+  );
+}
+
+function sortValue(job: any, field: string): any {
+  const c = job.closing || {};
+  switch (field) {
+    case "invoice": return c.invoiceNumber ?? "";
+    case "jobId": return job.shortId ?? "";
+    case "leadSource": return job.source?.name ?? "";
+    case "name": return job.customerName ?? "";
+    case "phones": return `${job.customerPhone || ""} ${job.customerPhone2 || ""}`;
+    case "address": return job.customerAddress ?? "";
+    case "date": return new Date(job.closedAt || job.canceledAt || 0).getTime();
+    case "type": return job.jobType?.name ?? "";
+    case "tech":
+    case "technician": return job.technician?.name ?? "";
+    case "total": return Number(c.totalAmount) || 0;
+    case "cashTotal": return paymentSum(c, "cash");
+    case "creditTotal": return paymentSum(c, "credit");
+    case "checkTotal": return paymentSum(c, "check");
+    case "zelleTotal": return paymentSum(c, "zelle");
+    case "techParts": return Number(c.techParts) || 0;
+    case "leadParts": return Number(c.leadParts) || 0;
+    case "compParts": return Number(c.companyParts) || 0;
+    case "partsAmt": return Number(c.totalParts) || 0;
+    case "cc": return Number(c.totalCcFee) || 0;
+    case "addFee": return Number(c.leadAdditionalFee) || 0;
+    case "adjusted": return Number(c.adjustedTotal) || 0;
+    case "tech%": return Number(c.techPercent) || 0;
+    case "techProfit": return Number(c.techProfit) || 0;
+    case "lead%": return Number(c.leadPercent) || 0;
+    case "leadProfit": return Number(c.leadProfit) || 0;
+    case "comp%": return Number(c.companyPercent) || 0;
+    case "compProfit": return Number(c.companyProfitDisplay) || 0;
+    case "techBal": return Number(c.techBalance) || 0;
+    case "leadBal": return Number(c.leadBalance) || 0;
+    case "compBal": return Number(c.companyBalance) || 0;
+    case "check": return Number(c.sumCheck) || 0;
+    case "cancelReason": return job.canceledReason ?? "";
+    default: return "";
+  }
+}
+
 export default function ReportsTable({
   rows,
   from,
@@ -93,75 +154,34 @@ useEffect(() => {
       setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortDir("desc");
+      // Numbers & dates: first click high→low. Text: first click A→Z.
+      setSortDir(
+        NUMERIC_SORT_KEYS.has(field) || DATE_SORT_KEYS.has(field)
+          ? "desc"
+          : "asc"
+      );
     }
   }
 
-  /* -----------------------------------------
-     VALUE EXTRACTOR INCLUDING NEW PAYMENT FIELDS
-  ----------------------------------------- */
-  function extractValue(job: any, field: string) {
-  const c = job.closing || {};
-
-  const map: Record<string, any> = {
-    invoice: c.invoiceNumber,
-    jobId: job.shortId,
-    leadSource: job.source?.name,
-
-    // ✅ FIXED (must match columnDefs)
-    customerName: job.customerName,
-
-    // ⭐ NEW PHONES FIELD
-    phones: `${job.customerPhone || ""}${job.customerPhone2 ? " | " + job.customerPhone2 : ""}`,
-
-    address: job.customerAddress,
-    date: job.closedAt,
-    jobType: job.jobType?.name,
-    collectedBy: job.technician?.name,
-    technician: job.technician?.name,
-    totalAmount: c.totalAmount,
-
-    cashTotal: c.cashTotal,
-    creditTotal: c.creditTotal,
-    checkTotal: c.checkTotal,
-    zelleTotal: c.zelleTotal,
-
-    techParts: c.techParts,
-    leadParts: c.leadParts,
-    companyParts: c.companyParts,
-    totalParts: c.totalParts,
-    ccFee: c.totalCcFee,
-    addFee: c.leadAdditionalFee,
-    adjustedTotal: c.adjustedTotal,
-    techPercent: c.techPercent,
-    techProfit: c.techProfit,
-    leadPercent: c.leadPercent,
-    leadProfit: c.leadProfit,
-    companyPercent: c.companyPercent,
-    companyProfit: c.companyProfitDisplay,
-
-    techBalance: c.techBalance,
-    leadBalance: c.leadBalance,
-    companyBalance: c.companyBalance,
-    sumCheck: c.sumCheck,
-  };
-
-  let value = map[field];
-  if (value == null) return 0;
-
-  if (field === "date") return new Date(value).getTime();
-  return Number(value) || value;
-}
-
   const sortedRows = useMemo(() => {
     const arr = [...rows];
-    arr.sort((a, b) => {
-      const A = extractValue(a, sortField);
-      const B = extractValue(b, sortField);
+    const dir = sortDir === "asc" ? 1 : -1;
+    const numericSort =
+      NUMERIC_SORT_KEYS.has(sortField) || DATE_SORT_KEYS.has(sortField);
 
-      if (A < B) return sortDir === "asc" ? -1 : 1;
-      if (A > B) return sortDir === "asc" ? 1 : -1;
-      return 0;
+    arr.sort((a, b) => {
+      if (numericSort) {
+        const A = Number(sortValue(a, sortField)) || 0;
+        const B = Number(sortValue(b, sortField)) || 0;
+        return (A - B) * dir;
+      }
+      // Text: natural, case-insensitive (handles "123 Main" vs "Main St")
+      const A = String(sortValue(a, sortField) ?? "");
+      const B = String(sortValue(b, sortField) ?? "");
+      return (
+        A.localeCompare(B, undefined, { numeric: true, sensitivity: "base" }) *
+        dir
+      );
     });
     return arr;
   }, [rows, sortField, sortDir]);
@@ -171,7 +191,8 @@ useEffect(() => {
   /* -----------------------------------------
      ROW SELECTION + JOB COUNTERS
   ----------------------------------------- */
-  const selectedCount = sortedRows.filter((j: any) => highlighted[j.id]).length;
+  const selectedRows = sortedRows.filter((j: any) => highlighted[j.id]);
+  const selectedCount = selectedRows.length;
   const allSelected =
     sortedRows.length > 0 && selectedCount === sortedRows.length;
 
@@ -303,6 +324,12 @@ useEffect(() => {
         ))}
 
         <TotalsRow rows={sortedRows} visible={visible} />
+        <TotalsRow
+          rows={selectedRows}
+          visible={visible}
+          variant="selected"
+          label={`Sel ${selectedCount}`}
+        />
       </tbody>
     </table>
   </div>

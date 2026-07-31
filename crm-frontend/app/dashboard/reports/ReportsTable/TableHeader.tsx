@@ -32,10 +32,10 @@ export default function TableHeader({
           visible[col.key] ? (
             <th
               key={col.key}
-              className="border px-2 py-1 font-semibold select-none cursor-pointer hover:bg-gray-200"
+              className="border px-2 py-1 text-xs font-semibold select-none cursor-pointer hover:bg-gray-200"
               onClick={() => onSort(col.key)}
             >
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center justify-between gap-1">
                 <span>{col.label}</span>
 
                 {/* SORT ICON */}

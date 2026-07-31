@@ -4,6 +4,8 @@ import { columnDefs } from "./utils/columnDefs";
 type Props = {
   rows: any[];
   visible: Record<string, boolean>;
+  variant?: "total" | "selected";
+  label?: string;
 };
 
 const MONEY_KEYS = new Set([
@@ -29,8 +31,20 @@ const MONEY_KEYS = new Set([
 
 const NUMBER_KEYS = new Set(["check"]);
 
-export default function TotalsRow({ rows, visible }: Props) {
-  if (!rows.length) return null;
+export default function TotalsRow({
+  rows,
+  visible,
+  variant = "total",
+  label,
+}: Props) {
+  // Grand total hides when there are no rows; the selected row always shows.
+  if (!rows.length && variant !== "selected") return null;
+
+  const isSelected = variant === "selected";
+  const bg = isSelected ? "bg-blue-100" : "bg-gray-200";
+  const rowClass = isSelected
+    ? "bg-blue-100 font-bold border-t-2 border-blue-500"
+    : "bg-gray-200 font-bold border-t-4 border-black";
 
   // ✅ Totals are ONLY for closed jobs
   const closedRows = rows.filter(
@@ -96,9 +110,13 @@ export default function TotalsRow({ rows, visible }: Props) {
   }
 
   return (
-    <tr className="bg-gray-200 font-bold border-t-4 border-black">
-      {/* Sticky checkbox column */}
-      <td className="sticky left-0 bg-gray-200 border px-2 py-2 z-10"></td>
+    <tr className={rowClass}>
+      {/* Sticky checkbox column (holds the label for the selected row) */}
+      <td
+        className={`sticky left-0 ${bg} border px-1 py-2 z-10 whitespace-nowrap text-xs`}
+      >
+        {label}
+      </td>
 
       {columnDefs.map((col) => {
         if (!visible[col.key]) return null;
