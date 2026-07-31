@@ -19,6 +19,7 @@ import {
   Bell,
   BellOff,
   Trash2,
+  Briefcase,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -84,8 +85,37 @@ export default function ChatPage() {
   const [archiveUnread, setArchiveUnread] = useState(0);
   const [callerMap, setCallerMap] = useState<Record<string, string>>({});
   const [leadSourceMap, setLeadSourceMap] = useState<Record<string, string>>({});
+  const [jobList, setJobList] = useState<any[] | null>(null);
+  const [loadingJobs, setLoadingJobs] = useState(false);
 
   const active = conversations.find((c) => c.id === activeId) || null;
+
+  /* -----------------------------------------
+     GO TO JOB — find this client's job(s) by phone
+  ----------------------------------------- */
+  async function goToJob() {
+    if (!active || !base) return;
+    setLoadingJobs(true);
+    try {
+      const res = await fetch(
+        `${base}/jobs/search?q=${encodeURIComponent(active.clientNumber)}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      const results: any[] = data.results || [];
+
+      if (results.length === 0) {
+        toast.error("No job found for this number");
+      } else if (results.length === 1) {
+        window.open(`/dashboard/jobs/${results[0].shortId}`, "_blank");
+      } else {
+        setJobList(results); // let the user pick
+      }
+    } catch {
+      toast.error("Failed to look up jobs");
+    }
+    setLoadingJobs(false);
+  }
 
   // Caller ID directory (number → name)
   useEffect(() => {
@@ -525,6 +555,15 @@ export default function ChatPage() {
               </div>
 
               <button
+                onClick={goToJob}
+                disabled={loadingJobs}
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 whitespace-nowrap"
+                title="Open this client's job"
+              >
+                <Briefcase size={14} /> {loadingJobs ? "…" : "Go to job"}
+              </button>
+
+              <button
                 onClick={toggleMute}
                 className={`p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 ${
                   active.muted ? "text-amber-600" : "text-gray-500"
@@ -569,6 +608,53 @@ export default function ChatPage() {
                 <Trash2 size={16} />
               </button>
             </div>
+
+            {/* JOB PICKER (shown when the client has more than one job) */}
+            {jobList && (
+              <div
+                className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                onClick={() => setJobList(null)}
+              >
+                <div
+                  className="bg-white dark:bg-gray-900 rounded-lg p-4 w-full max-w-md max-h-[80vh] overflow-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="font-semibold mb-3">
+                    {jobList.length} jobs for this number
+                  </h3>
+                  <div className="space-y-2">
+                    {jobList.map((j) => (
+                      <button
+                        key={j.id}
+                        onClick={() => {
+                          window.open(`/dashboard/jobs/${j.shortId}`, "_blank");
+                          setJobList(null);
+                        }}
+                        className="w-full text-left border rounded p-2 hover:bg-blue-50 dark:hover:bg-gray-800"
+                      >
+                        <div className="font-medium">
+                          {j.shortId} — {j.customerName || "No name"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {j.customerAddress || "No address"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {j.jobStatus?.name || "—"}
+                          {j.createdAt
+                            ? " · " + new Date(j.createdAt).toLocaleDateString()
+                            : ""}
+                          {j.closing?.totalAmount != null && (
+                            <span className="text-green-700 font-semibold">
+                              {" · $" + Number(j.closing.totalAmount).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50 dark:bg-gray-950">
