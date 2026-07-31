@@ -9,10 +9,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen w-full overflow-hidden">
+    <div className="flex h-screen w-full overflow-hidden">
 
-      {/* DESKTOP SIDEBAR */}
-      <div className="hidden md:block">
+      {/* DESKTOP SIDEBAR — fixed, scrolls on its own if tall */}
+      <div className="hidden md:block h-screen overflow-y-auto shrink-0">
         <Sidebar />
       </div>
 
@@ -32,8 +32,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar />
       </div>
 
-      {/* MAIN AREA */}
-      <div className="flex flex-col flex-1 min-h-screen overflow-y-auto">
+      {/* MAIN AREA — the single vertical scroller (includes the Topbar) */}
+      <div className="flex flex-col flex-1 min-w-0 h-screen overflow-y-auto">
 
         {/* TOPBAR */}
         <Topbar />
@@ -47,7 +47,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
 
         {/* PAGE CONTENT */}
-        <main className="flex-1 overflow-y-auto sm:p-6 p-3">
+        <main className="flex-1 sm:p-6 p-3">
           {children}
         </main>
 
