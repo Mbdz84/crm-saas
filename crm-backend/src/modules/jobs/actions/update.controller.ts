@@ -34,6 +34,11 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
       if (!perms.canEditCustomerName) updates.customerName = job.customerName;
       if (!perms.canEditCustomerAddress)
         updates.customerAddress = job.customerAddress;
+      // Phone-blind techs can't change the number they can't see.
+      if (!perms.canSeeClientPhone) {
+        updates.customerPhone = job.customerPhone;
+        updates.customerPhone2 = job.customerPhone2;
+      }
     }
 
     /* ======================================================

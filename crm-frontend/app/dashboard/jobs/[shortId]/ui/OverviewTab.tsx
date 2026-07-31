@@ -135,6 +135,7 @@ export default function OverviewTab() {
   const canChangeJobType = jobViewer.canChangeJobType !== false;
   const canEditCustomerName = jobViewer.canEditCustomerName !== false;
   const canEditCustomerAddress = jobViewer.canEditCustomerAddress !== false;
+  const canSeeClientPhone = jobViewer.canSeeClientPhone !== false;
   const canRefreshExtension = jobViewer.canRefreshExtension !== false;
   const canDeleteJob = jobViewer.canDeleteJob !== false;
   const canDuplicateJob = jobViewer.canDuplicateJob !== false;
@@ -424,9 +425,12 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex gap-2">
         {/* Phone */}
         <input
-  className="flex-1 sm:flex-auto max-w-[17ch] border rounded p-2"
+  className={`flex-1 sm:flex-auto max-w-[17ch] border rounded p-2 ${
+    !canSeeClientPhone ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+  }`}
           placeholder="Phone 1"
           value={phone}
+          disabled={!canSeeClientPhone}
           onChange={(e) =>
             setField(
               "customerPhone",
@@ -437,9 +441,12 @@ const selectedStatusIsCanceled = (() => {
 
         {/* Ext */}
         <input
-          className="w-[9ch] border rounded p-2"
+          className={`w-[9ch] border rounded p-2 ${
+            !canSeeClientPhone ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+          }`}
           placeholder="Ext"
           value={ext}
+          disabled={!canSeeClientPhone}
           onChange={(e) =>
             setField(
               "customerPhone",
@@ -472,9 +479,12 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex gap-2">
         {/* Phone */}
         <input
-  className="flex-1 sm:flex-auto max-w-[17ch] border rounded p-2"
+  className={`flex-1 sm:flex-auto max-w-[17ch] border rounded p-2 ${
+    !canSeeClientPhone ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+  }`}
           placeholder="Phone 2"
           value={phone}
+          disabled={!canSeeClientPhone}
           onChange={(e) =>
             setField(
               "customerPhone2",
@@ -485,9 +495,12 @@ const selectedStatusIsCanceled = (() => {
 
         {/* Ext */}
         <input
-          className="w-[9ch] border rounded p-2"
+          className={`w-[9ch] border rounded p-2 ${
+            !canSeeClientPhone ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+          }`}
           placeholder="Ext"
           value={ext}
+          disabled={!canSeeClientPhone}
           onChange={(e) =>
             setField(
               "customerPhone2",
