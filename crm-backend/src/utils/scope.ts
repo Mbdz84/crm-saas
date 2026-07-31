@@ -16,10 +16,14 @@ type TechFlags = {
   canSeeLeadSource: boolean;
   canSeeTechnicianField: boolean;
   canChangeJobType: boolean;
-  canEditCustomerInfo: boolean;
+  canEditCustomerName: boolean;
+  canEditCustomerAddress: boolean;
   canRefreshExtension: boolean;
   canDeleteJob: boolean;
   canDuplicateJob: boolean;
+  canSeeDashboard: boolean;
+  canUseChat: boolean;
+  canSeeSearch: boolean;
 } | null;
 
 const TECH_DEFAULTS = {
@@ -32,10 +36,14 @@ const TECH_DEFAULTS = {
   canSeeLeadSource: true,
   canSeeTechnicianField: true,
   canChangeJobType: true,
-  canEditCustomerInfo: true,
+  canEditCustomerName: true,
+  canEditCustomerAddress: true,
   canRefreshExtension: true,
   canDeleteJob: true,
   canDuplicateJob: true,
+  canSeeDashboard: true,
+  canUseChat: true,
+  canSeeSearch: true,
 };
 
 async function techFlags(req: any): Promise<TechFlags> {
@@ -54,10 +62,14 @@ async function techFlags(req: any): Promise<TechFlags> {
       canSeeLeadSource: true,
       canSeeTechnicianField: true,
       canChangeJobType: true,
-      canEditCustomerInfo: true,
+      canEditCustomerName: true,
+      canEditCustomerAddress: true,
       canRefreshExtension: true,
       canDeleteJob: true,
       canDuplicateJob: true,
+      canSeeDashboard: true,
+      canUseChat: true,
+      canSeeSearch: true,
     },
   });
 
@@ -124,7 +136,8 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
       canSeeLeadSource: true,
       canSeeTechnicianField: true,
       canChangeJobType: true,
-      canEditCustomerInfo: true,
+      canEditCustomerName: true,
+      canEditCustomerAddress: true,
       canRefreshExtension: true,
       canDeleteJob: true,
       canDuplicateJob: true,
@@ -137,7 +150,8 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
     canSeeLeadSource: f.canSeeLeadSource,
     canSeeTechnicianField: f.canSeeTechnicianField,
     canChangeJobType: f.canChangeJobType,
-    canEditCustomerInfo: f.canEditCustomerInfo,
+    canEditCustomerName: f.canEditCustomerName,
+    canEditCustomerAddress: f.canEditCustomerAddress,
     canRefreshExtension: f.canRefreshExtension,
     canDeleteJob: f.canDeleteJob,
     canDuplicateJob: f.canDuplicateJob,

@@ -29,10 +29,9 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
       if (!perms.canChangeJobType) updates.jobTypeId = job.jobTypeId;
       if (!perms.canSeeLeadSource) updates.sourceId = job.sourceId;
       if (!perms.canSeeTechnicianField) updates.technicianId = job.technicianId;
-      if (!perms.canEditCustomerInfo) {
-        updates.customerName = job.customerName;
+      if (!perms.canEditCustomerName) updates.customerName = job.customerName;
+      if (!perms.canEditCustomerAddress)
         updates.customerAddress = job.customerAddress;
-      }
     }
 
     /* ======================================================

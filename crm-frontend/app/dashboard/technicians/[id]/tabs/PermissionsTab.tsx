@@ -167,6 +167,21 @@ export default function PermissionsTab({
       {/* MODULES */}
       <Section title="Modules">
         <Toggle
+          label="Can see the Dashboard"
+          checked={tech.canSeeDashboard !== false}
+          onChange={(v) => set("canSeeDashboard", v)}
+        />
+        <Toggle
+          label="Can use Chat"
+          checked={tech.canUseChat !== false}
+          onChange={(v) => set("canUseChat", v)}
+        />
+        <Toggle
+          label="Can use Search"
+          checked={tech.canSeeSearch !== false}
+          onChange={(v) => set("canSeeSearch", v)}
+        />
+        <Toggle
           label="Can see the Calendar"
           hint="Off = no calendar. On = only their own assigned jobs (unless 'view all jobs' is on)."
           checked={tech.canUseCalendar !== false}
@@ -200,10 +215,16 @@ export default function PermissionsTab({
           onChange={(v) => set("canChangeJobType", v)}
         />
         <Toggle
-          label="Can edit customer name & address"
-          hint="Off = name and address are shown but locked."
-          checked={tech.canEditCustomerInfo !== false}
-          onChange={(v) => set("canEditCustomerInfo", v)}
+          label="Can edit customer name"
+          hint="Off = name is shown but locked."
+          checked={tech.canEditCustomerName !== false}
+          onChange={(v) => set("canEditCustomerName", v)}
+        />
+        <Toggle
+          label="Can edit customer address"
+          hint="Off = address is shown but locked."
+          checked={tech.canEditCustomerAddress !== false}
+          onChange={(v) => set("canEditCustomerAddress", v)}
         />
         <Toggle
           label="Can refresh call extensions"

@@ -1,9 +1,13 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
-import { ownJobsWhere, hideClientPhone } from "../../../utils/scope";
+import { ownJobsWhere, hideClientPhone, techPerms } from "../../../utils/scope";
 
 export async function searchJobs(req: Request, res: Response) {
   try {
+    const perms = await techPerms(req);
+    if (perms && !perms.canSeeSearch) {
+      return res.status(403).json({ error: "Search disabled" });
+    }
     const companyId = req.user!.companyId;
 
     const qRaw = (req.query.q as string | undefined) || "";

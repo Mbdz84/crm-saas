@@ -271,6 +271,7 @@ if (from || to) {
     });
 
     let leadSourceSummary = Object.values(leadSourceMap);
+    const restrictedTech = await limitReportToTech(req);
 
     /* --------------------------------------------------------
        RESTRICTED TECHNICIAN — hide lead/company figures.
@@ -278,7 +279,7 @@ if (from || to) {
        scope above); here we strip the lead/company money and the
        lead-source breakdown so only the tech's numbers remain.
     ------------------------------------------------------------ */
-    if (await limitReportToTech(req)) {
+    if (restrictedTech) {
       closedJobs.forEach(stripJobSecrets);
       leadSourceSummary = [];
       summary.totalLeadProfit = 0;
@@ -299,6 +300,7 @@ res.setHeader("Pragma", "no-cache");
       rows: closedJobs,
       technicianSummary: technicianSummary ?? [],
       leadSourceSummary,
+      restrictedTech,
     });
   } catch (err) {
     console.error("🔥 REPORTS ERROR:", err);

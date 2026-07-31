@@ -38,6 +38,9 @@ export default function Sidebar() {
   const isTech = me?.role === "technician";
   const showCalendar = !(isTech && me?.canUseCalendar === false);
   const showReports = !(isTech && me?.canSeeReports === false);
+  const showDashboard = !(isTech && me?.canSeeDashboard === false);
+  const showChat = !(isTech && me?.canUseChat === false);
+  const showSearch = !(isTech && me?.canSeeSearch === false);
 
   // Poll unread SMS count for the Chat badge (only while the tab is visible)
   useEffect(() => {
@@ -99,12 +102,14 @@ export default function Sidebar() {
       {/* NAVIGATION */}
       <nav className="flex-1 space-y-6 overflow-y-auto">
         <SidebarSection title="Main" collapsed={collapsed}>
-          <SidebarLink
-            href="/dashboard"
-            label="Dashboard"
-            icon={<Home size={18} />}
-            collapsed={collapsed}
-          />
+          {showDashboard && (
+            <SidebarLink
+              href="/dashboard"
+              label="Dashboard"
+              icon={<Home size={18} />}
+              collapsed={collapsed}
+            />
+          )}
 
           <SidebarLink
             href="/dashboard/jobs"
@@ -113,13 +118,15 @@ export default function Sidebar() {
             collapsed={collapsed}
           />
 
-          <SidebarLink
-            href="/dashboard/chat"
-            label="Chat"
-            icon={<MessageSquare size={18} />}
-            collapsed={collapsed}
-            badge={unread}
-          />
+          {showChat && (
+            <SidebarLink
+              href="/dashboard/chat"
+              label="Chat"
+              icon={<MessageSquare size={18} />}
+              collapsed={collapsed}
+              badge={unread}
+            />
+          )}
 
           {showCalendar && (
             <SidebarLink
@@ -129,12 +136,14 @@ export default function Sidebar() {
               collapsed={collapsed}
             />
           )}
+          {showSearch && (
           <SidebarLink
             href="/dashboard/jobs/search"
             label="Search"
             icon={<Search size={18} />}
             collapsed={collapsed}
           />
+          )}
 
           {showReports && (
             <SidebarLink

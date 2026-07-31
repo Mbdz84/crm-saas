@@ -7,8 +7,22 @@ import {
   deleteConversation,
   unreadCount,
 } from "./messages.controller";
+import { techPerms } from "../../utils/scope";
 
 const router = Router();
+
+// Block chat entirely for technicians who don't have chat access.
+router.use(async (req, res, next) => {
+  try {
+    const perms = await techPerms(req);
+    if (perms && !perms.canUseChat) {
+      return res.status(403).json({ error: "Chat disabled" });
+    }
+  } catch {
+    /* ignore — fall through */
+  }
+  next();
+});
 
 // GET /messages/unread-count  → total unread in the inbox
 // (must be BEFORE the "/:id" route so it isn't captured as an id)

@@ -132,7 +132,9 @@ export default function OverviewTab() {
   const canSeeLeadSource = jobViewer.canSeeLeadSource !== false;
   const canSeeTechnicianField = jobViewer.canSeeTechnicianField !== false;
   const canChangeJobType = jobViewer.canChangeJobType !== false;
-  const canEditCustomerInfo = jobViewer.canEditCustomerInfo !== false;
+  const canEditCustomerName = jobViewer.canEditCustomerName !== false;
+  const canEditCustomerAddress = jobViewer.canEditCustomerAddress !== false;
+  const isTechnician = userRole === "technician";
   const canRefreshExtension = jobViewer.canRefreshExtension !== false;
   const canDeleteJob = jobViewer.canDeleteJob !== false;
   const canDuplicateJob = jobViewer.canDuplicateJob !== false;
@@ -408,7 +410,7 @@ const selectedStatusIsCanceled = (() => {
   label="Name"
   value={editableJob.customerName || ""}
   onChange={(v) => setField("customerName", v)}
-  disabled={!canEditCustomerInfo}
+  disabled={!canEditCustomerName}
 />
 
 {/* PHONE 1 */}
@@ -542,7 +544,7 @@ const selectedStatusIsCanceled = (() => {
 {/* ADDRESS */}
 <div>
   <label className="block text-sm font-medium">Address</label>
-  {canEditCustomerInfo ? (
+  {canEditCustomerAddress ? (
     <GoogleAddressInput
       value={editableJob.customerAddress || ""}
       onChange={(v) => setField("customerAddress", v)}
@@ -558,7 +560,8 @@ const selectedStatusIsCanceled = (() => {
 </div>
 
 
-{/* TIMEZONE */}
+{/* TIMEZONE — hidden for technicians */}
+{!isTechnician && (
 <div>
   <label className="block text-sm font-medium">Timezone</label>
   <select
@@ -586,6 +589,7 @@ const selectedStatusIsCanceled = (() => {
     Used for appointments, reminders, and canceled/closed times.
   </p>
 </div>
+)}
 
 
           {/* JOB TYPE */}

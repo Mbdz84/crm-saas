@@ -250,19 +250,23 @@ function fmt(d: Date) {
       </p>
     </div>
 
+    {!data.restrictedTech && (
     <div className="p-4 bg-white shadow rounded border">
       <p className="text-sm text-gray-500">Lead Profit</p>
       <p className="text-2xl font-bold">
         ${data.summary.totalLeadProfit.toFixed(2)}
       </p>
     </div>
+    )}
 
+    {!data.restrictedTech && (
     <div className="p-4 bg-white shadow rounded border">
       <p className="text-sm text-gray-500">Company Profit</p>
       <p className="text-2xl font-bold">
         ${data.summary.totalCompanyProfit.toFixed(2)}
       </p>
     </div>
+    )}
   </div>
 )}
 
@@ -276,13 +280,15 @@ function fmt(d: Date) {
         to={to}
       />
 
-      {/* LEAD SOURCE SUMMARY */}
-      <LeadSourceSummary
-        data={data?.leadSourceSummary ?? []}
-        jobs={data?.jobs ?? []}
-        from={from}
-        to={to}
-      />
+      {/* LEAD SOURCE SUMMARY — hidden for restricted technicians */}
+      {!data?.restrictedTech && (
+        <LeadSourceSummary
+          data={data?.leadSourceSummary ?? []}
+          jobs={data?.jobs ?? []}
+          from={from}
+          to={to}
+        />
+      )}
 
     </div>
   );

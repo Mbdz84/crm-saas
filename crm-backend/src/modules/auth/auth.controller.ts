@@ -101,6 +101,9 @@ export async function me(req: Request, res: Response) {
         canSeeRecordings: true,
         canSeeReports: true,
         canUseCalendar: true,
+        canSeeDashboard: true,
+        canUseChat: true,
+        canSeeSearch: true,
       },
     });
 
