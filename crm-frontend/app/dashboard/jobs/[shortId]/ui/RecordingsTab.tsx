@@ -30,17 +30,17 @@ function RecordingPlayer({ url }: { url: string }) {
           if (audioRef.current) audioRef.current.playbackRate = rate;
         }}
       />
-      <div className="flex items-center justify-between gap-2 mt-1">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-2 mt-1">
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
           download
-          className="text-blue-600 underline text-xs whitespace-nowrap"
+          className="text-blue-600 underline text-xs whitespace-nowrap self-start sm:self-auto"
         >
           Download MP3
         </a>
-        <div className="flex gap-1">
+        <div className="flex flex-wrap justify-center gap-1 self-center sm:self-auto">
           {SPEEDS.map((s) => (
             <button
               key={s}
