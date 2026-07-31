@@ -1,24 +1,44 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
+import { hashApiKey } from "../../utils/apiKey";
 import { callLogEnabled, attachCallToExistingJobs } from "./incomingCall.service";
 
 /* ============================================================
-   POST /api/ingest/call   (protected by apiKeyAuth)
-   Each lead source's Twilio Studio flow posts its call here using
-   that lead source's API key (Bearer). apiKeyAuth resolves
-   req.leadSource + req.company from the key, so the call is tagged
-   to the right lead source automatically.
-   Body: { callSid, from, to?, duration?, recordingUrl? }
+   POST /api/ingest/call
+   Each lead source's Twilio Studio flow posts its call here.
+   Twilio's "Make HTTP Request" widget can't send custom headers,
+   so the lead source's API key is sent in the JSON BODY as
+   `apiKey` (an Authorization: Bearer header is also accepted for
+   curl testing). The key resolves the lead source (and company).
+   Body: { apiKey, callSid, from, to?, duration?, recordingUrl? }
 ============================================================ */
 export async function incomingCall(req: Request, res: Response) {
   // Disabled → ack so Studio doesn't retry.
   if (!callLogEnabled()) return res.json({ ok: true, disabled: true });
 
   try {
-    const leadSource = (req as any).leadSource;
-    const company = (req as any).company;
+    const body = req.body || {};
 
-    const { callSid, from, to, duration, recordingUrl } = req.body || {};
+    // API key from body, or Authorization: Bearer (for curl).
+    const headerKey = (req.headers.authorization || "")
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+    const rawKey = String(body.apiKey || headerKey || "").trim();
+
+    if (!rawKey) {
+      return res.status(401).json({ error: "Missing API key" });
+    }
+
+    const leadSource = await prisma.leadSource.findFirst({
+      where: { apiKeyHash: hashApiKey(rawKey), active: true },
+      include: { company: true },
+    });
+
+    if (!leadSource) {
+      return res.status(401).json({ error: "Invalid API key" });
+    }
+
+    const { callSid, from, to, duration, recordingUrl } = body;
 
     if (!callSid || !from) {
       return res.status(400).json({ error: "callSid and from are required" });
@@ -31,7 +51,7 @@ export async function incomingCall(req: Request, res: Response) {
     const call = await prisma.inboundCall.upsert({
       where: { callSid: String(callSid) },
       create: {
-        companyId: company.id,
+        companyId: leadSource.companyId,
         leadSourceId: leadSource.id,
         leadSourceName: leadSource.name,
         callSid: String(callSid),

@@ -79,11 +79,13 @@ the flow can identify itself. We reuse the existing **lead-source API key**
 (`ls_live_…`, same mechanism as `/api/ingest/job`):
 
 - Generate an API key per lead source (Lead Source settings → generate key).
-- Each lead source's Studio flow sends `Authorization: Bearer ls_live_…`.
-- The endpoint is `POST /api/ingest/call`, protected by the existing
-  `apiKeyAuth` middleware, which resolves `req.leadSource` + `req.company` from
-  the key. The call is tagged to the right lead source automatically; company
-  is derived internally for tenant scoping. Keys are revocable per lead source.
+- **Twilio's "Make HTTP Request" widget can't send custom headers**, so the key
+  goes in the **JSON body** as `apiKey` (an `Authorization: Bearer` header is
+  also accepted, for curl testing).
+- The endpoint `POST /api/ingest/call` reads the key, hashes it, and resolves
+  the lead source (and its company) from `LeadSource.apiKeyHash`. The call is
+  tagged to the right lead source automatically. Keys are revocable per lead
+  source.
 
 No shared secret and no `to`-number lookup needed. (Do **not** reuse
 `JWT_SECRET` — auth signing — or `CRON_SECRET` — reminder cron.)
@@ -178,13 +180,13 @@ New log type `incoming_call` renders a box:
 
 ## Twilio Studio — HTTP Request widget (after the Connect Call widget)
 
-- **Method:** `POST` → `https://api.moriel.work/twilio/incoming-call`
-- **Content-Type:** `application/json`
-- **Header:** `X-CRM-Secret: <TWILIO_STUDIO_SECRET>`
-- **Body:**
+- **Method:** `POST` → `https://api.moriel.work/api/ingest/call`
+- **Content-Type:** `Application/JSON`
+- **Body** (the lead source's key goes in `apiKey`):
 
 ```json
 {
+  "apiKey": "ls_live_THIS_LEAD_SOURCE_KEY",
   "callSid": "{{widgets.connect_call_1.CallSid}}",
   "from": "{{contact.channel.address}}",
   "to": "{{trigger.call.To}}",
@@ -193,7 +195,9 @@ New log type `incoming_call` renders a box:
 }
 ```
 
-(You can keep the existing "text my cell" widget alongside this.)
+- Place the widget on the **post-call path** (after Connect Call ends) so
+  `DialCallDuration` / `RecordingUrl` are populated. Put it before/after the
+  "text my cell" widget — order doesn't matter — just ensure it's reached.
 
 ## Future — audit tools
 

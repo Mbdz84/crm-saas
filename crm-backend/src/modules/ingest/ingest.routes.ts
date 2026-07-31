@@ -7,8 +7,9 @@ const router = Router();
 
 router.post("/job", apiKeyAuth, ingestJob);
 
-// Incoming dispatch-call recordings (per-lead-source API key). See
-// docs/incoming-call-log.md — remove this line to disable the feature.
-router.post("/call", apiKeyAuth, incomingCall);
+// Incoming dispatch-call recordings. The lead-source API key is in the JSON
+// body (Twilio Studio can't send headers), so auth happens in the controller.
+// See docs/incoming-call-log.md — remove this line to disable the feature.
+router.post("/call", incomingCall);
 
 export default router;
