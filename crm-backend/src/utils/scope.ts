@@ -106,18 +106,26 @@ export async function limitReportToTech(req: any): Promise<boolean> {
   return !!f && f.canViewAllJobs === false;
 }
 
-/** Null out lead/company profit, balance and percentage on a job's closing. */
+/**
+ * Hide lead/company figures AND the lead source itself from a report job
+ * (used for restricted technicians).
+ */
 export function stripJobSecrets(job: any) {
-  const c = job?.closing;
-  if (!c) return job;
-  c.leadProfit = null;
-  c.companyProfitDisplay = null;
-  c.companyProfitBase = null;
-  c.leadBalance = null;
-  c.companyBalance = null;
-  c.leadPercent = null;
-  c.companyPercent = null;
-  c.companyParts = null;
+  if (!job) return job;
+  // Lead source name/id — a tech shouldn't see which source a job came from.
+  job.source = null;
+  job.sourceId = null;
+  const c = job.closing;
+  if (c) {
+    c.leadProfit = null;
+    c.companyProfitDisplay = null;
+    c.companyProfitBase = null;
+    c.leadBalance = null;
+    c.companyBalance = null;
+    c.leadPercent = null;
+    c.companyPercent = null;
+    c.companyParts = null;
+  }
   return job;
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -20,6 +20,22 @@ export default function ReportsPage() {
   const [data, setData] = useState<any>(null);
 
   const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+  // Restricted technicians never see lead/company figures (even before a
+  // report is loaded). Determined up front from the current user.
+  const [meRestricted, setMeRestricted] = useState(false);
+  useEffect(() => {
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const u = d?.user;
+        setMeRestricted(
+          u?.role === "technician" && u?.canViewAllJobs === false
+        );
+      })
+      .catch(() => {});
+  }, []);
+  const restrictedTech = meRestricted || !!data?.restrictedTech;
 
 // Reports are filtered/displayed per each job's own saved timezone.
 // This default is only used to compute "today" for the date presets.
@@ -250,7 +266,7 @@ function fmt(d: Date) {
       </p>
     </div>
 
-    {!data.restrictedTech && (
+    {!restrictedTech && (
     <div className="p-4 bg-white shadow rounded border">
       <p className="text-sm text-gray-500">Lead Profit</p>
       <p className="text-2xl font-bold">
@@ -259,7 +275,7 @@ function fmt(d: Date) {
     </div>
     )}
 
-    {!data.restrictedTech && (
+    {!restrictedTech && (
     <div className="p-4 bg-white shadow rounded border">
       <p className="text-sm text-gray-500">Company Profit</p>
       <p className="text-2xl font-bold">
@@ -281,7 +297,7 @@ function fmt(d: Date) {
       />
 
       {/* LEAD SOURCE SUMMARY — hidden for restricted technicians */}
-      {!data?.restrictedTech && (
+      {!restrictedTech && (
         <LeadSourceSummary
           data={data?.leadSourceSummary ?? []}
           jobs={data?.jobs ?? []}

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
-import { ownJobsWhere, reportsBlocked } from "../../utils/scope";
+import { ownJobsWhere, reportsBlocked, limitReportToTech } from "../../utils/scope";
 
 const CANCELLED_STATUSES = ["Canceled", "Cancelled", "Cancel"];
 const DEFAULT_TZ = "America/Chicago";
@@ -134,7 +134,16 @@ export async function getCanceledJobs(req: Request, res: Response) {
       leadSourceMap[sourceName].cancelled += 1;
     });
 
-    const leadSourceSummary = Object.values(leadSourceMap);
+    let leadSourceSummary = Object.values(leadSourceMap);
+
+    // Restricted technician — hide the lead source on each job and the summary.
+    if (await limitReportToTech(req)) {
+      jobs.forEach((j: any) => {
+        j.source = null;
+        j.sourceId = null;
+      });
+      leadSourceSummary = [];
+    }
 
     return res.json({
       summary: {
