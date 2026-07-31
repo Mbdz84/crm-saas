@@ -40,6 +40,7 @@ async function writeCallLog(jobId: string, call: any) {
         text: JSON.stringify({
           callSid: call.callSid,
           from: call.fromNumber,
+          to: call.toNumber || null, // the advertised number the client dialed
           leadSource: call.leadSourceName || null,
           duration: call.duration ?? null,
           recordingUrl: call.recordingUrl || null,

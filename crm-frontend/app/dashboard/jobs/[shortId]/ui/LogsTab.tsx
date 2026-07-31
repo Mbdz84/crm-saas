@@ -171,9 +171,11 @@ export default function LogsTab() {
                     <div>
                       <b>From:</b> {fmtPhone(call.from)}
                     </div>
-                    {call.leadSource && (
+                    {(call.leadSource || call.to) && (
                       <div>
-                        <b>To:</b> {call.leadSource}
+                        <b>To:</b> {call.leadSource || ""}
+                        {call.leadSource && call.to ? " · " : ""}
+                        {call.to ? fmtPhone(call.to) : ""}
                       </div>
                     )}
                     <div>
