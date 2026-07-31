@@ -1,8 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useJob } from "../state/JobProvider";
+
+/* ------------------------------------------------------------
+   Audio player with always-visible speed buttons.
+   playbackRate is set on the <audio> element so it works on any
+   source (incl. the Twilio recording URL) and can be changed live.
+------------------------------------------------------------ */
+function RecordingPlayer({ url }: { url: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [rate, setRate] = useState(1);
+  const SPEEDS = [1, 1.25, 1.5, 2, 3];
+
+  function setSpeed(r: number) {
+    setRate(r);
+    if (audioRef.current) audioRef.current.playbackRate = r;
+  }
+
+  return (
+    <>
+      <audio
+        ref={audioRef}
+        controls
+        src={url}
+        className="mt-1 w-full rounded"
+        onLoadedMetadata={() => {
+          if (audioRef.current) audioRef.current.playbackRate = rate;
+        }}
+      />
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          download
+          className="text-blue-600 underline text-xs whitespace-nowrap"
+        >
+          Download MP3
+        </a>
+        <div className="flex gap-1">
+          {SPEEDS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSpeed(s)}
+              className={`px-2 py-0.5 text-xs rounded border ${
+                rate === s
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
 const SMS_PRESETS = [
   "It's the locksmith, please call me back.",
@@ -366,23 +423,7 @@ function annotatePhones(text?: string) {
 </div>
 
               {rec.recordingSid ? (
-  <>
-    <audio
-      controls
-      src={rec.url}
-      className="mt-1 w-full rounded"
-    />
-
-    <a
-  href={rec.url}
-  target="_blank"
-  rel="noopener noreferrer"
-  download
-  className="text-blue-600 underline text-xs mt-0.5 inline-block"
->
-      Download MP3
-    </a>
-  </>
+  <RecordingPlayer url={rec.url} />
 ) : (
   <div className="text-xs text-red-600 font-medium mt-2">
     Call failed ({rec.status})
