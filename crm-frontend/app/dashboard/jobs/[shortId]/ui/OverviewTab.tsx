@@ -127,6 +127,16 @@ export default function OverviewTab() {
 
   const { refreshExt } = useJob(); // ✅ CORRECT SOURCE
 
+  // Per-user job-page permissions (computed server-side, attached to the job).
+  const jobViewer = (job as any)?.viewer || {};
+  const canSeeLeadSource = jobViewer.canSeeLeadSource !== false;
+  const canSeeTechnicianField = jobViewer.canSeeTechnicianField !== false;
+  const canChangeJobType = jobViewer.canChangeJobType !== false;
+  const canEditCustomerInfo = jobViewer.canEditCustomerInfo !== false;
+  const canRefreshExtension = jobViewer.canRefreshExtension !== false;
+  const canDeleteJob = jobViewer.canDeleteJob !== false;
+  const canDuplicateJob = jobViewer.canDuplicateJob !== false;
+
 type Reminder = {
   id: string;
   minutes: number;
@@ -326,6 +336,7 @@ const selectedStatusIsCanceled = (() => {
           </button>
 
 {/* Duplicate → New Job */}
+  {canDuplicateJob && (
   <button
     onClick={async () => {
       try {
@@ -352,7 +363,8 @@ const selectedStatusIsCanceled = (() => {
   >
     Duplicate → New Job
   </button>
-          {/* ALWAYS SHOW DELETE BUTTON */}
+  )}
+          {canDeleteJob && (
           <button
             onClick={async () => {
               if (!confirm("Delete this job permanently?")) return;
@@ -380,6 +392,7 @@ const selectedStatusIsCanceled = (() => {
           >
             Delete
           </button>
+          )}
         </div>
       </div>
 
@@ -395,6 +408,7 @@ const selectedStatusIsCanceled = (() => {
   label="Name"
   value={editableJob.customerName || ""}
   onChange={(v) => setField("customerName", v)}
+  disabled={!canEditCustomerInfo}
 />
 
 {/* PHONE 1 */}
@@ -514,22 +528,33 @@ const selectedStatusIsCanceled = (() => {
       </div>
     )}
 
+    {canRefreshExtension && (
     <button
       onClick={() => refreshExt()}
       className="mt-2 text-blue-600 underline text-sm"
     >
       Refresh Extensions
     </button>
+    )}
   </div>
 )}
 
 {/* ADDRESS */}
 <div>
   <label className="block text-sm font-medium">Address</label>
-  <GoogleAddressInput
-    value={editableJob.customerAddress || ""}
-    onChange={(v) => setField("customerAddress", v)}
-  />
+  {canEditCustomerInfo ? (
+    <GoogleAddressInput
+      value={editableJob.customerAddress || ""}
+      onChange={(v) => setField("customerAddress", v)}
+    />
+  ) : (
+    <input
+      className="mt-1 w-full border rounded p-2 bg-gray-100 text-gray-500 cursor-not-allowed"
+      value={editableJob.customerAddress || ""}
+      disabled
+      readOnly
+    />
+  )}
 </div>
 
 
@@ -567,8 +592,13 @@ const selectedStatusIsCanceled = (() => {
           <div>
             <label className="block text-sm font-medium">Job Type</label>
             <select
-              className="mt-1 w-full border rounded p-2"
+              className={`mt-1 w-full border rounded p-2 ${
+                !canChangeJobType
+                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                  : ""
+              }`}
               value={editableJob.jobTypeId || ""}
+              disabled={!canChangeJobType}
               onChange={(e) => setField("jobTypeId", e.target.value)}
             >
               <option value="">Select type</option>
@@ -592,6 +622,7 @@ const selectedStatusIsCanceled = (() => {
         {/* TECH / STATUS / SOURCE */}
         {/* =============================================== */}
         <div className="border rounded p-4 space-y-4 bg-muted/50 dark:bg-gray-900">
+          {canSeeLeadSource && (
           <div>
             <label className="block text-sm font-medium">Lead Source</label>
             <select
@@ -607,8 +638,10 @@ const selectedStatusIsCanceled = (() => {
               ))}
             </select>
           </div>
+          )}
 
           {/* Tech + SMS */}
+          {canSeeTechnicianField && (
           <div>
             <label className="block text-sm font-medium">Technician</label>
 
@@ -658,6 +691,7 @@ const selectedStatusIsCanceled = (() => {
 </button>
             </div>
           </div>
+          )}
 
           {/* Status */}
           <div>

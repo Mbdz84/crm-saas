@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
+import { techPerms } from "../../../utils/scope";
 
 export class DeleteController {
   static async deleteJob(req: Request, res: Response) {
@@ -8,6 +9,11 @@ export class DeleteController {
 
       if (!req.user) {
         return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const perms = await techPerms(req);
+      if (perms && !perms.canDeleteJob) {
+        return res.status(403).json({ error: "Not allowed to delete jobs" });
       }
 
       // Lookup by shortId + company

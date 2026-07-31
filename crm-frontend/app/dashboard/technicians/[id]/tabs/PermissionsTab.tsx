@@ -180,6 +180,48 @@ export default function PermissionsTab({
         />
       </Section>
 
+      {/* JOB PAGE */}
+      <Section title="Job page">
+        <Toggle
+          label="Can see lead source"
+          checked={tech.canSeeLeadSource !== false}
+          onChange={(v) => set("canSeeLeadSource", v)}
+        />
+        <Toggle
+          label="Can see the technician field"
+          hint="Off = the technician list is hidden on the job."
+          checked={tech.canSeeTechnicianField !== false}
+          onChange={(v) => set("canSeeTechnicianField", v)}
+        />
+        <Toggle
+          label="Can change job type"
+          hint="Off = job type is shown but locked."
+          checked={tech.canChangeJobType !== false}
+          onChange={(v) => set("canChangeJobType", v)}
+        />
+        <Toggle
+          label="Can edit customer name & address"
+          hint="Off = name and address are shown but locked."
+          checked={tech.canEditCustomerInfo !== false}
+          onChange={(v) => set("canEditCustomerInfo", v)}
+        />
+        <Toggle
+          label="Can refresh call extensions"
+          checked={tech.canRefreshExtension !== false}
+          onChange={(v) => set("canRefreshExtension", v)}
+        />
+        <Toggle
+          label="Can delete jobs"
+          checked={tech.canDeleteJob !== false}
+          onChange={(v) => set("canDeleteJob", v)}
+        />
+        <Toggle
+          label="Can duplicate jobs"
+          checked={tech.canDuplicateJob !== false}
+          onChange={(v) => set("canDuplicateJob", v)}
+        />
+      </Section>
+
       <button
         disabled={saving}
         onClick={save}

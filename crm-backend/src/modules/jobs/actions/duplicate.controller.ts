@@ -2,10 +2,16 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { techPerms } from "../../../utils/scope";
 
 export async function duplicateJob(req: Request, res: Response) {
   try {
     const { shortId } = req.params;
+
+    const perms = await techPerms(req);
+    if (perms && !perms.canDuplicateJob) {
+      return res.status(403).json({ error: "Not allowed to duplicate jobs" });
+    }
 
     // Load the original job
     const original = await prisma.job.findFirst({

@@ -13,7 +13,30 @@ type TechFlags = {
   canSeeRecordings: boolean;
   canSeeReports: boolean;
   canUseCalendar: boolean;
+  canSeeLeadSource: boolean;
+  canSeeTechnicianField: boolean;
+  canChangeJobType: boolean;
+  canEditCustomerInfo: boolean;
+  canRefreshExtension: boolean;
+  canDeleteJob: boolean;
+  canDuplicateJob: boolean;
 } | null;
+
+const TECH_DEFAULTS = {
+  canViewAllJobs: false,
+  canSeeClientPhone: true,
+  canSeeLogs: true,
+  canSeeRecordings: true,
+  canSeeReports: true,
+  canUseCalendar: true,
+  canSeeLeadSource: true,
+  canSeeTechnicianField: true,
+  canChangeJobType: true,
+  canEditCustomerInfo: true,
+  canRefreshExtension: true,
+  canDeleteJob: true,
+  canDuplicateJob: true,
+};
 
 async function techFlags(req: any): Promise<TechFlags> {
   if (req?.user?.role !== "technician") return null;
@@ -28,18 +51,17 @@ async function techFlags(req: any): Promise<TechFlags> {
       canSeeRecordings: true,
       canSeeReports: true,
       canUseCalendar: true,
+      canSeeLeadSource: true,
+      canSeeTechnicianField: true,
+      canChangeJobType: true,
+      canEditCustomerInfo: true,
+      canRefreshExtension: true,
+      canDeleteJob: true,
+      canDuplicateJob: true,
     },
   });
 
-  req._techFlags =
-    u ?? {
-      canViewAllJobs: false,
-      canSeeClientPhone: true,
-      canSeeLogs: true,
-      canSeeRecordings: true,
-      canSeeReports: true,
-      canUseCalendar: true,
-    };
+  req._techFlags = u ?? { ...TECH_DEFAULTS };
   return req._techFlags;
 }
 
@@ -47,6 +69,14 @@ async function techFlags(req: any): Promise<TechFlags> {
 export async function calendarBlocked(req: any): Promise<boolean> {
   const f = await techFlags(req);
   return !!f && f.canUseCalendar === false;
+}
+
+/**
+ * The current user's technician permission flags, or null for non-technicians
+ * (admins/owners — full access). Used to guard write actions server-side.
+ */
+export async function techPerms(req: any): Promise<TechFlags> {
+  return techFlags(req);
 }
 
 /** True when this technician must be blocked from reports entirely. */
@@ -83,23 +113,34 @@ export function stripJobSecrets(job: any) {
  * Permission summary for the current viewer, attached to a job payload so the
  * frontend can hide tabs. Non-technicians get full access.
  */
-export async function jobViewer(req: any): Promise<{
-  role: string | null;
-  canSeeLogs: boolean;
-  canSeeRecordings: boolean;
-}> {
+export async function jobViewer(req: any): Promise<Record<string, any>> {
   const f = await techFlags(req);
   if (!f) {
+    // Non-technicians (admin/owner) — full access.
     return {
       role: req?.user?.role ?? null,
       canSeeLogs: true,
       canSeeRecordings: true,
+      canSeeLeadSource: true,
+      canSeeTechnicianField: true,
+      canChangeJobType: true,
+      canEditCustomerInfo: true,
+      canRefreshExtension: true,
+      canDeleteJob: true,
+      canDuplicateJob: true,
     };
   }
   return {
     role: "technician",
     canSeeLogs: f.canSeeLogs,
     canSeeRecordings: f.canSeeRecordings,
+    canSeeLeadSource: f.canSeeLeadSource,
+    canSeeTechnicianField: f.canSeeTechnicianField,
+    canChangeJobType: f.canChangeJobType,
+    canEditCustomerInfo: f.canEditCustomerInfo,
+    canRefreshExtension: f.canRefreshExtension,
+    canDeleteJob: f.canDeleteJob,
+    canDuplicateJob: f.canDuplicateJob,
   };
 }
 

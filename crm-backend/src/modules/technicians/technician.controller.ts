@@ -77,6 +77,13 @@ export async function getTechnicians(req: any, res: Response) {
         canSeeRecordings: true,
         canUseCalendar: true,
         canSeeReports: true,
+        canSeeLeadSource: true,
+        canSeeTechnicianField: true,
+        canChangeJobType: true,
+        canEditCustomerInfo: true,
+        canRefreshExtension: true,
+        canDeleteJob: true,
+        canDuplicateJob: true,
       },
     });
 
@@ -274,6 +281,13 @@ if (f.canSeeLogs !== undefined) allowedFields.canSeeLogs = Boolean(f.canSeeLogs)
 if (f.canSeeRecordings !== undefined) allowedFields.canSeeRecordings = Boolean(f.canSeeRecordings);
 if (f.canUseCalendar !== undefined) allowedFields.canUseCalendar = Boolean(f.canUseCalendar);
 if (f.canSeeReports !== undefined) allowedFields.canSeeReports = Boolean(f.canSeeReports);
+if (f.canSeeLeadSource !== undefined) allowedFields.canSeeLeadSource = Boolean(f.canSeeLeadSource);
+if (f.canSeeTechnicianField !== undefined) allowedFields.canSeeTechnicianField = Boolean(f.canSeeTechnicianField);
+if (f.canChangeJobType !== undefined) allowedFields.canChangeJobType = Boolean(f.canChangeJobType);
+if (f.canEditCustomerInfo !== undefined) allowedFields.canEditCustomerInfo = Boolean(f.canEditCustomerInfo);
+if (f.canRefreshExtension !== undefined) allowedFields.canRefreshExtension = Boolean(f.canRefreshExtension);
+if (f.canDeleteJob !== undefined) allowedFields.canDeleteJob = Boolean(f.canDeleteJob);
+if (f.canDuplicateJob !== undefined) allowedFields.canDuplicateJob = Boolean(f.canDuplicateJob);
 
 // Financial defaults
 if (f.defaultTechPercent !== undefined) allowedFields.defaultTechPercent = f.defaultTechPercent;

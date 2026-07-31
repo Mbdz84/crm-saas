@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
 import { isTerminalCallStatus } from "../../../constants/jobStatus";
+import { techPerms } from "../../../utils/scope";
 
 
 export async function updateJobByShortId(req: Request, res: Response) {
@@ -19,6 +20,19 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
 
     if (!job) {
       return res.status(404).json({ error: "Job not found" });
+    }
+
+    // Restricted technicians can't change locked fields — force any such
+    // change back to the current value (frontend already hides/disables these).
+    const perms = await techPerms(req);
+    if (perms) {
+      if (!perms.canChangeJobType) updates.jobTypeId = job.jobTypeId;
+      if (!perms.canSeeLeadSource) updates.sourceId = job.sourceId;
+      if (!perms.canSeeTechnicianField) updates.technicianId = job.technicianId;
+      if (!perms.canEditCustomerInfo) {
+        updates.customerName = job.customerName;
+        updates.customerAddress = job.customerAddress;
+      }
     }
 
     /* ======================================================
