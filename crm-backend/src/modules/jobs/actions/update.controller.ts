@@ -26,6 +26,8 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
     // change back to the current value (frontend already hides/disables these).
     const perms = await techPerms(req);
     if (perms) {
+      // Technician-only locks
+      updates.description = job.description; // description is view-only for techs
       if (!perms.canChangeJobType) updates.jobTypeId = job.jobTypeId;
       if (!perms.canSeeLeadSource) updates.sourceId = job.sourceId;
       if (!perms.canSeeTechnicianField) updates.technicianId = job.technicianId;

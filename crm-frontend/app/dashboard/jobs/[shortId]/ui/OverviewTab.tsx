@@ -89,9 +89,6 @@ function fromLocalInputValue(value: string, tz?: string) {
 ----------------------------------------------------------- */
 export default function OverviewTab() {
   const [prevTechId, setPrevTechId] = useState<string | null>(null);
-  const userRole =
-    typeof window !== "undefined" ? localStorage.getItem("role") : null;
-  const techRole = userRole;
   const router = useRouter();
   const [appointmentKey, setAppointmentKey] = useState(0);
   const [showSmsModal, setShowSmsModal] = useState(false);
@@ -129,12 +126,15 @@ export default function OverviewTab() {
 
   // Per-user job-page permissions (computed server-side, attached to the job).
   const jobViewer = (job as any)?.viewer || {};
+  // Role comes from the server (localStorage never stored it reliably).
+  const userRole: string | null = jobViewer.role ?? null;
+  const techRole = userRole;
+  const isTechnician = userRole === "technician";
   const canSeeLeadSource = jobViewer.canSeeLeadSource !== false;
   const canSeeTechnicianField = jobViewer.canSeeTechnicianField !== false;
   const canChangeJobType = jobViewer.canChangeJobType !== false;
   const canEditCustomerName = jobViewer.canEditCustomerName !== false;
   const canEditCustomerAddress = jobViewer.canEditCustomerAddress !== false;
-  const isTechnician = userRole === "technician";
   const canRefreshExtension = jobViewer.canRefreshExtension !== false;
   const canDeleteJob = jobViewer.canDeleteJob !== false;
   const canDuplicateJob = jobViewer.canDuplicateJob !== false;
@@ -619,6 +619,7 @@ const selectedStatusIsCanceled = (() => {
             label="Description / Notes"
             value={editableJob.description || ""}
             onChange={(v) => setField("description", v)}
+            disabled={isTechnician}
           />
         </div>
 
