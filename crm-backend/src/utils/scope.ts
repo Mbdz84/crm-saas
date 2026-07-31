@@ -12,6 +12,7 @@ type TechFlags = {
   canSeeLogs: boolean;
   canSeeRecordings: boolean;
   canSeeReports: boolean;
+  canUseCalendar: boolean;
 } | null;
 
 async function techFlags(req: any): Promise<TechFlags> {
@@ -26,6 +27,7 @@ async function techFlags(req: any): Promise<TechFlags> {
       canSeeLogs: true,
       canSeeRecordings: true,
       canSeeReports: true,
+      canUseCalendar: true,
     },
   });
 
@@ -36,8 +38,15 @@ async function techFlags(req: any): Promise<TechFlags> {
       canSeeLogs: true,
       canSeeRecordings: true,
       canSeeReports: true,
+      canUseCalendar: true,
     };
   return req._techFlags;
+}
+
+/** True when this technician must be blocked from the calendar. */
+export async function calendarBlocked(req: any): Promise<boolean> {
+  const f = await techFlags(req);
+  return !!f && f.canUseCalendar === false;
 }
 
 /** True when this technician must be blocked from reports entirely. */

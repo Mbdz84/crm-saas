@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
-import { ownJobsWhere, hideClientPhone } from "../../../utils/scope";
+import {
+  ownJobsWhere,
+  hideClientPhone,
+  calendarBlocked,
+} from "../../../utils/scope";
 
 /**
  * GET /jobs/calendar?from=ISO&to=ISO
@@ -8,6 +12,9 @@ import { ownJobsWhere, hideClientPhone } from "../../../utils/scope";
  */
 export async function getCalendarJobs(req: Request, res: Response) {
   try {
+    if (await calendarBlocked(req)) {
+      return res.status(403).json({ error: "Calendar access disabled" });
+    }
     const companyId = req.user!.companyId;
     const { from, to } = req.query as { from?: string; to?: string };
 

@@ -171,7 +171,6 @@ export default function PermissionsTab({
           hint="Off = no calendar. On = only their own assigned jobs (unless 'view all jobs' is on)."
           checked={tech.canUseCalendar !== false}
           onChange={(v) => set("canUseCalendar", v)}
-          soon
         />
         <Toggle
           label="Can see Reports"

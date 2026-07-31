@@ -95,6 +95,12 @@ export async function me(req: Request, res: Response) {
         email: true,
         role: true,
         companyId: true,
+        canViewAllJobs: true,
+        canSeeClientPhone: true,
+        canSeeLogs: true,
+        canSeeRecordings: true,
+        canSeeReports: true,
+        canUseCalendar: true,
       },
     });
 
