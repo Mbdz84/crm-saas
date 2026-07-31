@@ -13,6 +13,7 @@ const TABS = [
   { label: "SMS Settings", href: "/dashboard/settings/sms" },
   { label: "Caller IDs", href: "/dashboard/settings/caller-ids" },
   { label: "CRM Settings", href: "/dashboard/settings/crm" },
+  { label: "Docs / Guides", href: "/dashboard/settings/docs" },
 ];
 
 export default function SettingsTabs() {

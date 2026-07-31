@@ -129,7 +129,7 @@ export default function Sidebar() {
 
       {/* Bottom links */}
       <SidebarLink
-        href="/dashboard/settings/crm"
+        href="/dashboard/settings"
         label="CRM Settings"
         icon={<Settings size={18} />}
         collapsed={collapsed}
