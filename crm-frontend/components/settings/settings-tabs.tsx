@@ -7,7 +7,7 @@ const TABS = [
   { label: "Company", href: "/dashboard/settings" },
   { label: "Job Types", href: "/dashboard/settings/job-types" },
   { label: "Lead Sources", href: "/dashboard/settings/lead-sources" },
-  { label: "Technicians", href: "/dashboard/technicians" },
+  { label: "Technicians / Users", href: "/dashboard/technicians" },
   { label: "Users", href: "/dashboard/users" },
   { label: "Job Status", href: "/dashboard/settings/statuses" },
   { label: "SMS Settings", href: "/dashboard/settings/sms" },

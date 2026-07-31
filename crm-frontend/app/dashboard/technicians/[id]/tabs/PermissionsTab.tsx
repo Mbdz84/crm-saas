@@ -7,85 +7,191 @@ interface Props {
   saving: boolean;
 }
 
-export default function PermissionsTab({ tech, setTech, save, saving }: Props) {
+/* ------------------------------------------------------------
+   Reusable toggle row.
+   `soon` marks options that aren't persisted yet (UI only until
+   their DB field + backend enforcement are wired).
+------------------------------------------------------------ */
+function Toggle({
+  label,
+  hint,
+  checked,
+  onChange,
+  soon,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  soon?: boolean;
+  disabled?: boolean;
+}) {
   return (
-    <div className="space-y-6 pt-4">
+    <label
+      className={`flex items-start gap-3 py-1.5 ${
+        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+      }`}
+    >
+      <input
+        type="checkbox"
+        className="h-5 w-5 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+      <span>
+        <span className="font-medium">{label}</span>
+        {soon && (
+          <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700 border border-amber-300 bg-amber-50 rounded px-1 py-0.5 align-middle">
+            not wired yet
+          </span>
+        )}
+        {hint && <span className="block text-xs text-gray-500">{hint}</span>}
+      </span>
+    </label>
+  );
+}
 
-      <h2 className="text-xl font-semibold">Permissions</h2>
-      <p className="text-gray-600 text-sm mb-4">
-        Control what this technician can see and adjust.
-      </p>
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border rounded p-4">
+      <h3 className="font-semibold mb-1">{title}</h3>
+      <div className="divide-y">{children}</div>
+    </div>
+  );
+}
 
-      {/* CAN SEE CLOSING PANEL */}
-      <label className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={tech.canSeeClosing}
-          onChange={(e) =>
-            setTech({ ...tech, canSeeClosing: e.target.checked })
-          }
+export default function PermissionsTab({
+  tech,
+  setTech,
+  save,
+  saving,
+}: Props) {
+  const set = (field: string, val: boolean) =>
+    setTech({ ...tech, [field]: val });
+
+  return (
+    <div className="space-y-5 pt-4 max-w-2xl">
+      <div>
+        <h2 className="text-xl font-semibold">Access & Permissions</h2>
+        <p className="text-gray-600 text-sm">
+          Everything this user can see and do. Options marked{" "}
+          <span className="text-[10px] uppercase tracking-wide text-amber-700 border border-amber-300 bg-amber-50 rounded px-1 py-0.5">
+            not wired yet
+          </span>{" "}
+          are visible here but not enforced until wired.
+        </p>
+      </div>
+
+      {/* PORTAL ACCESS */}
+      <Section title="Portal access">
+        <Toggle
+          label="Can log in to the CRM"
+          hint="Master switch — off means no login at all."
+          checked={!!tech.canLogin}
+          onChange={(v) => set("canLogin", v)}
+          soon
         />
-        <span>Can see closing panel</span>
-      </label>
+      </Section>
 
-      {/* CAN VIEW ALL JOBS */}
-      <label className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={tech.canViewAllJobs}
-          onChange={(e) =>
-            setTech({ ...tech, canViewAllJobs: e.target.checked })
-          }
+      {/* JOBS & DATA */}
+      <Section title="Jobs & data">
+        <Toggle
+          label="Can view all company jobs"
+          hint="Off = only jobs assigned to this technician."
+          checked={!!tech.canViewAllJobs}
+          onChange={(v) => set("canViewAllJobs", v)}
         />
-        <span>Can view all company jobs (not only assigned)</span>
-      </label>
-
-      <hr />
-
-      <h3 className="font-medium">What can he adjust?</h3>
-
-      {/* PERMISSION CHECKBOXES */}
-      <label className="flex items-center gap-3 mt-2">
-        <input
-          type="checkbox"
-          checked={tech.canAdjustPercentages}
-          onChange={(e) =>
-            setTech({ ...tech, canAdjustPercentages: e.target.checked })
-          }
+        <Toggle
+          label="Can see client phone number"
+          hint="Off = real number hidden; the masked number + extension still shows."
+          checked={tech.canSeeClientPhone !== false}
+          onChange={(v) => set("canSeeClientPhone", v)}
+          soon
         />
-        <span>Can adjust percentages</span>
-      </label>
-
-      <label className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={tech.canAdjustParts}
-          onChange={(e) =>
-            setTech({ ...tech, canAdjustParts: e.target.checked })
-          }
+        <Toggle
+          label="Can see the Log tab"
+          checked={tech.canSeeLogs !== false}
+          onChange={(v) => set("canSeeLogs", v)}
+          soon
         />
-        <span>Can adjust parts fields</span>
-      </label>
-
-      <label className="flex items-center gap-3">
-        <input
-          type="checkbox"
-          checked={tech.canAdjustFees}
-          onChange={(e) =>
-            setTech({ ...tech, canAdjustFees: e.target.checked })
-          }
+        <Toggle
+          label="Can see the Recordings tab"
+          checked={tech.canSeeRecordings !== false}
+          onChange={(v) => set("canSeeRecordings", v)}
+          soon
         />
-        <span>Can adjust fee settings</span>
-      </label>
+        <Toggle
+          label="Can see the closing panel ($)"
+          checked={!!tech.canSeeClosing}
+          onChange={(v) => set("canSeeClosing", v)}
+        />
+      </Section>
+
+      {/* CLOSING */}
+      <Section title="Closing">
+        <div className="py-2 text-sm text-gray-600 border-b">
+          <b>Pending Close / Pending Cancel.</b> Technician closings and cancels
+          are saved as <b>Pending Close</b> / <b>Pending Cancel</b> — no approval
+          step. They can keep editing while pending (e.g. change $200 → $170) and
+          every change is written to the Log tab like any other event. An admin
+          finalizes the Close/Cancel later; once finalized the job is{" "}
+          <b>locked</b> (view-only for the tech).
+        </div>
+        <Toggle
+          label="Can enter parts in closing"
+          hint="Technician can type parts amounts into the closing."
+          checked={!!tech.canAdjustParts}
+          onChange={(v) => set("canAdjustParts", v)}
+        />
+        <Toggle
+          label="Can adjust percentages"
+          hint="Not allowed for technicians."
+          checked={false}
+          onChange={() => {}}
+          disabled
+        />
+        <Toggle
+          label="Can adjust fees"
+          hint="Not allowed for technicians."
+          checked={false}
+          onChange={() => {}}
+          disabled
+        />
+      </Section>
+
+      {/* MODULES */}
+      <Section title="Modules">
+        <Toggle
+          label="Can see the Calendar"
+          hint="Off = no calendar. On = only their own assigned jobs (unless 'view all jobs' is on)."
+          checked={tech.canUseCalendar !== false}
+          onChange={(v) => set("canUseCalendar", v)}
+          soon
+        />
+        <Toggle
+          label="Can see Reports"
+          hint="On = only their own jobs, with limited columns."
+          checked={!!tech.canSeeReports}
+          onChange={(v) => set("canSeeReports", v)}
+          soon
+        />
+      </Section>
 
       <button
         disabled={saving}
         onClick={save}
-        className="px-4 py-2 bg-blue-600 text-white rounded w-full mt-6"
+        className="px-4 py-2 bg-blue-600 text-white rounded w-full disabled:opacity-50"
       >
         {saving ? "Saving..." : "Save Permissions"}
       </button>
-
     </div>
   );
 }

@@ -71,6 +71,12 @@ export async function getTechnicians(req: any, res: Response) {
         defaultCheckFeePercent: true,
         timezone: true,
         isOwner: true,
+        canLogin: true,
+        canSeeClientPhone: true,
+        canSeeLogs: true,
+        canSeeRecordings: true,
+        canUseCalendar: true,
+        canSeeReports: true,
       },
     });
 
@@ -262,6 +268,12 @@ if (f.maskedTwilioNumberSid !== undefined) {
 if (f.canSeeClosing !== undefined) allowedFields.canSeeClosing = Boolean(f.canSeeClosing);
 if (f.canViewAllJobs !== undefined) allowedFields.canViewAllJobs = Boolean(f.canViewAllJobs);
 if (f.isOwner !== undefined) allowedFields.isOwner = Boolean(f.isOwner);
+if (f.canLogin !== undefined) allowedFields.canLogin = Boolean(f.canLogin);
+if (f.canSeeClientPhone !== undefined) allowedFields.canSeeClientPhone = Boolean(f.canSeeClientPhone);
+if (f.canSeeLogs !== undefined) allowedFields.canSeeLogs = Boolean(f.canSeeLogs);
+if (f.canSeeRecordings !== undefined) allowedFields.canSeeRecordings = Boolean(f.canSeeRecordings);
+if (f.canUseCalendar !== undefined) allowedFields.canUseCalendar = Boolean(f.canUseCalendar);
+if (f.canSeeReports !== undefined) allowedFields.canSeeReports = Boolean(f.canSeeReports);
 
 // Financial defaults
 if (f.defaultTechPercent !== undefined) allowedFields.defaultTechPercent = f.defaultTechPercent;

@@ -57,6 +57,12 @@ model User {
   availability               Json?            @db.Json
   timezone                   String?          @default("America/Chicago")
   isOwner                    Boolean          @default(false)
+  canLogin                   Boolean          @default(false)
+  canSeeClientPhone          Boolean          @default(true)
+  canSeeLogs                 Boolean          @default(true)
+  canSeeRecordings           Boolean          @default(true)
+  canUseCalendar             Boolean          @default(true)
+  canSeeReports              Boolean          @default(true)
   technicianJobs             Job[]            @relation("TechnicianJobs")
   callSessions               JobCallSession[] @relation("UserCallSessions")
   jobClosingsClosed          JobClosing[]     @relation("JobClosingClosedBy")
