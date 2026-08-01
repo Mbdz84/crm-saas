@@ -795,17 +795,23 @@ onClick={() => toggleSort("createdAt")}
                       </button>
 
                       {phoneMenuJobId === job.id && dialOptions.length > 1 && (
-                        <div className="absolute left-0 right-0 bottom-full mb-1 z-10 bg-white dark:bg-gray-800 border rounded shadow-lg overflow-hidden">
+                        <div className="absolute left-0 bottom-full mb-1 z-10 w-max min-w-full max-w-[85vw] bg-white dark:bg-gray-800 border rounded shadow-lg overflow-hidden">
                           {dialOptions.map((o, i) => (
                             <a
                               key={o.tel}
                               href={`tel:${o.tel}`}
-                              className={`block px-3 py-2.5 text-base hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                              className={`flex items-center gap-2 px-4 py-3 text-base whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 ${
                                 i > 0 ? "border-t" : ""
                               }`}
                               onClick={() => setPhoneMenuJobId(null)}
                             >
-                              📞 {o.label}
+                              📞
+                              <span className="font-semibold">
+                                Phone {i + 1}
+                              </span>
+                              <span className="text-gray-600 dark:text-gray-300">
+                                {o.label}
+                              </span>
                             </a>
                           ))}
                         </div>
