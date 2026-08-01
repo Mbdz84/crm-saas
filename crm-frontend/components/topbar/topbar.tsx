@@ -185,13 +185,13 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         <>
           <button
             onClick={() => router.push("/dashboard/jobs/new")}
-            className="px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm whitespace-nowrap"
+            className="px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs sm:text-sm whitespace-nowrap"
           >
             New Job
           </button>
           <button
             onClick={() => router.push("/dashboard/jobs/add")}
-            className="px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm whitespace-nowrap"
+            className="px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs sm:text-sm whitespace-nowrap"
           >
             SMS Parse
           </button>

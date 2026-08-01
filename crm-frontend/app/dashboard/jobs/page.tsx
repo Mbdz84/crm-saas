@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -13,6 +14,7 @@ import {
   useDroppable,
   closestCorners,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 
 interface JobStatusMeta {
@@ -108,32 +110,10 @@ function formatApptRange(iso?: string | null): string {
 /* ============================================================
    KANBAN — draggable card + droppable column
 ============================================================ */
-function KanbanCard({
-  job,
-  onOpen,
-}: {
-  job: Job;
-  onOpen: (short: string) => void;
-}) {
+function CardBody({ job }: { job: Job }) {
   const short = job.shortId || job.id.slice(0, 5);
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id: job.id });
-
-  const style: React.CSSProperties = transform
-    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 }
-    : {};
-
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      onClick={() => onOpen(short)}
-      className={`bg-white dark:bg-gray-800 border rounded-md p-2.5 shadow-sm cursor-grab active:cursor-grabbing hover:border-gray-400 transition-colors ${
-        isDragging ? "opacity-50" : ""
-      }`}
-    >
+    <>
       <div className="flex items-center justify-between mb-1">
         <span className="font-mono text-xs font-semibold">#{short}</span>
         {job.scheduledAt && (
@@ -152,6 +132,43 @@ function KanbanCard({
         <span>{job.technician?.name || "Unassigned"}</span>
         <span className="text-gray-400">{job.source?.name || ""}</span>
       </div>
+    </>
+  );
+}
+
+function KanbanCard({
+  job,
+  onOpen,
+  highlighted,
+}: {
+  job: Job;
+  onOpen: (short: string) => void;
+  highlighted?: boolean;
+}) {
+  const short = job.shortId || job.id.slice(0, 5);
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: job.id,
+  });
+
+  // No transform on the source card — a DragOverlay renders the moving clone.
+  // (Translating the source is what let the horizontal auto-scroll run into
+  // blank space while dragging toward the end.)
+  return (
+    <div
+      ref={setNodeRef}
+      data-job-id={job.id}
+      {...attributes}
+      {...listeners}
+      onClick={() => onOpen(short)}
+      className={`bg-white dark:bg-gray-800 border rounded-md p-2.5 shadow-sm cursor-grab active:cursor-grabbing hover:border-gray-400 transition-colors ${
+        isDragging ? "opacity-40" : ""
+      } ${
+        highlighted
+          ? "ring-2 ring-amber-400 border-amber-400 font-bold shadow-md"
+          : ""
+      }`}
+    >
+      <CardBody job={job} />
     </div>
   );
 }
@@ -160,10 +177,12 @@ function KanbanColumn({
   status,
   jobs,
   onOpen,
+  highlightId,
 }: {
   status: { id: string; name: string; color?: string | null };
   jobs: Job[];
   onOpen: (short: string) => void;
+  highlightId?: string | null;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status.id });
   const color = status.color || "#6b7280";
@@ -193,7 +212,12 @@ function KanbanColumn({
       </div>
 
       {jobs.map((job) => (
-        <KanbanCard key={job.id} job={job} onOpen={onOpen} />
+        <KanbanCard
+          key={job.id}
+          job={job}
+          onOpen={onOpen}
+          highlighted={job.id === highlightId}
+        />
       ))}
 
       {jobs.length === 0 && (
@@ -294,6 +318,40 @@ export default function JobsPage() {
   );
   const dragEndAt = useRef(0);
 
+  // The card currently being dragged (rendered in the DragOverlay).
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+
+  // Keep the just-moved card highlighted (bold) for 11s so a mistaken drop is
+  // easy to spot and undo. Also scroll it into view: populated columns re-sort
+  // to the left, so a card dropped in a far-right column would otherwise slide
+  // out of sight while the scroll position stays at the (now empty) end.
+  const [recentMoveId, setRecentMoveId] = useState<string | null>(null);
+  const recentMoveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMovedRef = useRef<string | null>(null);
+  const [moveTick, setMoveTick] = useState(0);
+  const flagRecentMove = (jobId: string) => {
+    setRecentMoveId(jobId);
+    lastMovedRef.current = jobId;
+    setMoveTick((t) => t + 1);
+    if (recentMoveTimer.current) clearTimeout(recentMoveTimer.current);
+    recentMoveTimer.current = setTimeout(() => setRecentMoveId(null), 11000);
+  };
+  useEffect(() => {
+    if (!moveTick) return;
+    const id = lastMovedRef.current;
+    if (!id) return;
+    // Let the columns re-sort/render first, then bring the card into view.
+    const t = setTimeout(() => {
+      document.querySelector(`[data-job-id="${id}"]`)?.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [moveTick]);
+
   const openJob = (short: string) => {
     // Ignore the click that fires right after a drag finishes.
     if (Date.now() - dragEndAt.current < 250) return;
@@ -302,6 +360,7 @@ export default function JobsPage() {
 
   function handleDragEnd(e: DragEndEvent) {
     dragEndAt.current = Date.now();
+    setActiveId(null);
     const { active, over } = e;
     if (!over) return;
 
@@ -315,6 +374,9 @@ export default function JobsPage() {
 
     const short = job.shortId || job.id.slice(0, 5);
     const prev = jobs;
+
+    // Keep it bold for 7s so a wrong drop is obvious
+    flagRecentMove(jobId);
 
     // Optimistically move the card
     setJobs((js) =>
@@ -344,11 +406,12 @@ export default function JobsPage() {
     })
       .then((res) => {
         if (!res.ok) throw new Error();
-        toast.success(`Moved to ${target.name}`);
+        toast.success(`#${short} moved to ${target.name}`, { duration: 4000 });
       })
       .catch(() => {
         setJobs(prev); // revert on failure
-        toast.error("Failed to move job");
+        setRecentMoveId(null);
+        toast.error(`Failed to move #${short}`);
       });
   }
 
@@ -749,15 +812,17 @@ function formatAddress(addr?: string | null) {
         <DndContext
           sensors={kanbanSensors}
           collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-3 overflow-x-auto pb-4 mt-2">
+          <div className="flex gap-3 overflow-x-auto overscroll-x-contain pb-4 pr-8 mt-2">
             {kanbanColumns.map((col) => (
               <KanbanColumn
                 key={col.status.id}
                 status={col.status}
                 jobs={col.jobs}
                 onOpen={openJob}
+                highlightId={recentMoveId}
               />
             ))}
             {kanbanColumns.length === 0 && (
@@ -766,6 +831,21 @@ function formatAddress(addr?: string | null) {
               </div>
             )}
           </div>
+
+          {/* Floating clone that follows the cursor — keeps the source card in
+              place so the horizontal scroll can't run into blank space. */}
+          <DragOverlay>
+            {(() => {
+              const aj = activeId
+                ? jobs.find((j) => j.id === activeId)
+                : null;
+              return aj ? (
+                <div className="w-64 bg-white dark:bg-gray-800 border rounded-md p-2.5 shadow-lg cursor-grabbing">
+                  <CardBody job={aj} />
+                </div>
+              ) : null;
+            })()}
+          </DragOverlay>
         </DndContext>
       )}
 
