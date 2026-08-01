@@ -493,8 +493,8 @@ function formatAddress(addr?: string | null) {
             <span
               className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold"
               style={{
-                color: group.color || "#6b7280",
-                backgroundColor: `${group.color || "#6b7280"}22`,
+                color: `color-mix(in srgb, ${group.color || "#6b7280"} 72%, #000)`,
+                backgroundColor: `color-mix(in srgb, ${group.color || "#6b7280"} 18%, #fff)`,
               }}
             >
               <span
