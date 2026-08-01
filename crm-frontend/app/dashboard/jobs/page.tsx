@@ -30,6 +30,11 @@ interface Job {
   title: string;
   customerName?: string | null;
   customerPhone?: string | null;
+  customerPhone2?: string | null;
+  // Masked dial strings ("<maskedNumber>,<ext>") — present for technician users
+  // who dial through the masked line instead of the real customer number.
+  maskedDial?: string | null;
+  maskedDial2?: string | null;
   customerAddress?: string | null;
   scheduledAt?: string | null;
 
@@ -124,6 +129,9 @@ export default function JobsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
+
+  // Which mobile card has its "pick a phone number" menu open (job id)
+  const [phoneMenuJobId, setPhoneMenuJobId] = useState<string | null>(null);
 
   function toggleSelect(shortId: string) {
     setSelectedIds((prev) => {
@@ -688,6 +696,20 @@ onClick={() => toggleSort("createdAt")}
               const statusName =
                 job.jobStatus?.name || job.status || "Unknown";
 
+              // Technicians dial the masked number + extension; everyone else
+              // dials the real customer number(s). Build the list of options.
+              const hasMasked = !!(job.maskedDial || job.maskedDial2);
+              const dialOptions = hasMasked
+                ? [job.maskedDial, job.maskedDial2]
+                    .filter(Boolean)
+                    .map((d) => ({ label: d as string, tel: d as string }))
+                : [job.customerPhone, job.customerPhone2]
+                    .filter(Boolean)
+                    .map((p) => ({
+                      label: formatPhone(p as string),
+                      tel: p as string,
+                    }));
+
               return (
                 <div
                   key={job.id}
@@ -718,7 +740,9 @@ onClick={() => toggleSort("createdAt")}
                     {job.customerName || "No name"}
                   </div>
                   <div className="text-xs text-gray-500">
-  {formatPhone(job.customerPhone)}
+  {dialOptions.length > 0
+    ? dialOptions.map((o) => o.label).join(" · ")
+    : "-"}
 </div>
 
                   {job.customerAddress && (
@@ -748,17 +772,48 @@ onClick={() => toggleSort("createdAt")}
                     className="flex justify-between mt-3"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {/* CALL — dropdown when the job has two numbers */}
+                    <div className="flex-1 mr-1 relative">
+                      <button
+                        className="w-full py-1.5 text-base border rounded flex items-center justify-center gap-1 disabled:opacity-40"
+                        disabled={dialOptions.length === 0}
+                        onClick={() => {
+                          if (dialOptions.length === 0) return;
+                          if (dialOptions.length > 1) {
+                            // Two numbers → toggle the picker
+                            setPhoneMenuJobId((cur) =>
+                              cur === job.id ? null : job.id
+                            );
+                          } else {
+                            // One number → dial it directly
+                            window.location.href = `tel:${dialOptions[0].tel}`;
+                          }
+                        }}
+                      >
+                        📞 Call
+                        {dialOptions.length > 1 && " ▾"}
+                      </button>
+
+                      {phoneMenuJobId === job.id && dialOptions.length > 1 && (
+                        <div className="absolute left-0 right-0 bottom-full mb-1 z-10 bg-white dark:bg-gray-800 border rounded shadow-lg overflow-hidden">
+                          {dialOptions.map((o, i) => (
+                            <a
+                              key={o.tel}
+                              href={`tel:${o.tel}`}
+                              className={`block px-3 py-2.5 text-base hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                                i > 0 ? "border-t" : ""
+                              }`}
+                              onClick={() => setPhoneMenuJobId(null)}
+                            >
+                              📞 {o.label}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                     <button
-                      className="flex-1 mr-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
-                      onClick={() => {
-                        if (!job.customerPhone) return;
-                        window.location.href = `tel:${job.customerPhone}`;
-                      }}
-                    >
-                      📞 Call
-                    </button>
-                    <button
-                      className="flex-1 mx-1 py-1 text-xs border rounded flex items-center justify-center gap-1"
+                      className="flex-1 mx-1 py-1.5 text-base border rounded flex items-center justify-center gap-1"
                       onClick={() => {
                         if (!job.customerAddress) return;
                         const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
@@ -769,7 +824,7 @@ onClick={() => toggleSort("createdAt")}
                     >
                       📍 Directions
                     </button>
-                    
+
                   </div>
                 </div>
               );

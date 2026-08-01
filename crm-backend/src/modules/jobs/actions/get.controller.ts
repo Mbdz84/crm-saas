@@ -14,6 +14,8 @@ import {
 ============================================================ */
 export async function getJobs(req: Request, res: Response) {
   try {
+    const isTech = req.user?.role === "technician";
+
     const jobs = await prisma.job.findMany({
       where: { companyId: req.user!.companyId, ...(await ownJobsWhere(req)) },
 
@@ -39,8 +41,48 @@ export async function getJobs(req: Request, res: Response) {
             locked: true,
           },
         },
+        // Technicians dial through the masked number + extension, so pull this
+        // tech's active call sessions to build a tel-safe masked dial string.
+        ...(isTech
+          ? {
+              callSessions: {
+                where: { active: true, technicianId: req.user!.id },
+                select: { extension: true, clientPhoneType: true },
+              },
+            }
+          : {}),
       },
     });
+
+    // Attach maskedDial / maskedDial2 for technician requesters.
+    if (isTech) {
+      const me = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { maskedTwilioPhoneNumber: true },
+      });
+      const maskedDigits = (me?.maskedTwilioPhoneNumber || "").replace(
+        /[^\d]/g,
+        ""
+      );
+
+      if (maskedDigits) {
+        for (const job of jobs as any[]) {
+          const sessions = job.callSessions || [];
+          const primary = sessions.find(
+            (s: any) => s.clientPhoneType === "primary"
+          );
+          const secondary = sessions.find(
+            (s: any) => s.clientPhoneType === "secondary"
+          );
+          job.maskedDial = primary?.extension
+            ? `${maskedDigits},${primary.extension}`
+            : null;
+          job.maskedDial2 = secondary?.extension
+            ? `${maskedDigits},${secondary.extension}`
+            : null;
+        }
+      }
+    }
 
     if (await hideClientPhone(req)) jobs.forEach(maskJobPhone);
 
