@@ -413,14 +413,11 @@ function formatAddress(addr?: string | null) {
       {/* SEARCH BAR */}
       <div className="flex flex-col md:flex-row gap-3 items-start md:items-center">
         <input
-          className="border rounded px-3 py-2 w-full md:max-w-md dark:bg-gray-900"
-          placeholder="Search by ID, name, phone, address, lead source..."
+          className="border rounded px-3 py-2 w-full md:max-w-2xl dark:bg-gray-900"
+          placeholder="Search by ID, name, phone, address, lead source…  (Tip: type short ID like X9D2E)"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <span className="text-xs text-gray-500">
-          Tip: type short ID like <b>X9D2E</b>
-        </span>
       </div>
 
       {/* COLUMN VISIBILITY PANEL */}
