@@ -133,6 +133,15 @@ export default function JobsPage() {
   // Which mobile card has its "pick a phone number" menu open (job id)
   const [phoneMenuJobId, setPhoneMenuJobId] = useState<string | null>(null);
 
+  // Close the phone picker when the user scrolls (capture=true also catches
+  // scrolling inside the dashboard's scroll container, not just the window).
+  useEffect(() => {
+    if (!phoneMenuJobId) return;
+    const close = () => setPhoneMenuJobId(null);
+    window.addEventListener("scroll", close, true);
+    return () => window.removeEventListener("scroll", close, true);
+  }, [phoneMenuJobId]);
+
   function toggleSelect(shortId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -800,18 +809,17 @@ onClick={() => toggleSort("createdAt")}
                             <a
                               key={o.tel}
                               href={`tel:${o.tel}`}
-                              className={`flex items-center gap-2 px-4 py-3 text-base whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 ${
+                              className={`block px-4 py-3 text-base whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700 ${
                                 i > 0 ? "border-t" : ""
                               }`}
                               onClick={() => setPhoneMenuJobId(null)}
                             >
-                              📞
-                              <span className="font-semibold">
-                                Phone {i + 1}
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-300">
+                              <div className="flex items-center gap-2 font-semibold">
+                                📞 Phone {i + 1}
+                              </div>
+                              <div className="mt-0.5 text-gray-600 dark:text-gray-300">
                                 {o.label}
-                              </span>
+                              </div>
                             </a>
                           ))}
                         </div>
