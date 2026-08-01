@@ -305,6 +305,7 @@ if (f.canDuplicateJob !== undefined) allowedFields.canDuplicateJob = Boolean(f.c
 if (f.canSeeDashboard !== undefined) allowedFields.canSeeDashboard = Boolean(f.canSeeDashboard);
 if (f.canUseChat !== undefined) allowedFields.canUseChat = Boolean(f.canUseChat);
 if (f.canSeeSearch !== undefined) allowedFields.canSeeSearch = Boolean(f.canSeeSearch);
+if (f.canCreateJob !== undefined) allowedFields.canCreateJob = Boolean(f.canCreateJob);
 
 // Financial defaults
 if (f.defaultTechPercent !== undefined) allowedFields.defaultTechPercent = f.defaultTechPercent;

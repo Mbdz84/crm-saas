@@ -299,6 +299,12 @@ export default function PermissionsTab({
           checked={tech.canSeeReports !== false}
           onChange={(v) => set("canSeeReports", v)}
         />
+        <Toggle
+          label="Can add new job / parse SMS"
+          hint="Off = hides the New Job & SMS Parse buttons in the top bar."
+          checked={tech.canCreateJob !== false}
+          onChange={(v) => set("canCreateJob", v)}
+        />
       </Section>
 
       {/* JOBS & DATA (scope) */}

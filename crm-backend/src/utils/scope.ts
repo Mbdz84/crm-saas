@@ -27,6 +27,7 @@ type TechFlags = {
   canRefreshExtension: boolean;
   canDeleteJob: boolean;
   canDuplicateJob: boolean;
+  canCreateJob: boolean;
   canSeeDashboard: boolean;
   canUseChat: boolean;
   canSeeSearch: boolean;
@@ -53,6 +54,7 @@ const TECH_DEFAULTS = {
   canRefreshExtension: true,
   canDeleteJob: true,
   canDuplicateJob: true,
+  canCreateJob: true,
   canSeeDashboard: true,
   canUseChat: true,
   canSeeSearch: true,
@@ -87,6 +89,7 @@ async function techFlags(req: any): Promise<TechFlags> {
       canRefreshExtension: true,
       canDeleteJob: true,
       canDuplicateJob: true,
+      canCreateJob: true,
       canSeeDashboard: true,
       canUseChat: true,
       canSeeSearch: true,

@@ -1,9 +1,19 @@
 // crm-frontend/app/dashboard/jobs/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  closestCorners,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 
 interface JobStatusMeta {
   id: string;
@@ -82,6 +92,117 @@ function formatPhone(raw?: string | null): string {
   return `(${area}) ${pre}-${line}`;
 }
 
+function formatApptRange(iso?: string | null): string {
+  if (!iso) return "-";
+  const start = new Date(iso);
+  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+  const fmt = (d: Date) =>
+    d.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  return `${fmt(start)} → ${fmt(end)}`;
+}
+
+/* ============================================================
+   KANBAN — draggable card + droppable column
+============================================================ */
+function KanbanCard({
+  job,
+  onOpen,
+}: {
+  job: Job;
+  onOpen: (short: string) => void;
+}) {
+  const short = job.shortId || job.id.slice(0, 5);
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id: job.id });
+
+  const style: React.CSSProperties = transform
+    ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 }
+    : {};
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => onOpen(short)}
+      className={`bg-white dark:bg-gray-800 border rounded-md p-2.5 shadow-sm cursor-grab active:cursor-grabbing hover:border-gray-400 transition-colors ${
+        isDragging ? "opacity-50" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="font-mono text-xs font-semibold">#{short}</span>
+        {job.scheduledAt && (
+          <span className="text-[11px] text-blue-600 font-medium">
+            🕒 {formatApptRange(job.scheduledAt)}
+          </span>
+        )}
+      </div>
+      <div className="font-medium text-sm">{job.customerName || "No name"}</div>
+      {job.customerAddress && (
+        <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+          {job.customerAddress}
+        </div>
+      )}
+      <div className="flex items-center justify-between mt-2 text-xs text-gray-600 dark:text-gray-300">
+        <span>{job.technician?.name || "Unassigned"}</span>
+        <span className="text-gray-400">{job.source?.name || ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function KanbanColumn({
+  status,
+  jobs,
+  onOpen,
+}: {
+  status: { id: string; name: string; color?: string | null };
+  jobs: Job[];
+  onOpen: (short: string) => void;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: status.id });
+  const color = status.color || "#6b7280";
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`shrink-0 w-72 bg-gray-50 dark:bg-gray-900 border rounded-lg p-2 flex flex-col gap-2 ${
+        isOver ? "ring-2 ring-blue-500" : ""
+      }`}
+    >
+      <div
+        className="flex items-center justify-between px-1 pb-2 border-b-2"
+        style={{ borderColor: color }}
+      >
+        <span
+          className="inline-flex items-center gap-2 text-sm font-semibold"
+          style={{ color: `color-mix(in srgb, ${color} 72%, #000)` }}
+        >
+          <span
+            className="w-2 h-2 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+          {status.name}
+        </span>
+        <span className="text-xs text-gray-500 font-medium">{jobs.length}</span>
+      </div>
+
+      {jobs.map((job) => (
+        <KanbanCard key={job.id} job={job} onOpen={onOpen} />
+      ))}
+
+      {jobs.length === 0 && (
+        <div className="text-xs text-gray-400 text-center py-6">Drop here</div>
+      )}
+    </div>
+  );
+}
+
 export default function JobsPage() {
   const router = useRouter();
 
@@ -132,6 +253,104 @@ export default function JobsPage() {
 
   // Which mobile card has its "pick a phone number" menu open (job id)
   const [phoneMenuJobId, setPhoneMenuJobId] = useState<string | null>(null);
+
+  // Board view: "list" (current) or "kanban" pipeline. Remembered per browser.
+  const [boardView, setBoardView] = useState<"list" | "kanban">("list");
+  useEffect(() => {
+    const saved = localStorage.getItem("jobs.boardView");
+    if (saved === "kanban" || saved === "list") setBoardView(saved);
+  }, []);
+  const changeBoardView = (v: "list" | "kanban") => {
+    setBoardView(v);
+    try {
+      localStorage.setItem("jobs.boardView", v);
+    } catch {}
+  };
+
+  // Current user's role — used to gate admin-only controls (e.g. Delete Jobs).
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setRole(d?.user?.role ?? null))
+      .catch(() => {});
+  }, []);
+
+  // Statuses for the Kanban columns + drag-to-change-status
+  const [statuses, setStatuses] = useState<JobStatusMeta[]>([]);
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/job-status`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d) => setStatuses(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
+  const kanbanSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const dragEndAt = useRef(0);
+
+  const openJob = (short: string) => {
+    // Ignore the click that fires right after a drag finishes.
+    if (Date.now() - dragEndAt.current < 250) return;
+    router.push(`/dashboard/jobs/${short}`);
+  };
+
+  function handleDragEnd(e: DragEndEvent) {
+    dragEndAt.current = Date.now();
+    const { active, over } = e;
+    if (!over) return;
+
+    const jobId = String(active.id);
+    const targetStatusId = String(over.id);
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job) return;
+    if ((job.jobStatus?.id ?? null) === targetStatusId) return;
+    const target = statuses.find((s) => s.id === targetStatusId);
+    if (!target) return;
+
+    const short = job.shortId || job.id.slice(0, 5);
+    const prev = jobs;
+
+    // Optimistically move the card
+    setJobs((js) =>
+      js.map((j) =>
+        j.id === jobId
+          ? {
+              ...j,
+              status: target.name,
+              jobStatus: {
+                id: target.id,
+                name: target.name,
+                color: target.color || "#e5e7eb",
+                order: target.order ?? 999,
+                active: true,
+                locked: false,
+              },
+            }
+          : j
+      )
+    );
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/jobs/${short}`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statusId: targetStatusId }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+        toast.success(`Moved to ${target.name}`);
+      })
+      .catch(() => {
+        setJobs(prev); // revert on failure
+        toast.error("Failed to move job");
+      });
+  }
 
   // Close the phone picker when the user scrolls (capture=true also catches
   // scrolling inside the dashboard's scroll container, not just the window).
@@ -257,6 +476,27 @@ useEffect(() => {
   /* ------------------------------------------------------------
      GROUP BY STATUS
   ------------------------------------------------------------ */
+  const kanbanColumns = useMemo(() => {
+    return [...statuses]
+      .map((status) => ({
+        status,
+        jobs: filteredJobs.filter(
+          (j) =>
+            (j.jobStatus?.id ?? null) === status.id ||
+            (j.jobStatus?.name || j.status) === status.name
+        ),
+      }))
+      // Populated columns first (in their configured order), empty ones pushed
+      // to the end — so you don't scroll past empty statuses. This is display
+      // only; it does NOT change each status's saved order in Settings.
+      .sort((a, b) => {
+        const aEmpty = a.jobs.length === 0 ? 1 : 0;
+        const bEmpty = b.jobs.length === 0 ? 1 : 0;
+        if (aEmpty !== bEmpty) return aEmpty - bEmpty;
+        return (a.status.order ?? 999) - (b.status.order ?? 999);
+      });
+  }, [statuses, filteredJobs]);
+
   const groupedByStatus = useMemo(() => {
   const map = new Map<
     string,
@@ -324,24 +564,6 @@ useEffect(() => {
   return Array.from(map.values()).sort((a, b) => a.order - b.order);
 }, [filteredJobs, sortKey, sortDir]);
 
-  /* ------------------------------------------------------------
-     APPOINTMENT RANGE FORMATTER
-  ------------------------------------------------------------ */
-  function formatApptRange(iso?: string | null): string {
-  if (!iso) return "-";
-
-  const start = new Date(iso);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-
-  const fmt = (d: Date) =>
-    d.toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-
-  return `${fmt(start)} → ${fmt(end)}`;
-}
 
 function formatApptDate(iso?: string | null): string {
   if (!iso) return "-";
@@ -396,6 +618,30 @@ function formatAddress(addr?: string | null) {
         </div>
 
         <div className="flex gap-2">
+          {/* View toggle: List / Kanban */}
+          <div className="flex rounded border overflow-hidden text-sm">
+            <button
+              onClick={() => changeBoardView("list")}
+              className={`px-3 py-2 ${
+                boardView === "list"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white hover:bg-gray-50 dark:bg-gray-900"
+              }`}
+            >
+              List
+            </button>
+            <button
+              onClick={() => changeBoardView("kanban")}
+              className={`px-3 py-2 border-l ${
+                boardView === "kanban"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white hover:bg-gray-50 dark:bg-gray-900"
+              }`}
+            >
+              Kanban
+            </button>
+          </div>
+
           <button
             onClick={() =>
               setShowColumnPicker((prev) => !prev)
@@ -405,25 +651,21 @@ function formatAddress(addr?: string | null) {
             Columns
           </button>
 
-          <button
-            onClick={() =>
-              selectMode ? exitSelectMode() : setSelectMode(true)
-            }
-            className={`px-3 py-2 border rounded text-sm ${
-              selectMode
-                ? "bg-gray-100 hover:bg-gray-200"
-                : "bg-white hover:bg-gray-50 text-red-600 border-red-300"
-            }`}
-          >
-            {selectMode ? "Cancel" : "Delete Jobs"}
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/jobs/new")}
-            className="px-4 py-2 bg-blue-600 text-white rounded text-sm"
-          >
-            + New Job
-          </button>
+          {/* Delete Jobs — admin only (hidden for technician/dispatcher) */}
+          {role === "admin" && (
+            <button
+              onClick={() =>
+                selectMode ? exitSelectMode() : setSelectMode(true)
+              }
+              className={`px-3 py-2 border rounded text-sm ${
+                selectMode
+                  ? "bg-gray-100 hover:bg-gray-200"
+                  : "bg-white hover:bg-gray-50 text-red-600 border-red-300"
+              }`}
+            >
+              {selectMode ? "Cancel" : "Delete Jobs"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -502,8 +744,34 @@ function formatAddress(addr?: string | null) {
         </div>
       )}
 
-      {/* GROUPS BY STATUS */}
-      {groupedByStatus.map((group) => (
+      {/* KANBAN VIEW — drag a card to another column to change its status */}
+      {boardView === "kanban" && (
+        <DndContext
+          sensors={kanbanSensors}
+          collisionDetection={closestCorners}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-3 overflow-x-auto pb-4 mt-2">
+            {kanbanColumns.map((col) => (
+              <KanbanColumn
+                key={col.status.id}
+                status={col.status}
+                jobs={col.jobs}
+                onOpen={openJob}
+              />
+            ))}
+            {kanbanColumns.length === 0 && (
+              <div className="text-sm text-gray-500 p-4">
+                No statuses configured.
+              </div>
+            )}
+          </div>
+        </DndContext>
+      )}
+
+      {/* GROUPS BY STATUS (list view) */}
+      {boardView === "list" &&
+        groupedByStatus.map((group) => (
         <section key={group.statusName} className="space-y-2">
           {/* STATUS HEADER */}
           <div className="flex items-center justify-between gap-3 mt-4">

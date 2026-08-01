@@ -5,6 +5,7 @@ import { sendTechSms } from "./sms.controller";
 import { logJobEvent } from "../../../utils/jobLogger";
 import { attachPendingCallsToJob } from "../../incomingCall/incomingCall.service";
 import { resolveTimezoneForJob } from "../../../utils/timezone";
+import { techPerms } from "../../../utils/scope";
 
 
 /* ============================================================
@@ -12,6 +13,13 @@ import { resolveTimezoneForJob } from "../../../utils/timezone";
 ============================================================ */
 export async function createJob(req: Request, res: Response) {
   try {
+    // Admins/owners bypass (perms === null); technicians/dispatchers need
+    // canCreateJob. System creates (Twilio webhook / ingest) have no req.user.
+    const perms = await techPerms(req);
+    if (perms && !perms.canCreateJob) {
+      return res.status(403).json({ error: "Not allowed to create jobs" });
+    }
+
     const {
       title,
       description,

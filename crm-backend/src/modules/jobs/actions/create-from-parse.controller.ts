@@ -3,6 +3,7 @@ import prisma from "../../../prisma/client";
 import { logJobEvent } from "../../../utils/jobLogger";
 import { attachPendingCallsToJob } from "../../incomingCall/incomingCall.service";
 import { resolveTimezoneForJob } from "../../../utils/timezone";
+import { techPerms } from "../../../utils/scope";
 
 /* ------------------------------------------
    Generate 5-char uppercase Job ID
@@ -20,6 +21,12 @@ export async function createJobFromParse(req: Request, res: Response) {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Technicians/dispatchers need canCreateJob; admins/owners bypass.
+    const perms = await techPerms(req);
+    if (perms && !perms.canCreateJob) {
+      return res.status(403).json({ error: "Not allowed to create jobs" });
     }
 
     const companyId = req.user.companyId;

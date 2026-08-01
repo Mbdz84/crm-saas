@@ -114,6 +114,7 @@ export async function me(req: Request, res: Response) {
         canSeeDashboard: true,
         canUseChat: true,
         canSeeSearch: true,
+        canCreateJob: true,
       },
     });
 

@@ -78,6 +78,7 @@ model User {
   canSeeDashboard            Boolean          @default(true)
   canUseChat                 Boolean          @default(true)
   canSeeSearch               Boolean          @default(true)
+  canCreateJob               Boolean          @default(true)
   technicianJobs             Job[]            @relation("TechnicianJobs")
   callSessions               JobCallSession[] @relation("UserCallSessions")
   jobClosingsClosed          JobClosing[]     @relation("JobClosingClosedBy")

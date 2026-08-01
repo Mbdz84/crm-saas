@@ -49,6 +49,13 @@ export class DeleteController {
         return res.status(401).json({ error: "Unauthorized" });
       }
 
+      // Admins/owners bypass (perms === null); technicians/dispatchers must
+      // have canDeleteJob enabled.
+      const perms = await techPerms(req);
+      if (perms && !perms.canDeleteJob) {
+        return res.status(403).json({ error: "Not allowed to delete jobs" });
+      }
+
       const { shortIds } = req.body || {};
       if (!Array.isArray(shortIds) || shortIds.length === 0) {
         return res.status(400).json({ error: "No jobs selected" });
