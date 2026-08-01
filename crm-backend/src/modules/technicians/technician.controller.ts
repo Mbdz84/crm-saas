@@ -106,12 +106,10 @@ export async function getTechnicianById(req: any, res: Response) {
     const companyId = req.user.companyId;
     const { id } = req.params;
 
+    // Not role-scoped: this page manages any user (technician / dispatcher /
+    // admin), so a role change here must not make them un-loadable.
     const tech = await prisma.user.findFirst({
-      where: {
-        id,
-        companyId,
-        role: "technician", // ✅ ensure it's actually a technician
-      },
+      where: { id, companyId },
     });
 
     if (!tech) return res.status(404).json({ error: "Technician not found" });
@@ -210,7 +208,7 @@ export async function updateTechnician(req: any, res: Response) {
     const { id } = req.params;
 
     const existing = await prisma.user.findFirst({
-      where: { id, companyId, role: "technician" },
+      where: { id, companyId },
     });
 
     if (!existing) {
@@ -259,6 +257,14 @@ if (f.name !== undefined) allowedFields.name = f.name;
 if (f.phone !== undefined) allowedFields.phone = f.phone;
 if (f.active !== undefined) allowedFields.active = Boolean(f.active);
 
+// Login role (admin / technician / dispatcher)
+if (
+  f.role !== undefined &&
+  ["admin", "technician", "dispatcher"].includes(f.role)
+) {
+  allowedFields.role = f.role;
+}
+
 // Toggles
 if (f.receiveSms !== undefined) allowedFields.receiveSms = Boolean(f.receiveSms);
 if (f.maskedCalls !== undefined) allowedFields.maskedCalls = Boolean(f.maskedCalls);
@@ -290,6 +296,9 @@ if (f.canSeeTechnicianField !== undefined) allowedFields.canSeeTechnicianField =
 if (f.canChangeJobType !== undefined) allowedFields.canChangeJobType = Boolean(f.canChangeJobType);
 if (f.canEditCustomerName !== undefined) allowedFields.canEditCustomerName = Boolean(f.canEditCustomerName);
 if (f.canEditCustomerAddress !== undefined) allowedFields.canEditCustomerAddress = Boolean(f.canEditCustomerAddress);
+if (f.canEditDescription !== undefined) allowedFields.canEditDescription = Boolean(f.canEditDescription);
+if (f.canEditStatus !== undefined) allowedFields.canEditStatus = Boolean(f.canEditStatus);
+if (f.canSeeCallerId !== undefined) allowedFields.canSeeCallerId = Boolean(f.canSeeCallerId);
 if (f.canRefreshExtension !== undefined) allowedFields.canRefreshExtension = Boolean(f.canRefreshExtension);
 if (f.canDeleteJob !== undefined) allowedFields.canDeleteJob = Boolean(f.canDeleteJob);
 if (f.canDuplicateJob !== undefined) allowedFields.canDuplicateJob = Boolean(f.canDuplicateJob);

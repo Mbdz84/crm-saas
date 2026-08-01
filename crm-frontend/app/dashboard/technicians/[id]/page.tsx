@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 import PermissionsTab from "./tabs/PermissionsTab";
 import FinancialTab from "./tabs/FinancialTab";
@@ -20,6 +21,11 @@ export default function TechnicianProfilePage() {
   const [tech, setTech] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Password reset
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const [tab, setTab] = useState<
     "profile" | "permissions" | "financial" | "availability" | "masked-calls"
@@ -85,6 +91,31 @@ export default function TechnicianProfilePage() {
   };
 
   /* ============================================================
+     SET NEW PASSWORD
+  ============================================================ */
+  const setUserPassword = async () => {
+    if (!newPassword.trim()) return;
+    setSavingPassword(true);
+
+    const res = await fetch(`${API}/technicians/${id}/reset-password`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: newPassword }),
+    });
+
+    setSavingPassword(false);
+
+    if (res.ok) {
+      toast.success("Password updated");
+      setNewPassword("");
+      setShowPassword(false);
+    } else {
+      toast.error("Failed to update password");
+    }
+  };
+
+  /* ============================================================
      DELETE TECH
   ============================================================ */
   const deleteTech = async () => {
@@ -105,13 +136,15 @@ export default function TechnicianProfilePage() {
   if (!tech) return <div className="p-6">Technician not found.</div>;
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-7xl mx-auto w-full">
       {/* BACK BUTTON */}
       <button onClick={() => router.back()} className="text-blue-600 mb-4">
         ← Back
       </button>
 
-      <h1 className="text-3xl font-semibold mb-6">Technician Settings</h1>
+      <h1 className="text-3xl font-semibold mb-6">
+        Technician Settings{tech.name ? ` - ${tech.name}` : ""}
+      </h1>
 
       {/* TABS */}
       <div className="flex gap-6 border-b mb-6 pb-2 text-sm">
@@ -154,7 +187,7 @@ export default function TechnicianProfilePage() {
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="max-w-xl">
+      <div className={tab === "permissions" ? "" : "max-w-xl"}>
         {tab === "profile" && (
           <div className="space-y-6">
             <div>
@@ -211,7 +244,7 @@ export default function TechnicianProfilePage() {
                 checked={tech.active}
                 onChange={(e) => setTech({ ...tech, active: e.target.checked })}
               />
-              Active Technician
+              Active Technician (shows in the technician dropdown)
             </label>
 
             <label className="flex items-center gap-3">
@@ -235,6 +268,42 @@ export default function TechnicianProfilePage() {
               />
               Masked Calls + Recording
             </label>
+
+            {/* PASSWORD */}
+            <div>
+              <label className="font-medium block mb-1">Password</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className="w-full border p-2 pr-10"
+                    placeholder="Enter a new password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((s) => !s)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={setUserPassword}
+                  disabled={savingPassword || !newPassword.trim()}
+                  className="px-3 py-2 bg-gray-800 text-white rounded whitespace-nowrap disabled:opacity-50"
+                >
+                  {savingPassword ? "Saving…" : "Set New Password"}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Sets this user&apos;s login password (email + password). Saved
+                immediately — separate from Save Changes.
+              </p>
+            </div>
 
             <button
               className="px-3 py-2 bg-blue-600 text-white rounded w-full"

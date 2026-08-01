@@ -5,6 +5,7 @@ import { useJobActions } from "../../state/useJobActions";
 
 export default function PartsPanel() {
   const {
+    job,
     techParts,
     leadParts,
     companyParts,
@@ -13,6 +14,10 @@ export default function PartsPanel() {
     excludeTechFromParts,
     includePartsInProfit,
   } = useJob();
+
+  // Technicians without fee permission don't see the Add Fee field
+  // (admins have no viewer → full access).
+  const canAdjustFees = (job as any)?.viewer?.canAdjustFees !== false;
 
   const {
     setTechParts,
@@ -56,16 +61,21 @@ export default function PartsPanel() {
       </div>
 
       <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="block text-[10px] mb-1">Add Fee ($)</label>
-          <input
-            className="border rounded px-1 py-1 w-full text-xs bg-white"
-            value={leadAdditionalFee}
-            onChange={(e) => setLeadAdditionalFee(e.target.value)}
-          />
-        </div>
+        {canAdjustFees ? (
+          <div>
+            <label className="block text-[10px] mb-1">Add Fee ($)</label>
+            <input
+              className="border rounded px-1 py-1 w-full text-xs bg-white"
+              value={leadAdditionalFee}
+              onChange={(e) => setLeadAdditionalFee(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div></div>
+        )}
         <div></div>
 
+        {canAdjustFees && (
         <div className="col-span-2 space-y-1 mt-4">
           <label className="inline-flex items-center gap-2 text-[11px]">
             <input
@@ -100,6 +110,7 @@ export default function PartsPanel() {
             Include parts in profit (visual)
           </label>
         </div>
+        )}
       </div>
     </div>
   );

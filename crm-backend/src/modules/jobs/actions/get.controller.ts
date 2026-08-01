@@ -14,7 +14,8 @@ import {
 ============================================================ */
 export async function getJobs(req: Request, res: Response) {
   try {
-    const isTech = req.user?.role === "technician";
+    const isTech =
+      req.user?.role === "technician" || req.user?.role === "dispatcher";
 
     const jobs = await prisma.job.findMany({
       where: { companyId: req.user!.companyId, ...(await ownJobsWhere(req)) },

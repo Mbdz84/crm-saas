@@ -1,5 +1,7 @@
 "use client";
 
+import JobPreview from "./JobPreview";
+
 interface Props {
   tech: any;
   setTech: (value: any) => void;
@@ -28,28 +30,53 @@ function Toggle({
   disabled?: boolean;
 }) {
   return (
-    <label
-      className={`flex items-start gap-3 py-1.5 ${
-        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+    <div
+      className={`flex items-center justify-between gap-4 py-3 ${
+        disabled ? "opacity-50" : ""
       }`}
     >
-      <input
-        type="checkbox"
-        className="h-5 w-5 mt-0.5 cursor-pointer disabled:cursor-not-allowed"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span>
-        <span className="font-medium">{label}</span>
+      <div className="min-w-0">
+        {(() => {
+          // De-emphasize the "Can see the …" lead-in; bold the key phrase.
+          const m = label.match(/^Can (?:(?:see|use|view) )?(?:(?:the|a) )?/);
+          const prefix = m ? m[0] : "";
+          const rest = m ? label.slice(m[0].length) : label;
+          return (
+            <span className="font-normal text-gray-500 dark:text-gray-400">
+              {prefix}
+              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                {rest}
+              </span>
+            </span>
+          );
+        })()}
         {soon && (
           <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-700 border border-amber-300 bg-amber-50 rounded px-1 py-0.5 align-middle">
             not wired yet
           </span>
         )}
-        {hint && <span className="block text-xs text-gray-500">{hint}</span>}
-      </span>
-    </label>
+        {hint && <p className="text-sm text-gray-500 mt-0.5">{hint}</p>}
+      </div>
+
+      {/* On/off toggle switch */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+        className={`relative shrink-0 w-12 h-7 rounded-full transition-colors ${
+          checked ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-600"
+        } ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+      >
+        <span
+          className={`absolute top-1 left-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+            checked ? "translate-x-5" : ""
+          }`}
+        />
+      </button>
+    </div>
   );
 }
 
@@ -78,43 +105,56 @@ export default function PermissionsTab({
     setTech({ ...tech, [field]: val });
 
   return (
-    <div className="space-y-5 pt-4 max-w-2xl">
+    <div className="pt-4 space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Access & Permissions</h2>
         <p className="text-gray-600 text-sm">
-          Everything this user can see and do. Options marked{" "}
-          <span className="text-[10px] uppercase tracking-wide text-amber-700 border border-amber-300 bg-amber-50 rounded px-1 py-0.5">
-            not wired yet
-          </span>{" "}
-          are visible here but not enforced until wired.
+          Everything this user can see and do. Changes apply after you press
+          Save Permissions.
         </p>
       </div>
 
-      {/* PORTAL ACCESS */}
-      <Section title="Portal access">
+      {/* LOGIN ACCESS + ROLE — side by side */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+        {/* LOGIN ACCESS */}
+        <Section title="Login access">
         <Toggle
-          label="Can log in to the CRM"
-          hint="Master switch — off means no login at all."
+          label="Active User (can log in to the CRM)"
+          hint="Off = this person cannot sign in."
           checked={!!tech.canLogin}
           onChange={(v) => set("canLogin", v)}
-          soon
         />
       </Section>
 
-      {/* JOBS & DATA */}
-      <Section title="Jobs & data">
-        <Toggle
-          label="Can view all company jobs"
-          hint="Off = only jobs assigned to this technician."
-          checked={!!tech.canViewAllJobs}
-          onChange={(v) => set("canViewAllJobs", v)}
-        />
-        <Toggle
-          label="Can see client phone number"
-          hint="Off = real number hidden; the masked number + extension still shows."
-          checked={tech.canSeeClientPhone !== false}
-          onChange={(v) => set("canSeeClientPhone", v)}
-        />
+      {/* ROLE — the master switch above the granular permissions */}
+      <Section title="Role">
+        <div className="py-1.5">
+          <select
+            className="w-full border p-2 rounded dark:bg-gray-900"
+            value={tech.role || "technician"}
+            onChange={(e) => setTech({ ...tech, role: e.target.value })}
+          >
+            <option value="admin">Admin</option>
+            <option value="technician">Technician</option>
+            <option value="dispatcher">Dispatcher</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-2">
+            Master switch. <b>Admin</b> = full access (the permissions below are
+            ignored). <b>Technician</b> = the permissions below apply, and they
+            appear in the job&apos;s technician dropdown. <b>Dispatcher</b> = the
+            same permissions below apply, but they do <b>not</b> appear in the
+            technician dropdown.
+          </p>
+        </div>
+      </Section>
+      </div>
+
+      {/* TOGGLES (left) + LIVE PREVIEW (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[65fr_35fr] gap-6 items-start">
+        {/* LEFT — permission controls */}
+        <div className="min-w-0 space-y-5">
+      {/* JOB PAGE — ordered top-to-bottom, matching the live preview */}
+      <Section title="Job page">
         <Toggle
           label="Can see the Log tab"
           checked={tech.canSeeLogs !== false}
@@ -126,14 +166,77 @@ export default function PermissionsTab({
           onChange={(v) => set("canSeeRecordings", v)}
         />
         <Toggle
-          label="Can see the closing panel ($)"
-          checked={!!tech.canSeeClosing}
-          onChange={(v) => set("canSeeClosing", v)}
+          label="Can duplicate jobs"
+          checked={tech.canDuplicateJob !== false}
+          onChange={(v) => set("canDuplicateJob", v)}
+        />
+        <Toggle
+          label="Can delete jobs"
+          checked={tech.canDeleteJob !== false}
+          onChange={(v) => set("canDeleteJob", v)}
+        />
+        <Toggle
+          label="Can edit customer name"
+          hint="Off = name is shown but locked."
+          checked={tech.canEditCustomerName !== false}
+          onChange={(v) => set("canEditCustomerName", v)}
+        />
+        <Toggle
+          label="Can see client phone number"
+          hint="Off = real number hidden; the masked number + extension still shows."
+          checked={tech.canSeeClientPhone !== false}
+          onChange={(v) => set("canSeeClientPhone", v)}
+        />
+        <Toggle
+          label="Can see caller ID names"
+          hint="The saved name shown next to a phone (e.g. “Moriel - tech”)."
+          checked={tech.canSeeCallerId !== false}
+          onChange={(v) => set("canSeeCallerId", v)}
+        />
+        <Toggle
+          label="Can refresh call extensions"
+          checked={tech.canRefreshExtension !== false}
+          onChange={(v) => set("canRefreshExtension", v)}
+        />
+        <Toggle
+          label="Can edit customer address"
+          hint="Off = address is shown but locked."
+          checked={tech.canEditCustomerAddress !== false}
+          onChange={(v) => set("canEditCustomerAddress", v)}
+        />
+        <Toggle
+          label="Can change job type"
+          hint="Off = job type is shown but locked."
+          checked={tech.canChangeJobType !== false}
+          onChange={(v) => set("canChangeJobType", v)}
+        />
+        <Toggle
+          label="Can edit description / notes"
+          hint="Off = description is shown but locked."
+          checked={tech.canEditDescription !== false}
+          onChange={(v) => set("canEditDescription", v)}
+        />
+        <Toggle
+          label="Can see lead source"
+          checked={tech.canSeeLeadSource !== false}
+          onChange={(v) => set("canSeeLeadSource", v)}
+        />
+        <Toggle
+          label="Can see the technician field"
+          hint="Off = the technician list is hidden on the job."
+          checked={tech.canSeeTechnicianField !== false}
+          onChange={(v) => set("canSeeTechnicianField", v)}
+        />
+        <Toggle
+          label="Can edit status"
+          hint="Off = status is shown but locked."
+          checked={tech.canEditStatus !== false}
+          onChange={(v) => set("canEditStatus", v)}
         />
       </Section>
 
-      {/* CLOSING */}
-      <Section title="Closing">
+      {/* JOB CLOSING — bottom of the job, matching the preview */}
+      <Section title="Job closing">
         <div className="py-2 text-sm text-gray-600 border-b">
           <b>Pending Close / Pending Cancel.</b> Technician closings and cancels
           are saved as <b>Pending Close</b> / <b>Pending Cancel</b> — no approval
@@ -143,28 +246,31 @@ export default function PermissionsTab({
           <b>locked</b> (view-only for the tech).
         </div>
         <Toggle
+          label="Can see the closing panel ($)"
+          checked={!!tech.canSeeClosing}
+          onChange={(v) => set("canSeeClosing", v)}
+        />
+        <Toggle
+          label="Can adjust percentages"
+          hint="Technician can change the tech / lead / company split."
+          checked={!!tech.canAdjustPercentages}
+          onChange={(v) => set("canAdjustPercentages", v)}
+        />
+        <Toggle
           label="Can enter parts in closing"
           hint="Technician can type parts amounts into the closing."
           checked={!!tech.canAdjustParts}
           onChange={(v) => set("canAdjustParts", v)}
         />
         <Toggle
-          label="Can adjust percentages"
-          hint="Not allowed for technicians."
-          checked={false}
-          onChange={() => {}}
-          disabled
-        />
-        <Toggle
           label="Can adjust fees"
-          hint="Not allowed for technicians."
-          checked={false}
-          onChange={() => {}}
-          disabled
+          hint="Technician can change fees in the closing."
+          checked={!!tech.canAdjustFees}
+          onChange={(v) => set("canAdjustFees", v)}
         />
       </Section>
 
-      {/* MODULES */}
+      {/* MODULES (app navigation) */}
       <Section title="Modules">
         <Toggle
           label="Can see the Dashboard"
@@ -195,51 +301,13 @@ export default function PermissionsTab({
         />
       </Section>
 
-      {/* JOB PAGE */}
-      <Section title="Job page">
+      {/* JOBS & DATA (scope) */}
+      <Section title="Jobs & data">
         <Toggle
-          label="Can see lead source"
-          checked={tech.canSeeLeadSource !== false}
-          onChange={(v) => set("canSeeLeadSource", v)}
-        />
-        <Toggle
-          label="Can see the technician field"
-          hint="Off = the technician list is hidden on the job."
-          checked={tech.canSeeTechnicianField !== false}
-          onChange={(v) => set("canSeeTechnicianField", v)}
-        />
-        <Toggle
-          label="Can change job type"
-          hint="Off = job type is shown but locked."
-          checked={tech.canChangeJobType !== false}
-          onChange={(v) => set("canChangeJobType", v)}
-        />
-        <Toggle
-          label="Can edit customer name"
-          hint="Off = name is shown but locked."
-          checked={tech.canEditCustomerName !== false}
-          onChange={(v) => set("canEditCustomerName", v)}
-        />
-        <Toggle
-          label="Can edit customer address"
-          hint="Off = address is shown but locked."
-          checked={tech.canEditCustomerAddress !== false}
-          onChange={(v) => set("canEditCustomerAddress", v)}
-        />
-        <Toggle
-          label="Can refresh call extensions"
-          checked={tech.canRefreshExtension !== false}
-          onChange={(v) => set("canRefreshExtension", v)}
-        />
-        <Toggle
-          label="Can delete jobs"
-          checked={tech.canDeleteJob !== false}
-          onChange={(v) => set("canDeleteJob", v)}
-        />
-        <Toggle
-          label="Can duplicate jobs"
-          checked={tech.canDuplicateJob !== false}
-          onChange={(v) => set("canDuplicateJob", v)}
+          label="Can view all company jobs"
+          hint="Off = Can see jobs only assigned to this technician."
+          checked={!!tech.canViewAllJobs}
+          onChange={(v) => set("canViewAllJobs", v)}
         />
       </Section>
 
@@ -250,6 +318,18 @@ export default function PermissionsTab({
       >
         {saving ? "Saving..." : "Save Permissions"}
       </button>
+        </div>
+
+        {/* RIGHT — live preview of a job as this technician sees it */}
+        <div className="min-w-0">
+          <div className="lg:sticky lg:top-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+              Live preview — what this technician sees
+            </p>
+            <JobPreview tech={tech} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

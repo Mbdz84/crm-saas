@@ -10,6 +10,7 @@ const SMS_PRESETS = [
   "Hi, this is your locksmith technician. Please call me back.",
   "We tried reaching you about your service. Please call back.",
   "Call me",
+  "it's the locksmith",
 ];
 
 // Phone values may carry a ",ext" suffix — strip it for SMS

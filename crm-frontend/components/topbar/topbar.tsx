@@ -82,7 +82,7 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   }, []);
 
   /* Permission gating (mirrors the sidebar) */
-  const isTech = user?.role === "technician";
+  const isTech = user?.role === "technician" || user?.role === "dispatcher";
   const navItems = [
     {
       href: "/dashboard",
@@ -140,7 +140,10 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       </button>
 
       {/* Brand */}
-      <Link href="/dashboard" className="font-bold text-lg tracking-tight mr-1">
+      <Link
+        href="/dashboard/jobs"
+        className="font-bold text-lg tracking-tight mr-1"
+      >
         CRM
       </Link>
 
@@ -229,12 +232,14 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         />
       )}
 
-      {/* User + company (desktop only) */}
-      <div className="hidden lg:flex items-center gap-2 text-sm">
-        <span className="font-medium whitespace-nowrap">
+      {/* Company (line 1) + logged-in user (line 2) — desktop only */}
+      <div className="hidden lg:flex flex-col items-end leading-tight">
+        <span className="text-xs font-semibold whitespace-nowrap">
+          {company?.name}
+        </span>
+        <span className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">
           {user?.name} ({user?.role})
         </span>
-        <span className="font-medium whitespace-nowrap">{company?.name}</span>
       </div>
     </header>
   );

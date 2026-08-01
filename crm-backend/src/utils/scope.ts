@@ -9,6 +9,7 @@ import prisma from "../prisma/client";
 type TechFlags = {
   canViewAllJobs: boolean;
   canSeeClientPhone: boolean;
+  canSeeClosing: boolean;
   canSeeLogs: boolean;
   canSeeRecordings: boolean;
   canSeeReports: boolean;
@@ -18,6 +19,11 @@ type TechFlags = {
   canChangeJobType: boolean;
   canEditCustomerName: boolean;
   canEditCustomerAddress: boolean;
+  canEditDescription: boolean;
+  canEditStatus: boolean;
+  canSeeCallerId: boolean;
+  canAdjustPercentages: boolean;
+  canAdjustFees: boolean;
   canRefreshExtension: boolean;
   canDeleteJob: boolean;
   canDuplicateJob: boolean;
@@ -29,6 +35,7 @@ type TechFlags = {
 const TECH_DEFAULTS = {
   canViewAllJobs: false,
   canSeeClientPhone: true,
+  canSeeClosing: true,
   canSeeLogs: true,
   canSeeRecordings: true,
   canSeeReports: true,
@@ -38,6 +45,11 @@ const TECH_DEFAULTS = {
   canChangeJobType: true,
   canEditCustomerName: true,
   canEditCustomerAddress: true,
+  canEditDescription: true,
+  canEditStatus: true,
+  canSeeCallerId: true,
+  canAdjustPercentages: false,
+  canAdjustFees: false,
   canRefreshExtension: true,
   canDeleteJob: true,
   canDuplicateJob: true,
@@ -47,7 +59,9 @@ const TECH_DEFAULTS = {
 };
 
 async function techFlags(req: any): Promise<TechFlags> {
-  if (req?.user?.role !== "technician") return null;
+  // Technicians AND dispatchers are subject to the permission flags.
+  if (req?.user?.role !== "technician" && req?.user?.role !== "dispatcher")
+    return null;
   if (req._techFlags !== undefined) return req._techFlags;
 
   const u = await prisma.user.findUnique({
@@ -55,6 +69,7 @@ async function techFlags(req: any): Promise<TechFlags> {
     select: {
       canViewAllJobs: true,
       canSeeClientPhone: true,
+      canSeeClosing: true,
       canSeeLogs: true,
       canSeeRecordings: true,
       canSeeReports: true,
@@ -64,6 +79,11 @@ async function techFlags(req: any): Promise<TechFlags> {
       canChangeJobType: true,
       canEditCustomerName: true,
       canEditCustomerAddress: true,
+      canEditDescription: true,
+      canEditStatus: true,
+      canSeeCallerId: true,
+      canAdjustPercentages: true,
+      canAdjustFees: true,
       canRefreshExtension: true,
       canDeleteJob: true,
       canDuplicateJob: true,
@@ -142,11 +162,17 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
       canSeeLogs: true,
       canSeeRecordings: true,
       canSeeClientPhone: true,
+      canSeeClosing: true,
       canSeeLeadSource: true,
       canSeeTechnicianField: true,
       canChangeJobType: true,
       canEditCustomerName: true,
       canEditCustomerAddress: true,
+      canEditDescription: true,
+      canEditStatus: true,
+      canSeeCallerId: true,
+      canAdjustPercentages: true,
+      canAdjustFees: true,
       canRefreshExtension: true,
       canDeleteJob: true,
       canDuplicateJob: true,
@@ -157,11 +183,17 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
     canSeeLogs: f.canSeeLogs,
     canSeeRecordings: f.canSeeRecordings,
     canSeeClientPhone: f.canSeeClientPhone,
+    canSeeClosing: f.canSeeClosing,
     canSeeLeadSource: f.canSeeLeadSource,
     canSeeTechnicianField: f.canSeeTechnicianField,
     canChangeJobType: f.canChangeJobType,
     canEditCustomerName: f.canEditCustomerName,
     canEditCustomerAddress: f.canEditCustomerAddress,
+    canEditDescription: f.canEditDescription,
+    canEditStatus: f.canEditStatus,
+    canSeeCallerId: f.canSeeCallerId,
+    canAdjustPercentages: f.canAdjustPercentages,
+    canAdjustFees: f.canAdjustFees,
     canRefreshExtension: f.canRefreshExtension,
     canDeleteJob: f.canDeleteJob,
     canDuplicateJob: f.canDuplicateJob,

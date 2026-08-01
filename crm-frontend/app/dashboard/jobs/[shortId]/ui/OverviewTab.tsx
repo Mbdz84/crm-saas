@@ -139,6 +139,10 @@ export default function OverviewTab() {
   const canRefreshExtension = jobViewer.canRefreshExtension !== false;
   const canDeleteJob = jobViewer.canDeleteJob !== false;
   const canDuplicateJob = jobViewer.canDuplicateJob !== false;
+  const canSeeCallerId = jobViewer.canSeeCallerId !== false;
+  const canEditDescription = jobViewer.canEditDescription !== false;
+  const canEditStatus = jobViewer.canEditStatus !== false;
+  const canSeeClosing = jobViewer.canSeeClosing !== false;
 
 type Reminder = {
   id: string;
@@ -287,7 +291,8 @@ const selectedStatusIsCanceled = (() => {
   return ["cancel", "canceled", "cancelled"].includes(name);
 })();
   const showClosingPanel =
-    currentStatusName === "Closed" || currentStatusName === "Pending Close";
+    canSeeClosing &&
+    (currentStatusName === "Closed" || currentStatusName === "Pending Close");
 
   const editingLocked = job.isClosingLocked === true;
 
@@ -414,8 +419,8 @@ const selectedStatusIsCanceled = (() => {
   disabled={!canEditCustomerName}
 />
 
-{/* PHONE 1 */}
-{(() => {
+{/* PHONE 1 — removed entirely when the tech can't see the client phone */}
+{canSeeClientPhone && (() => {
   const { phone, ext } = splitPhoneExt(editableJob.customerPhone);
 
   return (
@@ -456,7 +461,7 @@ const selectedStatusIsCanceled = (() => {
         />
 
         {/* Caller ID name (from directory) */}
-        {callerName(phone) && (
+        {canSeeCallerId && callerName(phone) && (
           <span className="self-center text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
             {callerName(phone)}
           </span>
@@ -466,8 +471,8 @@ const selectedStatusIsCanceled = (() => {
   );
 })()}
 
-{/* PHONE 2 */}
-{(() => {
+{/* PHONE 2 — removed entirely when the tech can't see the client phone */}
+{canSeeClientPhone && (() => {
   const { phone, ext } = splitPhoneExt(
     (editableJob as any).customerPhone2
   );
@@ -510,7 +515,7 @@ const selectedStatusIsCanceled = (() => {
         />
 
         {/* Caller ID name (from directory) */}
-        {callerName(phone) && (
+        {canSeeCallerId && callerName(phone) && (
           <span className="self-center text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
             {callerName(phone)}
           </span>
@@ -632,7 +637,7 @@ const selectedStatusIsCanceled = (() => {
             label="Description / Notes"
             value={editableJob.description || ""}
             onChange={(v) => setField("description", v)}
-            disabled={isTechnician}
+            disabled={!canEditDescription}
           />
         </div>
 
@@ -715,8 +720,11 @@ const selectedStatusIsCanceled = (() => {
           <div>
             <label className="block text-sm font-medium">Status</label>
             <select
-              className="mt-1 w-full border rounded p-2"
+              className={`mt-1 w-full border rounded p-2 ${
+                !canEditStatus ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+              }`}
               value={editableJob.statusId || ""}
+              disabled={!canEditStatus}
               onChange={(e) => setField("statusId", e.target.value)}
             >
               

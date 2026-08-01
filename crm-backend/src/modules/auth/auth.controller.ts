@@ -45,6 +45,16 @@ export async function login(req: Request, res: Response) {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ error: "Invalid password" });
 
+    // Per-user login switch ("Active User"). Admins/owners always keep access
+    // (they bypass permission flags); only non-privileged users are gated,
+    // so an accidental toggle can never lock the company out of its own admin.
+    const isPrivileged = user.role === "admin" || user.isOwner === true;
+    if (!isPrivileged && user.canLogin === false) {
+      return res.status(403).json({
+        error: "This account is not allowed to sign in. Contact your administrator.",
+      });
+    }
+
     const token = jwt.sign(
       { userId: user.id, companyId: user.companyId, role: user.role },
       JWT_SECRET,

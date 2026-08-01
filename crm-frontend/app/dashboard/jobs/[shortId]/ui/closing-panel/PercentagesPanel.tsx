@@ -5,6 +5,7 @@ import { useJobActions } from "../../state/useJobActions";
 
 export default function PercentagesPanel() {
   const {
+    job,
     techPercent,
     leadPercent,
     companyPercent,
@@ -16,6 +17,10 @@ export default function PercentagesPanel() {
     normalizePercent,
     setDisableAutoAdjust,
   } = useJobActions();
+
+  // Hidden entirely for technicians who can't adjust percentages
+  // (admins have no viewer → full access).
+  if ((job as any)?.viewer?.canAdjustPercentages === false) return null;
 
   return (
     <div className="border rounded p-3 bg-gray-50">

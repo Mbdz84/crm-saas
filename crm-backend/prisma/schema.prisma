@@ -57,7 +57,7 @@ model User {
   availability               Json?            @db.Json
   timezone                   String?          @default("America/Chicago")
   isOwner                    Boolean          @default(false)
-  canLogin                   Boolean          @default(false)
+  canLogin                   Boolean          @default(true)
   canSeeClientPhone          Boolean          @default(true)
   canSeeLogs                 Boolean          @default(true)
   canSeeRecordings           Boolean          @default(true)
@@ -72,6 +72,9 @@ model User {
   canDuplicateJob            Boolean          @default(true)
   canEditCustomerName        Boolean          @default(true)
   canEditCustomerAddress     Boolean          @default(true)
+  canEditDescription         Boolean          @default(true)
+  canEditStatus              Boolean          @default(true)
+  canSeeCallerId             Boolean          @default(true)
   canSeeDashboard            Boolean          @default(true)
   canUseChat                 Boolean          @default(true)
   canSeeSearch               Boolean          @default(true)

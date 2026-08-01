@@ -35,7 +35,7 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       .catch(() => {});
   }, []);
 
-  const isTech = me?.role === "technician";
+  const isTech = me?.role === "technician" || me?.role === "dispatcher";
   const showCalendar = !(isTech && me?.canUseCalendar === false);
   const showReports = !(isTech && me?.canSeeReports === false);
   const showDashboard = !(isTech && me?.canSeeDashboard === false);

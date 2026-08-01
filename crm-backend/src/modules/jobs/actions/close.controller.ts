@@ -21,7 +21,8 @@ export async function closeJob(req: Request, res: Response) {
 
     // Technicians submit a PENDING close (saved but editable, not finalized);
     // admins finalize to Closed. The same closing data is saved either way.
-    const isTech = req.user?.role === "technician";
+    const isTech =
+      req.user?.role === "technician" || req.user?.role === "dispatcher";
 
     // Once a job is finalized (locked), a technician can no longer edit the
     // closing — only an admin can. While it's pending it stays editable.
