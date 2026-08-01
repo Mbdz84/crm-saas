@@ -1,102 +1,241 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Sun,
+  Moon,
+  Menu,
+  Home,
+  Briefcase,
+  MessageSquare,
+  Calendar,
+  Search,
+  BarChart3,
+  Settings,
+  LogOut,
+} from "lucide-react";
+import clsx from "clsx";
 import { useTheme } from "@/components/theme/theme-provider";
-import { useRouter } from "next/navigation";
 
-export default function Topbar() {
+export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+
+  const [user, setUser] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
+  const [unread, setUnread] = useState(0);
 
+  /* Load company + logged-in user (with permission flags) */
   useEffect(() => {
-  const load = async () => {
-    try {
-      // Load company
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/companies/me`,
-        { credentials: "include" }
-      );
-      const companyData = await res.json();
-      setCompany(companyData);
+    const base = process.env.NEXT_PUBLIC_API_URL;
+    const load = async () => {
+      try {
+        const res = await fetch(`${base}/companies/me`, {
+          credentials: "include",
+        });
+        setCompany(await res.json());
 
-      // Load logged-in user (CORRECT ENDPOINT)
-      const userRes = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/me`,
-        { credentials: "include" }
-      );
-      const userData = await userRes.json();
-      console.log("USER DATA:", userData);
+        const userRes = await fetch(`${base}/auth/me`, {
+          credentials: "include",
+        });
+        const userData = await userRes.json();
+        setUser(userData.user);
+      } catch (err) {
+        console.error("Failed to load company or user", err);
+      }
+    };
+    load();
+  }, []);
 
-      // `me()` returns: { user: {...} }
-      setUser(userData.user);
+  /* Poll unread SMS count for the Chat badge (only while tab is visible) */
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL;
+    if (!base) return;
+    const load = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch(`${base}/messages/unread-count`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (res.ok) {
+          const d = await res.json();
+          setUnread(d.inbox || 0);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+    load();
+    const iv = setInterval(load, 20000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
 
-    } catch (err) {
-      console.error("Failed to load company or user", err);
-    }
-  };
+  /* Permission gating (mirrors the sidebar) */
+  const isTech = user?.role === "technician";
+  const navItems = [
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      icon: <Home size={17} />,
+      show: !(isTech && user?.canSeeDashboard === false),
+    },
+    {
+      href: "/dashboard/jobs",
+      label: "Jobs",
+      icon: <Briefcase size={17} />,
+      show: true,
+    },
+    {
+      href: "/dashboard/chat",
+      label: "Chat",
+      icon: <MessageSquare size={17} />,
+      show: !(isTech && user?.canUseChat === false),
+      badge: unread,
+    },
+    {
+      href: "/dashboard/calendar",
+      label: "Calendar",
+      icon: <Calendar size={17} />,
+      show: !(isTech && user?.canUseCalendar === false),
+    },
+    {
+      href: "/dashboard/jobs/search",
+      label: "Search",
+      icon: <Search size={17} />,
+      show: !(isTech && user?.canSeeSearch === false),
+    },
+    {
+      href: "/dashboard/reports",
+      label: "Reports",
+      icon: <BarChart3 size={17} />,
+      show: !(isTech && user?.canSeeReports === false),
+    },
+  ].filter((i) => i.show);
 
-  load();
-}, []);
+  // Active = the visible item whose href is the longest prefix of the path.
+  const activeHref = navItems
+    .filter((i) => pathname === i.href || pathname.startsWith(i.href + "/"))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
   return (
-    <div className="w-full h-16 border-b flex items-center justify-between px-6 bg-white dark:bg-gray-900">
+    <header className="w-full h-14 border-b flex items-center gap-2 px-3 sm:px-4 bg-white dark:bg-gray-900 shrink-0">
+      {/* Mobile menu button */}
+      <button
+        onClick={onMenuClick}
+        className="md:hidden p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
+        aria-label="Open menu"
+      >
+        <Menu size={20} />
+      </button>
 
-      {/* LEFT SIDE — Dashboard + New Job Button */}
-      <div className="flex items-center gap-4">
-          <button
-          onClick={() => router.push("/dashboard/jobs")}
-          className="px-3 py-1.5 bg-orange-500 text-white rounded hover:bg-green-700 transition text-sm"
-        >
-          Jobs
-        </button>
+      {/* Brand */}
+      <Link href="/dashboard" className="font-bold text-lg tracking-tight mr-1">
+        CRM
+      </Link>
 
-        <button
-          onClick={() => router.push("/dashboard/jobs/new")}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-        >
-          New Job
-        </button>
-        <button
-          onClick={() => router.push("/dashboard/jobs/add")}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
-        >SMS Parse</button>
-      </div>
+      {/* spacer (centers the nav) */}
+      <div className="hidden md:block flex-1" />
 
-      {/* RIGHT SIDE — Theme toggle + Company */}
-      <div className="flex items-center gap-3">
+      {/* Desktop nav */}
+      <nav className="hidden md:flex items-center gap-1 min-w-0">
+        {navItems.map((item) => {
+          const active = item.href === activeHref;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={clsx(
+                "relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
+                active
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800"
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+              {!!item.badge && item.badge > 0 && (
+                <span className="ml-0.5 text-[10px] font-semibold bg-red-600 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </nav>
 
-                {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition"
-        >
-          {theme === "dark" ? (
-            <Sun size={18} className="text-yellow-400" />
-          ) : (
-            <Moon size={18} className="text-gray-800" />
-          )}
-        </button>
+      {/* spacer */}
+      <div className="flex-1" />
 
-        {/* Logo */}
-        {company?.logoUrl && (
-          <img
-            src={company.logoUrl}
-            className="h-8 w-8 rounded-full border"
-            alt="Company logo"
-          />
+      {/* Action buttons */}
+      <button
+        onClick={() => router.push("/dashboard/jobs/new")}
+        className="px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm whitespace-nowrap"
+      >
+        New Job
+      </button>
+      <button
+        onClick={() => router.push("/dashboard/jobs/add")}
+        className="px-2.5 sm:px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs sm:text-sm whitespace-nowrap"
+      >
+        SMS Parse
+      </button>
+
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition"
+        aria-label="Toggle theme"
+      >
+        {theme === "dark" ? (
+          <Sun size={18} className="text-yellow-400" />
+        ) : (
+          <Moon size={18} className="text-gray-800" />
         )}
- {/* User Info */}
-        <div className="flex items-center gap-2">
-          <span className="font-medium">
-            {user?.name} ({user?.role})
-          </span>
-        </div>
-        {/* Company Name */}
-        <span className="font-medium">{company?.name}</span>
+      </button>
+
+      {/* Settings + Logout (desktop) */}
+      <Link
+        href="/dashboard/settings"
+        className="hidden md:grid place-items-center p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
+        aria-label="Settings"
+      >
+        <Settings size={18} />
+      </Link>
+      <Link
+        href="/logout"
+        className="hidden md:grid place-items-center p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
+        aria-label="Logout"
+      >
+        <LogOut size={18} />
+      </Link>
+
+      {/* Company logo */}
+      {company?.logoUrl && (
+        <img
+          src={company.logoUrl}
+          className="hidden sm:block h-8 w-8 rounded-full border"
+          alt="Company logo"
+        />
+      )}
+
+      {/* User + company (desktop only) */}
+      <div className="hidden lg:flex items-center gap-2 text-sm">
+        <span className="font-medium whitespace-nowrap">
+          {user?.name} ({user?.role})
+        </span>
+        <span className="font-medium whitespace-nowrap">{company?.name}</span>
       </div>
-    </div>
+    </header>
   );
 }

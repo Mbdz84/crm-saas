@@ -15,7 +15,7 @@ import {
   BarChart3,
   } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [collapsed, setCollapsed] = useState(false);
   const [unread, setUnread] = useState(0);
   const [me, setMe] = useState<any>(null);
@@ -108,6 +108,7 @@ export default function Sidebar() {
               label="Dashboard"
               icon={<Home size={18} />}
               collapsed={collapsed}
+              onNavigate={onNavigate}
             />
           )}
 
@@ -116,6 +117,7 @@ export default function Sidebar() {
             label="Jobs"
             icon={<Briefcase size={18} />}
             collapsed={collapsed}
+            onNavigate={onNavigate}
           />
 
           {showChat && (
@@ -125,6 +127,7 @@ export default function Sidebar() {
               icon={<MessageSquare size={18} />}
               collapsed={collapsed}
               badge={unread}
+              onNavigate={onNavigate}
             />
           )}
 
@@ -134,6 +137,7 @@ export default function Sidebar() {
               label="Calendar"
               icon={<Calendar size={18} />}
               collapsed={collapsed}
+              onNavigate={onNavigate}
             />
           )}
           {showSearch && (
@@ -142,6 +146,7 @@ export default function Sidebar() {
             label="Search"
             icon={<Search size={18} />}
             collapsed={collapsed}
+            onNavigate={onNavigate}
           />
           )}
 
@@ -151,6 +156,7 @@ export default function Sidebar() {
               label="Reports"
               icon={<BarChart3 size={18} />}
               collapsed={collapsed}
+              onNavigate={onNavigate}
             />
           )}
         </SidebarSection>
@@ -162,12 +168,14 @@ export default function Sidebar() {
         label="CRM Settings"
         icon={<Settings size={18} />}
         collapsed={collapsed}
+        onNavigate={onNavigate}
       />
       <SidebarLink
         href="/logout"
         label="Logout"
         icon={<Settings size={18} />}
         collapsed={collapsed}
+        onNavigate={onNavigate}
       />
       {!collapsed && (
         <div className="px-4 text-xs text-gray-500 mt-auto py-4">
