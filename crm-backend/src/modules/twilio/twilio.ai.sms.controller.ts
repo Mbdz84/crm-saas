@@ -4,6 +4,7 @@ import { generateUniqueShortId } from "../jobs/utils/shortId";
 import { parseTextWithAI } from "../jobs/actions/parse.helper";
 import { resolveTimezoneForJob } from "../../utils/timezone";
 import { recordInboundSms } from "../messages/messages.controller";
+import { attachPendingCallsToJob } from "../incomingCall/incomingCall.service";
 
 /* ============================================================
    INCOMING SMS
@@ -178,7 +179,7 @@ export async function incomingSms(req: Request, res: Response) {
   );
 
   // 🧾 CREATE JOB
-  await prisma.job.create({
+  const job = await prisma.job.create({
     data: {
       shortId: await generateUniqueShortId(),
 
@@ -213,6 +214,10 @@ export async function incomingSms(req: Request, res: Response) {
       },
     },
   });
+
+  // Link any dispatch call that arrived just before this SMS-created job
+  // (call-first path missed it because the job didn't exist yet). Fail-safe.
+  await attachPendingCallsToJob(job);
 
   return res.type("text/xml").send("<Response></Response>");
 }

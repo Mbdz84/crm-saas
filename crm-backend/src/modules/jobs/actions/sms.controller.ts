@@ -176,6 +176,14 @@ export function buildSmsText(job: any, settings: any): string {
   for (const key of settings.order) {
     if (!settings.show[key]) continue;
 
+    // Custom free-text fields: the typed text lives in settings.label and is
+    // inserted as-is (no label prefix, no job lookup).
+    if (key === "custom1" || key === "custom2") {
+      const text = (settings.label?.[key] || "").toString().trim();
+      if (text) lines.push(text);
+      continue;
+    }
+
     const value = getVal(key);
 
 // ✅ skip empty values entirely

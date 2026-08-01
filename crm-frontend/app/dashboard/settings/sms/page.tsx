@@ -26,7 +26,11 @@ type SmsFieldKey =
   | "jobType"
   | "notes"
   | "appointment"
-  | "leadSource";
+  | "leadSource"
+  | "custom1"
+  | "custom2";
+
+const CUSTOM_KEYS: SmsFieldKey[] = ["custom1", "custom2"];
 
 interface SmsField {
   key: SmsFieldKey;
@@ -163,8 +167,13 @@ try {
   --------------------------------------------------------- */
   const preview = fields
     .filter((f) => f.enabled)
+    .filter((f) => !CUSTOM_KEYS.includes(f.key) || f.label.trim())
     .map((f) =>
-      f.showLabel ? `${f.label}: Sample` : "SAMPLE"
+      CUSTOM_KEYS.includes(f.key)
+        ? f.label
+        : f.showLabel
+        ? `${f.label}: Sample`
+        : "SAMPLE"
     )
     .join("\n");
 
@@ -195,6 +204,7 @@ try {
                 label={f.label}
                 enabled={f.enabled}
                 showLabel={f.showLabel}
+                isCustom={CUSTOM_KEYS.includes(f.key)}
                 onToggle={() => toggleField(f.key)}
                 onToggleLabel={() => toggleLabel(f.key)}
                 onRename={(txt) => renameField(f.key, txt)}
