@@ -38,7 +38,7 @@ export default function TechniciansPage() {
 
   const loadTechs = async () => {
     try {
-      const res = await fetch(`${API}/technicians`, {
+      const res = await fetch(`${API}/technicians?all=1`, {
         credentials: "include",
       });
       const data = await res.json();
@@ -59,6 +59,23 @@ export default function TechniciansPage() {
 
   useEffect(() => {
     loadTechs();
+  }, []);
+
+  // Technicians/dispatchers can't browse the user directory — send them to
+  // their own profile.
+  useEffect(() => {
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        const u = d?.user;
+        if (
+          u?.id &&
+          (u.role === "technician" || u.role === "dispatcher")
+        ) {
+          router.replace(`/dashboard/technicians/${u.id}`);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   /* Filter + split into Active / Inactive groups */
@@ -84,13 +101,13 @@ export default function TechniciansPage() {
     <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto w-full">
       {/* HEADER + Create Button */}
       <div className="flex justify-between items-center gap-3">
-        <h1 className="text-2xl md:text-3xl font-semibold">Technicians</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold">Users</h1>
 
         <button
           onClick={() => router.push("/dashboard/technicians/new")}
           className="px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500 whitespace-nowrap"
         >
-          + New Technician
+          + New User
         </button>
       </div>
 
@@ -150,16 +167,35 @@ export default function TechniciansPage() {
                 </div>
               </div>
 
-              {/* Masked calls label */}
-              <span
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
-                  t.maskedCalls
-                    ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
-                    : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
-                }`}
-              >
-                Masked: {t.maskedCalls ? "On" : "Off"}
-              </span>
+              {/* Status badges: Role · Login · Masked */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Role */}
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap capitalize bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                  {t.role || "technician"}
+                </span>
+
+                {/* Login access */}
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    t.canLogin
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                      : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                  }`}
+                >
+                  Login: {t.canLogin ? "On" : "Off"}
+                </span>
+
+                {/* Masked calls */}
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                    t.maskedCalls
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                      : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                  }`}
+                >
+                  Masked: {t.maskedCalls ? "On" : "Off"}
+                </span>
+              </div>
 
               <ChevronRight
                 size={18}

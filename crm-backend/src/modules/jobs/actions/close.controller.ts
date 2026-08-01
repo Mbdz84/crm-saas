@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../../prisma/client";
 import { calcPaymentTotals } from "../utils/payments";
 import { logJobEvent } from "../../../utils/jobLogger";
+import { techPerms } from "../../../utils/scope";
 
 
 export async function closeJob(req: Request, res: Response) {
@@ -40,6 +41,16 @@ export async function closeJob(req: Request, res: Response) {
       return res.status(400).json({ error: "Cannot close a canceled job" });
     }
 
+    // Server-side permission hardening for the money fields. Admins/owners
+    // bypass (perms === null). A restricted user who can't even see the
+    // closing panel cannot close the job at all.
+    const perms = await techPerms(req);
+    if (perms && !perms.canSeeClosing) {
+      return res
+        .status(403)
+        .json({ error: "Not allowed to close jobs." });
+    }
+
     const body = req.body || {};
     const {
       invoiceNumber,
@@ -68,6 +79,39 @@ export async function closeJob(req: Request, res: Response) {
       sumCheck,
       closedAt: closedAtRaw,
     } = body;
+
+    // Reject values a restricted technician isn't allowed to set. The UI hides
+    // these inputs when the permission is off, so a legitimate close sends the
+    // defaults (parts/fee = 0, percentages = the tech's default) and passes;
+    // only a crafted/tampered request is rejected.
+    if (perms) {
+      const n = (v: any) => Math.round(Number(v) || 0);
+
+      if (
+        !perms.canAdjustParts &&
+        (n(techParts) || n(leadParts) || n(companyParts))
+      ) {
+        return res.status(403).json({ error: "Not allowed to enter parts." });
+      }
+
+      if (!perms.canAdjustFees && n(leadAdditionalFee)) {
+        return res.status(403).json({ error: "Not allowed to add fees." });
+      }
+
+      if (!perms.canAdjustPercentages) {
+        const actingUser = await prisma.user.findUnique({
+          where: { id: req.user!.id },
+          select: { defaultTechPercent: true },
+        });
+        const def = actingUser?.defaultTechPercent;
+        // Only enforce when a default exists to compare against.
+        if (def != null && n(techPercent) !== n(def)) {
+          return res
+            .status(403)
+            .json({ error: "Not allowed to change the split." });
+        }
+      }
+    }
 
     const closedAtDate = closedAtRaw ? new Date(closedAtRaw) : new Date();
 

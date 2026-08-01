@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import bcrypt from "bcryptjs";
 import twilio from "twilio";
+import { techPerms } from "../../utils/scope";
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID!,
@@ -45,14 +46,22 @@ export async function getTechnicians(req: any, res: Response) {
   try {
     const companyId = req.user.companyId;
 
+    // `?all=1` → every user in the company (the settings "Users" directory),
+    // but only for admins/owners. Default (and for non-admins) → technicians
+    // only, which keeps the job-assignment dropdown clean.
+    const includeAll =
+      (req.query.all === "1" || req.query.all === "true") &&
+      !(await techPerms(req));
+
     const techs = await prisma.user.findMany({
       where: {
         companyId,
-        role: "technician", // ✅ use "technician"
+        ...(includeAll ? {} : { role: "technician" }),
       },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        role: true,
         name: true,
         email: true,
         phone: true,
@@ -126,6 +135,11 @@ export async function getTechnicianById(req: any, res: Response) {
 --------------------------------*/
 export async function createTechnician(req: any, res: Response) {
   try {
+    // Only admins/owners can create users (perms === null for them).
+    if (await techPerms(req)) {
+      return res.status(403).json({ error: "Only admins can create users." });
+    }
+
     const companyId = req.user.companyId;
     const {
       name,
@@ -167,7 +181,10 @@ export async function createTechnician(req: any, res: Response) {
         email,
         password: hashedPassword,
         phone: normalizePhone(phone),
-        role: role || "technician", // ✅ default to "technician"
+        // Only allow the three valid roles; anything else defaults to technician.
+        role: ["admin", "technician", "dispatcher"].includes(role)
+          ? role
+          : "technician",
 
         active: active ?? true,
         receiveSms: receiveSms ?? true,
@@ -215,6 +232,15 @@ export async function updateTechnician(req: any, res: Response) {
       return res.status(404).json({ error: "Technician not found" });
     }
 
+    // Admins/owners (perms === null) can edit anyone. Technicians/dispatchers
+    // can only edit their OWN record (and only basic fields — enforced below).
+    const actorPerms = await techPerms(req);
+    if (actorPerms && id !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "You can only edit your own profile." });
+    }
+
     const body = req.body || {};
 
     // ✅ whitelist only fields we allow to update
@@ -254,6 +280,7 @@ const f = req.body;
 
 // Basic info
 if (f.name !== undefined) allowedFields.name = f.name;
+if (f.email !== undefined) allowedFields.email = f.email;
 if (f.phone !== undefined) allowedFields.phone = f.phone;
 if (f.active !== undefined) allowedFields.active = Boolean(f.active);
 
@@ -322,6 +349,16 @@ if (f.canAdjustFees !== undefined) allowedFields.canAdjustFees = Boolean(f.canAd
 // AVAILABILITY
 if (f.availability !== undefined) allowedFields.availability = f.availability;
 
+// Non-admins editing their own profile may only change name / email / phone —
+// strip out roles, permissions, financial defaults, toggles, etc.
+if (actorPerms) {
+  const { name, email, phone } = allowedFields;
+  for (const k of Object.keys(allowedFields)) delete allowedFields[k];
+  if (name !== undefined) allowedFields.name = name;
+  if (email !== undefined) allowedFields.email = email;
+  if (phone !== undefined) allowedFields.phone = phone;
+}
+
 const tech = await prisma.user.update({
   where: { id, companyId },
   data: allowedFields,
@@ -371,6 +408,13 @@ export async function resetPassword(req: any, res: Response) {
     const companyId = req.user.companyId;
     const { id } = req.params;
     const { password } = req.body;
+
+    // Admins/owners can reset anyone's password; others only their own.
+    if ((await techPerms(req)) && id !== req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "You can only change your own password." });
+    }
 
     const tech = await prisma.user.findFirst({
       where: { id, companyId }

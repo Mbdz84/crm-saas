@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const TABS = [
   { label: "Company", href: "/dashboard/settings" },
   { label: "Job Types", href: "/dashboard/settings/job-types" },
   { label: "Lead Sources", href: "/dashboard/settings/lead-sources" },
   { label: "Technicians / Users", href: "/dashboard/technicians" },
-  { label: "Users", href: "/dashboard/users" },
   { label: "Job Status", href: "/dashboard/settings/statuses" },
   { label: "SMS Settings", href: "/dashboard/settings/sms" },
   { label: "Caller IDs", href: "/dashboard/settings/caller-ids" },
@@ -18,6 +18,29 @@ const TABS = [
 
 export default function SettingsTabs() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [me, setMe] = useState<any>(null);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMe(d?.user || null))
+      .catch(() => {});
+  }, []);
+
+  const restricted =
+    me && (me.role === "technician" || me.role === "dispatcher");
+
+  // Technicians/dispatchers don't get settings — send them to their own profile.
+  useEffect(() => {
+    if (restricted && me?.id) {
+      router.replace(`/dashboard/technicians/${me.id}`);
+    }
+  }, [restricted, me?.id, router]);
+
+  if (restricted) return null;
 
   return (
     <div className="border-b mb-4 overflow-x-auto">

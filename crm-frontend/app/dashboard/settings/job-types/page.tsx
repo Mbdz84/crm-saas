@@ -76,7 +76,7 @@ export default function JobTypesSettingsPage() {
   if (loading) return <div className="p-6">Loading job types...</div>;
 
   return (
-    <div className="p-6 max-w-2xl space-y-4">
+    <div className="p-6 max-w-2xl mx-auto w-full space-y-4">
       <h1 className="text-2xl font-semibold mb-2">Job Types</h1>
       <p className="text-sm text-gray-600 mb-4">
         Manage the list of services/job types your dispatchers can select when

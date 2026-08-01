@@ -13,6 +13,7 @@ export default function NewTechnicianPage() {
     email: "",
     phone: "",
     password: "",
+    role: "technician",
     active: true,
   });
 
@@ -35,18 +36,18 @@ export default function NewTechnicianPage() {
     });
 
     if (res.ok) {
-      toast.success("Technician created");
+      toast.success("User created");
       router.push("/dashboard/technicians");
     } else {
       const err = await res.json().catch(() => null);
-      toast.error(err?.error || "Failed to create technician");
+      toast.error(err?.error || "Failed to create user");
     }
   }
 
   return (
     <div className="p-6 max-w-lg mx-auto">
 
-      <h1 className="text-2xl font-semibold mb-6">Add Technician</h1>
+      <h1 className="text-2xl font-semibold mb-6">Add User</h1>
 
       <form onSubmit={submit} className="space-y-4 bg-white dark:bg-gray-900 p-6 rounded shadow">
 
@@ -87,6 +88,23 @@ export default function NewTechnicianPage() {
           />
         </div>
 
+        <div>
+          <label className="text-sm mb-1 block">Role</label>
+          <select
+            className="border rounded p-2 w-full dark:bg-gray-900"
+            value={form.role}
+            onChange={(e) => set("role", e.target.value)}
+          >
+            <option value="admin">Admin</option>
+            <option value="technician">Technician</option>
+            <option value="dispatcher">Dispatcher</option>
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Admin = full access. Technician / Dispatcher follow the permissions
+            you set on their profile.
+          </p>
+        </div>
+
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -109,7 +127,7 @@ export default function NewTechnicianPage() {
             type="submit"
             className="px-4 py-2 bg-blue-600 text-white rounded"
           >
-            Save Technician
+            Save User
           </button>
         </div>
       </form>

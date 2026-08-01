@@ -31,6 +31,24 @@ export default function TechnicianProfilePage() {
     "profile" | "permissions" | "financial" | "availability" | "masked-calls"
   >("profile");
 
+  // Viewer (the logged-in user) — technicians/dispatchers get a limited view.
+  const [viewer, setViewer] = useState<any>(null);
+  useEffect(() => {
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setViewer(d?.user || null))
+      .catch(() => {});
+  }, []);
+  const restricted =
+    viewer && (viewer.role === "technician" || viewer.role === "dispatcher");
+
+  // A restricted user may only view their OWN profile.
+  useEffect(() => {
+    if (restricted && viewer?.id && id && viewer.id !== id) {
+      router.replace(`/dashboard/technicians/${viewer.id}`);
+    }
+  }, [restricted, viewer?.id, id, router]);
+
   /* ============================================================
      LOAD TECHNICIAN
   ============================================================ */
@@ -155,34 +173,41 @@ export default function TechnicianProfilePage() {
           Profile
         </button>
 
-        <button
-          className={tab === "permissions" ? "font-bold text-blue-600" : ""}
-          onClick={() => setTab("permissions")}
-        >
-          Permissions
-        </button>
+        {/* Admin-only tabs */}
+        {!restricted && (
+          <>
+            <button
+              className={tab === "permissions" ? "font-bold text-blue-600" : ""}
+              onClick={() => setTab("permissions")}
+            >
+              Permissions
+            </button>
 
-        <button
-          className={tab === "financial" ? "font-bold text-blue-600" : ""}
-          onClick={() => setTab("financial")}
-        >
-          Financial
-        </button>
+            <button
+              className={tab === "financial" ? "font-bold text-blue-600" : ""}
+              onClick={() => setTab("financial")}
+            >
+              Financial
+            </button>
 
-        <button
-          className={tab === "availability" ? "font-bold text-blue-600" : ""}
-          onClick={() => setTab("availability")}
-        >
-          Availability
-        </button>
+            <button
+              className={tab === "availability" ? "font-bold text-blue-600" : ""}
+              onClick={() => setTab("availability")}
+            >
+              Availability
+            </button>
 
-        {tech?.maskedCalls && (
-          <button
-            className={tab === "masked-calls" ? "font-bold text-blue-600" : ""}
-            onClick={() => setTab("masked-calls")}
-          >
-            Masked Calls
-          </button>
+            {tech?.maskedCalls && (
+              <button
+                className={
+                  tab === "masked-calls" ? "font-bold text-blue-600" : ""
+                }
+                onClick={() => setTab("masked-calls")}
+              >
+                Masked Calls
+              </button>
+            )}
+          </>
         )}
       </div>
 
@@ -216,58 +241,6 @@ export default function TechnicianProfilePage() {
                 onChange={(e) => setTech({ ...tech, email: e.target.value })}
               />
             </div>
-
-            <div>
-              <label className="font-medium block mb-1">Timezone</label>
-              <select
-                className="w-full border p-2"
-                value={tech.timezone || "America/Chicago"}
-                onChange={(e) =>
-                  setTech({ ...tech, timezone: e.target.value })
-                }
-              >
-                {TIMEZONE_OPTIONS.map((tz) => (
-                  <option key={tz.value} value={tz.value}>
-                    {tz.label}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                Fallback timezone for this tech&apos;s jobs when the address
-                doesn&apos;t resolve one.
-              </p>
-            </div>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={tech.active}
-                onChange={(e) => setTech({ ...tech, active: e.target.checked })}
-              />
-              Active Technician (shows in the technician dropdown)
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={tech.receiveSms}
-                onChange={(e) =>
-                  setTech({ ...tech, receiveSms: e.target.checked })
-                }
-              />
-              Receive SMS
-            </label>
-
-            <label className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={tech.maskedCalls}
-                onChange={(e) =>
-                  setTech({ ...tech, maskedCalls: e.target.checked })
-                }
-              />
-              Masked Calls + Recording
-            </label>
 
             {/* PASSWORD */}
             <div>
@@ -305,6 +278,67 @@ export default function TechnicianProfilePage() {
               </p>
             </div>
 
+            {!restricted && (
+              <div>
+                <label className="font-medium block mb-1">Timezone</label>
+                <select
+                  className="w-full border p-2"
+                  value={tech.timezone || "America/Chicago"}
+                  onChange={(e) =>
+                    setTech({ ...tech, timezone: e.target.value })
+                  }
+                >
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <option key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Fallback timezone for this tech&apos;s jobs when the address
+                  doesn&apos;t resolve one.
+                </p>
+              </div>
+            )}
+
+            {/* Admin-only toggles */}
+            {!restricted && (
+              <>
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={tech.active}
+                    onChange={(e) =>
+                      setTech({ ...tech, active: e.target.checked })
+                    }
+                  />
+                  Active Technician (shows in the technician dropdown)
+                </label>
+
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={tech.receiveSms}
+                    onChange={(e) =>
+                      setTech({ ...tech, receiveSms: e.target.checked })
+                    }
+                  />
+                  Receive SMS
+                </label>
+
+                <label className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={tech.maskedCalls}
+                    onChange={(e) =>
+                      setTech({ ...tech, maskedCalls: e.target.checked })
+                    }
+                  />
+                  Masked Calls + Recording
+                </label>
+              </>
+            )}
+
             <button
               className="px-3 py-2 bg-blue-600 text-white rounded w-full"
               onClick={saveProfile}
@@ -313,12 +347,14 @@ export default function TechnicianProfilePage() {
               {saving ? "Saving..." : "Save Changes"}
             </button>
 
-            <button
-              className="px-3 py-2 bg-red-500 text-white rounded w-full"
-              onClick={deleteTech}
-            >
-              Delete Technician
-            </button>
+            {!restricted && (
+              <button
+                className="px-3 py-2 bg-red-500 text-white rounded w-full"
+                onClick={deleteTech}
+              >
+                Delete Technician
+              </button>
+            )}
           </div>
         )}
 

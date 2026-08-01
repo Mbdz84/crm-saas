@@ -15,8 +15,9 @@ export default function PartsPanel() {
     includePartsInProfit,
   } = useJob();
 
-  // Technicians without fee permission don't see the Add Fee field
+  // Technicians without parts/fee permission don't see those inputs
   // (admins have no viewer → full access).
+  const canAdjustParts = (job as any)?.viewer?.canAdjustParts !== false;
   const canAdjustFees = (job as any)?.viewer?.canAdjustFees !== false;
 
   const {
@@ -33,32 +34,34 @@ export default function PartsPanel() {
     <div className="border rounded p-3 bg-gray-50 space-y-2">
       <h3 className="text-xs font-semibold">Parts & Fees</h3>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="block text-[10px] mb-1">Tech Parts</label>
-          <input
-            className="border rounded px-1 py-1 w-full text-xs bg-white"
-            value={techParts}
-            onChange={(e) => setTechParts(e.target.value)}
-          />
+      {canAdjustParts && (
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-[10px] mb-1">Tech Parts</label>
+            <input
+              className="border rounded px-1 py-1 w-full text-xs bg-white"
+              value={techParts}
+              onChange={(e) => setTechParts(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] mb-1">Lead Parts</label>
+            <input
+              className="border rounded px-1 py-1 w-full text-xs bg-white"
+              value={leadParts}
+              onChange={(e) => setLeadParts(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] mb-1">Company Parts</label>
+            <input
+              className="border rounded px-1 py-1 w-full text-xs bg-white"
+              value={companyParts}
+              onChange={(e) => setCompanyParts(e.target.value)}
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-[10px] mb-1">Lead Parts</label>
-          <input
-            className="border rounded px-1 py-1 w-full text-xs bg-white"
-            value={leadParts}
-            onChange={(e) => setLeadParts(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-[10px] mb-1">Company Parts</label>
-          <input
-            className="border rounded px-1 py-1 w-full text-xs bg-white"
-            value={companyParts}
-            onChange={(e) => setCompanyParts(e.target.value)}
-          />
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         {canAdjustFees ? (

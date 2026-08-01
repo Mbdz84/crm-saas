@@ -67,7 +67,7 @@ export default function SettingsPage() {
   if (!company) return <div className="p-6">Loading...</div>;
 
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-6 max-w-xl mx-auto w-full">
 
       <h1 className="text-2xl font-semibold mb-4">Company Settings</h1>
 

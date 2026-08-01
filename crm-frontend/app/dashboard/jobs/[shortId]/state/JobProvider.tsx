@@ -342,6 +342,14 @@ useEffect(() => {
       );
       changed = true;
     }
+
+    // "Exclude tech from paying parts" default (saved as
+    // defaultPartsResponsibility === "company") → pre-check the closing
+    // panel's exclude-parts box.
+    if (tech.defaultPartsResponsibility != null) {
+      setExcludeTechFromParts(tech.defaultPartsResponsibility === "company");
+      changed = true;
+    }
   }
 
   if (source) {

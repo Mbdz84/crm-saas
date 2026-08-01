@@ -23,6 +23,7 @@ type TechFlags = {
   canEditStatus: boolean;
   canSeeCallerId: boolean;
   canAdjustPercentages: boolean;
+  canAdjustParts: boolean;
   canAdjustFees: boolean;
   canRefreshExtension: boolean;
   canDeleteJob: boolean;
@@ -50,6 +51,7 @@ const TECH_DEFAULTS = {
   canEditStatus: true,
   canSeeCallerId: true,
   canAdjustPercentages: false,
+  canAdjustParts: false,
   canAdjustFees: false,
   canRefreshExtension: true,
   canDeleteJob: true,
@@ -85,6 +87,7 @@ async function techFlags(req: any): Promise<TechFlags> {
       canEditStatus: true,
       canSeeCallerId: true,
       canAdjustPercentages: true,
+      canAdjustParts: true,
       canAdjustFees: true,
       canRefreshExtension: true,
       canDeleteJob: true,
@@ -175,6 +178,7 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
       canEditStatus: true,
       canSeeCallerId: true,
       canAdjustPercentages: true,
+      canAdjustParts: true,
       canAdjustFees: true,
       canRefreshExtension: true,
       canDeleteJob: true,
@@ -196,6 +200,7 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
     canEditStatus: f.canEditStatus,
     canSeeCallerId: f.canSeeCallerId,
     canAdjustPercentages: f.canAdjustPercentages,
+    canAdjustParts: f.canAdjustParts,
     canAdjustFees: f.canAdjustFees,
     canRefreshExtension: f.canRefreshExtension,
     canDeleteJob: f.canDeleteJob,

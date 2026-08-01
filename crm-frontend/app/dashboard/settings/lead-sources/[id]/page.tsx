@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 
 type TabKey = "profile" | "financial";
@@ -234,7 +235,7 @@ const revokeApiKey = async () => {
     "Locked: name & financial fields are read-only. You can unlock to edit.";
 
   return (
-    <div className="p-6 max-w-3xl space-y-6">
+    <div className="p-6 max-w-3xl mx-auto w-full space-y-6">
       {/* HEADER */}
       <div className="flex justify-between items-center">
         <div>
@@ -429,7 +430,15 @@ const revokeApiKey = async () => {
 
 {/* API KEY */}
 <div className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800 mt-6 space-y-2">
-  <h3 className="text-sm font-semibold">API Access (Direct JSON)</h3>
+  <div className="flex items-center justify-between gap-2">
+    <h3 className="text-sm font-semibold">API Access (Direct JSON)</h3>
+    <Link
+      href="/dashboard/settings/docs"
+      className="text-xs text-blue-600 hover:underline whitespace-nowrap"
+    >
+      Read docs ↗
+    </Link>
+  </div>
 
   {source.apiKeyLast4 ? (
     <>
@@ -538,18 +547,6 @@ const revokeApiKey = async () => {
                 />
               </div>
             </div>
-
-            <label className="flex items-center gap-3 text-sm mt-2">
-              <input
-                type="checkbox"
-                checked={autoApplyFinancialRules}
-                onChange={(e) =>
-                  setAutoApplyFinancialRules(e.target.checked)
-                }
-                disabled={locked}
-              />
-              <span>Auto apply these rules in closing panel</span>
-            </label>
           </div>
         )}
 

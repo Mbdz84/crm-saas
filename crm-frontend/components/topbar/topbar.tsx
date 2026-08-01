@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -27,6 +27,20 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const [user, setUser] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
   const [unread, setUnread] = useState(0);
+
+  // "New Job" dropdown (Manually / SMS Parse)
+  const [newJobMenuOpen, setNewJobMenuOpen] = useState(false);
+  const newJobMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!newJobMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!newJobMenuRef.current?.contains(e.target as Node)) {
+        setNewJobMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [newJobMenuOpen]);
 
   /* Load company + logged-in user (with permission flags) */
   useEffect(() => {
@@ -180,22 +194,39 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       {/* spacer */}
       <div className="flex-1" />
 
-      {/* Action buttons — hidden for a technician/dispatcher without create permission */}
+      {/* New Job dropdown — hidden for a technician/dispatcher without create permission */}
       {!(isTech && user?.canCreateJob === false) && (
-        <>
+        <div className="relative" ref={newJobMenuRef}>
           <button
-            onClick={() => router.push("/dashboard/jobs/new")}
-            className="px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs sm:text-sm whitespace-nowrap"
+            onClick={() => setNewJobMenuOpen((o) => !o)}
+            className="px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs sm:text-sm whitespace-nowrap flex items-center gap-1"
           >
-            New Job
+            New Job <span className="text-[10px]">▾</span>
           </button>
-          <button
-            onClick={() => router.push("/dashboard/jobs/add")}
-            className="px-2.5 sm:px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition text-xs sm:text-sm whitespace-nowrap"
-          >
-            SMS Parse
-          </button>
-        </>
+
+          {newJobMenuOpen && (
+            <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-gray-800 border rounded-md shadow-lg overflow-hidden z-50">
+              <button
+                onClick={() => {
+                  setNewJobMenuOpen(false);
+                  router.push("/dashboard/jobs/new");
+                }}
+                className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                Manually
+              </button>
+              <button
+                onClick={() => {
+                  setNewJobMenuOpen(false);
+                  router.push("/dashboard/jobs/add");
+                }}
+                className="block w-full text-left px-3 py-2 text-sm border-t hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                SMS Parse
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Theme toggle */}
@@ -211,11 +242,15 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         )}
       </button>
 
-      {/* Settings + Logout (desktop) */}
+      {/* Settings (admins) / My Profile (technician & dispatcher) */}
       <Link
-        href="/dashboard/settings"
+        href={
+          isTech && user?.id
+            ? `/dashboard/technicians/${user.id}`
+            : "/dashboard/settings"
+        }
         className="hidden md:grid place-items-center p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
-        aria-label="Settings"
+        aria-label={isTech ? "My profile" : "Settings"}
       >
         <Settings size={18} />
       </Link>
