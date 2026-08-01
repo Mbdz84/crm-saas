@@ -489,22 +489,24 @@ function formatAddress(addr?: string | null) {
       {groupedByStatus.map((group) => (
         <section key={group.statusName} className="space-y-2">
           {/* STATUS HEADER */}
-          <div className="flex items-center justify-between mt-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 mt-4">
+            <span
+              className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold"
+              style={{
+                color: group.color || "#6b7280",
+                backgroundColor: `${group.color || "#6b7280"}22`,
+              }}
+            >
               <span
-                className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
-                style={{
-                  backgroundColor: group.color || "#e5e7eb",
-                  color: "#111827",
-                }}
-              >
-                {group.statusName}
-              </span>
-              <span className="text-xs text-gray-500">
-                {group.jobs.length} job
-                {group.jobs.length === 1 ? "" : "s"}
-              </span>
-            </div>
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: group.color || "#6b7280" }}
+              />
+              {group.statusName}
+            </span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+              {group.jobs.length} job
+              {group.jobs.length === 1 ? "" : "s"}
+            </span>
           </div>
 
           {/* DESKTOP TABLE */}
@@ -577,6 +579,9 @@ onClick={() => toggleSort("createdAt")}
                   return (
                     <tr
                       key={job.id}
+                      style={{
+                        borderLeft: `4px solid ${group.color || "#6b7280"}`,
+                      }}
                       className={`border-t hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer ${
                         selectMode && selectedIds.has(short)
                           ? "bg-red-50 dark:bg-red-950/30"
@@ -686,7 +691,8 @@ onClick={() => toggleSort("createdAt")}
               return (
                 <div
                   key={job.id}
-                  className="border rounded bg-white dark:bg-gray-900 p-3 shadow-sm"
+                  className="border border-l-4 rounded bg-white dark:bg-gray-900 p-3 shadow-sm"
+                  style={{ borderLeftColor: group.color || "#6b7280" }}
                   onClick={() => router.push(`/dashboard/jobs/${short}`)}
                 >
                   <div className="flex justify-between items-start mb-1">
