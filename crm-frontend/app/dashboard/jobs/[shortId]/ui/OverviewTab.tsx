@@ -144,6 +144,19 @@ export default function OverviewTab() {
   const canEditStatus = jobViewer.canEditStatus !== false;
   const canSeeClosing = jobViewer.canSeeClosing !== false;
 
+  // Click-to-call the masked dial string, but only on mobile/touch devices.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setIsMobile(
+        window.matchMedia("(pointer: coarse)").matches ||
+          window.innerWidth < 768
+      );
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
 type Reminder = {
   id: string;
   minutes: number;
@@ -287,9 +300,18 @@ const phone2Ext = sessions.find(
 const selectedStatusIsCanceled = (() => {
   const statusObj = statuses.find((s: any) => s.id === (editableJob.statusId ?? job.statusId));
   if (!statusObj) return false;
-  const name = statusObj.name.toLowerCase();
-  return ["cancel", "canceled", "cancelled"].includes(name);
+  // Matches "Cancel", "Canceled", "Cancelled" AND "Pending Cancel" so the
+  // cancel-reason window opens for the technician's pending cancel too.
+  return statusObj.name.toLowerCase().includes("cancel");
 })();
+
+// The job's PERSISTED status is a FINAL cancel (not "pending cancel").
+const jobStatusNameLc = (job.jobStatus?.name || job.status || "").toLowerCase();
+const isFinalCanceled =
+  jobStatusNameLc.includes("cancel") && !jobStatusNameLc.includes("pending");
+// A finalized cancel is read-only for technicians/dispatchers (grayed out),
+// same idea as a locked/closed job. Admins can still edit / reopen.
+const cancelLockedForTech = isFinalCanceled && isTechnician;
   const showClosingPanel =
     canSeeClosing &&
     (currentStatusName === "Closed" || currentStatusName === "Pending Close");
@@ -410,6 +432,11 @@ const selectedStatusIsCanceled = (() => {
       <div className="space-y-6 mt-4">
         <div className="border rounded p-4 space-y-3 bg-gray-50 dark:bg-gray-900">
           <h2 className="font-semibold text-lg mb-2">Customer Information</h2>
+
+          {/* Two columns: left = name/phones · right = address/timezone/job type */}
+          <div className="grid md:grid-cols-2 gap-x-6 gap-y-3">
+          {/* LEFT — name + phones */}
+          <div className="space-y-3">
 
 {/* NAME */}
 <Editable
@@ -536,7 +563,16 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex items-center gap-2 font-mono">
         <span>Phone 1</span>
         <span className="text-gray-400">→</span>
-        <span>{(maskedNumber || "—")},{phone1Ext}</span>
+        {isMobile && maskedNumber ? (
+          <a
+            href={`tel:${maskedNumber},${phone1Ext}`}
+            className="text-blue-600 underline"
+          >
+            {maskedNumber},{phone1Ext}
+          </a>
+        ) : (
+          <span>{(maskedNumber || "—")},{phone1Ext}</span>
+        )}
       </div>
     )}
 
@@ -544,7 +580,16 @@ const selectedStatusIsCanceled = (() => {
       <div className="flex items-center gap-2 font-mono mt-1">
         <span>Phone 2</span>
         <span className="text-gray-400">→</span>
-        <span>{(maskedNumber || "—")},{phone2Ext}</span>
+        {isMobile && maskedNumber ? (
+          <a
+            href={`tel:${maskedNumber},${phone2Ext}`}
+            className="text-blue-600 underline"
+          >
+            {maskedNumber},{phone2Ext}
+          </a>
+        ) : (
+          <span>{(maskedNumber || "—")},{phone2Ext}</span>
+        )}
       </div>
     )}
 
@@ -558,6 +603,9 @@ const selectedStatusIsCanceled = (() => {
     )}
   </div>
 )}
+          </div>
+          {/* RIGHT — address, timezone, job type */}
+          <div className="space-y-3">
 
 {/* ADDRESS */}
 <div>
@@ -575,6 +623,20 @@ const selectedStatusIsCanceled = (() => {
       readOnly
     />
   )}
+
+  {/* Parsed address readout (styled like Masked Calls): label + 2 lines */}
+  {editableJob.customerAddress && (() => {
+    const parts = String(editableJob.customerAddress).split(",");
+    const line1 = parts[0]?.trim();
+    const line2 = parts.slice(1).join(",").trim();
+    return (
+      <div className="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+        <div className="font-medium mb-1">Address</div>
+        <div>{line1}</div>
+        {line2 && <div>{line2}</div>}
+      </div>
+    );
+  })()}
 </div>
 
 
@@ -631,6 +693,8 @@ const selectedStatusIsCanceled = (() => {
               ))}
             </select>
           </div>
+          </div>{/* end right column */}
+          </div>{/* end two-column grid */}
 
           <Editable
             textarea
@@ -721,15 +785,21 @@ const selectedStatusIsCanceled = (() => {
             <label className="block text-sm font-medium">Status</label>
             <select
               className={`mt-1 w-full border rounded p-2 ${
-                !canEditStatus ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+                !canEditStatus || cancelLockedForTech
+                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                  : ""
               }`}
               value={editableJob.statusId || ""}
-              disabled={!canEditStatus}
+              disabled={!canEditStatus || cancelLockedForTech}
               onChange={(e) => setField("statusId", e.target.value)}
             >
-              
+
               {statuses
                 .filter((s: any) => {
+                  // Always show the job's current status (so a canceled/closed
+                  // job displays it even though techs can't pick it).
+                  if (s.id === (editableJob.statusId ?? job.statusId))
+                    return true;
                   // Technicians finalize nothing — they use Pending Close /
                   // Pending Cancel; an admin sets the real Closed / Canceled.
                   if (
@@ -748,6 +818,54 @@ const selectedStatusIsCanceled = (() => {
                 ))}
             </select>
           </div>
+
+        {/* CLOSING PANEL — opens right under the Status field */}
+        {showClosingPanel && (
+          <ClosingPanel
+            job={job}
+            editableJob={editableJob}
+            setField={setField}
+            currentStatusName={currentStatusName}
+            editingLocked={editingLocked}
+            payments={jobCtx.payments}
+            userRole={techRole}
+            getCollectorOptions={getCollectorOptions}
+            techPercent={techPercent}
+            leadPercent={leadPercent}
+            companyPercent={companyPercent}
+            techParts={techParts}
+            leadParts={leadParts}
+            companyParts={companyParts}
+            leadAdditionalFee={leadAdditionalFee}
+            techPaysAdditionalFee={techPaysAdditionalFee}
+            excludeTechFromParts={excludeTechFromParts}
+            includePartsInProfit={includePartsInProfit}
+            disableAutoAdjust={disableAutoAdjust}
+            invoiceNumberState={invoiceNumberState}
+            result={result}
+            addPaymentRow={addPaymentRow}
+            removePaymentRow={removePaymentRow}
+            updatePayment={updatePayment}
+            handlePercentChange={handlePercentChange}
+            normalizePercent={normalizePercent}
+            setTechParts={setTechParts}
+            setLeadParts={setLeadParts}
+            setCompanyParts={setCompanyParts}
+            setLeadAdditionalFee={setLeadAdditionalFee}
+            setTechPaysAdditionalFee={setTechPaysAdditionalFee}
+            setExcludeTechFromParts={setExcludeTechFromParts}
+            setIncludePartsInProfit={setIncludePartsInProfit}
+            setDisableAutoAdjust={setDisableAutoAdjust}
+            setInvoiceState={setInvoiceState}
+            calculateSplit={calculateSplit}
+            closeJob={closeJob}
+            base={base}
+            shortId={job.shortId}
+            isAdmin={isAdmin}
+            cancelReason={cancelReason}
+          />
+        )}
+
 {selectedStatusIsCanceled && (
   <div className="mt-2 space-y-2">
 
@@ -780,7 +898,8 @@ const selectedStatusIsCanceled = (() => {
 
     <label className="text-sm font-medium">Cancel Reason</label>
 
-    {/* Suggested Cancel Reasons */}
+    {/* Suggested Cancel Reasons — hidden once the cancel is finalized/locked */}
+    {!cancelLockedForTech && (
     <div className="flex flex-wrap gap-2">
       {[
         "Not answering",
@@ -811,14 +930,33 @@ const selectedStatusIsCanceled = (() => {
           {tag}
         </button>
       ))}
+
+      {/* Pull the Description / Notes text into the cancel reason */}
+      <button
+        type="button"
+        onClick={() =>
+          setCancelReason((prev: string) => {
+            const desc = (editableJob.description || "").trim();
+            if (!desc) return prev;
+            return prev ? `${prev} | ${desc}` : desc;
+          })
+        }
+        className="px-2 py-1 text-xs border rounded bg-blue-50 text-blue-700 border-blue-300 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800"
+      >
+        Copy from description
+      </button>
     </div>
+    )}
 
     {/* Textarea */}
     <textarea
-  className="w-full border rounded p-2"
+  className={`w-full border rounded p-2 ${
+    cancelLockedForTech ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""
+  }`}
   rows={4}
   value={cancelReason}
   onChange={(e) => setCancelReason(e.target.value)}
+  readOnly={cancelLockedForTech}
   placeholder="Why was this job canceled?"
 />
   </div>
@@ -1038,53 +1176,7 @@ const selectedStatusIsCanceled = (() => {
 </button>
 </div>
         {/* =============================================== */}
-        {/* CLOSING PANEL */}
-        {/* =============================================== */}
-        {showClosingPanel && (
-          <ClosingPanel
-            job={job}
-            editableJob={editableJob} 
-            setField={setField}      
-            currentStatusName={currentStatusName}
-            editingLocked={editingLocked}
-            payments={jobCtx.payments}
-            userRole={techRole}
-            getCollectorOptions={getCollectorOptions}
-            techPercent={techPercent}
-            leadPercent={leadPercent}
-            companyPercent={companyPercent}
-            techParts={techParts}
-            leadParts={leadParts}
-            companyParts={companyParts}
-            leadAdditionalFee={leadAdditionalFee}
-            techPaysAdditionalFee={techPaysAdditionalFee}
-            excludeTechFromParts={excludeTechFromParts}
-            includePartsInProfit={includePartsInProfit}
-            disableAutoAdjust={disableAutoAdjust}
-            invoiceNumberState={invoiceNumberState}
-            result={result}
-            addPaymentRow={addPaymentRow}
-            removePaymentRow={removePaymentRow}
-            updatePayment={updatePayment}
-            handlePercentChange={handlePercentChange}
-            normalizePercent={normalizePercent}
-            setTechParts={setTechParts}
-            setLeadParts={setLeadParts}
-            setCompanyParts={setCompanyParts}
-            setLeadAdditionalFee={setLeadAdditionalFee}
-            setTechPaysAdditionalFee={setTechPaysAdditionalFee}
-            setExcludeTechFromParts={setExcludeTechFromParts}
-            setIncludePartsInProfit={setIncludePartsInProfit}
-            setDisableAutoAdjust={setDisableAutoAdjust}
-            setInvoiceState={setInvoiceState}
-            calculateSplit={calculateSplit}
-            closeJob={closeJob}
-            base={base}
-            shortId={job.shortId}
-            isAdmin={isAdmin}
-            cancelReason={cancelReason}
-          />
-        )}
+        {/* CLOSING PANEL is rendered right under the Status field (above). */}
 </div>
 {/* ========================= */}
 {/* SMS PREVIEW MODAL */}
@@ -1211,6 +1303,12 @@ function ClosingPanel(props: any) {
     cancelReason,
   } = props;
 
+  // Closing-panel permissions (admins have no viewer → full access).
+  const viewer = (job as any)?.viewer;
+  const canAdjustPercentages = viewer?.canAdjustPercentages !== false;
+  const canAdjustParts = viewer?.canAdjustParts !== false;
+  const canAdjustFees = viewer?.canAdjustFees !== false;
+
   const [splitMode, setSplitMode] = useState<"percent" | "dollar">("percent");
   const [techDollarInput, setTechDollarInput] = useState("");
   const [leadDollarInput, setLeadDollarInput] = useState("");
@@ -1318,168 +1416,10 @@ const router = useRouter();
       <div>
         {/* PAYMENT + RIGHT INFO */}
         <div className="grid md:grid-cols-2 gap-4 mt-4">
-          {/* LEFT — PAYMENTS */}
+          {/* LEFT — Percentages on top, then Payment Blocks */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold">
-                Payment Blocks (Multi-Payment)
-              </h3>
-              <button
-                type="button"
-                onClick={addPaymentRow}
-                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
-              >
-                + Add Payment
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {payments.map((p: any) => {
-                const collectors = getCollectorOptions(p.payment);
-
-                return (
-                  <div
-                    key={p.id}
-                    className="relative grid grid-cols-5 gap-2 border rounded p-2 bg-gray-50 text-xs"
-                  >
-                    {/* Remove Button */}
-                    <button
-                      type="button"
-                      onClick={() => removePaymentRow(p.id)}
-                      className="absolute top-1 right-1 text-red-600 text-[10px] font-bold"
-                    >
-                      ✕
-                    </button>
-
-                    {/* Method */}
-                    <div>
-                      <label className="block text-[10px] mb-1">Method</label>
-                      <select
-                        className="border rounded px-1 py-1 w-full text-xs bg-white"
-                        value={p.payment}
-                        onChange={(e) =>
-                          updatePayment(p.id, "payment", e.target.value)
-                        }
-                      >
-                        <option value="cash">Cash</option>
-                        <option value="credit">Credit</option>
-                        <option value="check">Check</option>
-                        <option value="zelle">Zelle</option>
-                      </select>
-                    </div>
-
-                    {/* Collected By */}
-                    <div>
-                      {p.payment !== "cash" ? (
-                        <>
-                          <label className="block text-[10px] mb-1">
-                            Collected By
-                          </label>
-                          <select
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
-                            value={p.collectedBy}
-                            onChange={(e) =>
-                              updatePayment(
-                                p.id,
-                                "collectedBy",
-                                e.target.value
-                              )
-                            }
-                          >
-                            {collectors.map((c: string) => (
-                              <option key={c} value={c}>
-                                {c === "tech"
-                                  ? "Technician"
-                                  : c === "lead"
-                                  ? "Lead Source"
-                                  : "Company"}
-                              </option>
-                            ))}
-                          </select>
-                        </>
-                      ) : (
-                        <div className="text-[10px] text-gray-400 mt-4">
-                          No choice – Cash → Technician
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Amount */}
-                    <div>
-                      <label className="block text-[10px] mb-1">
-                        Amount ($)
-                      </label>
-                      <input
-                        className="border rounded px-1 py-1 w-full text-xs bg-white"
-                        value={p.amount}
-                        onChange={(e) =>
-                          updatePayment(p.id, "amount", e.target.value)
-                        }
-                      />
-                    </div>
-
-                    {/* Fee Column */}
-                    <div className="min-w-[70px]">
-                      {p.payment === "credit" && (
-                        <>
-                          <label className="block text-[10px] mb-1">
-                            CC Fee %
-                          </label>
-                          <input
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
-                            value={p.ccFeePct}
-                            onChange={(e) =>
-                              updatePayment(
-                                p.id,
-                                "ccFeePct",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </>
-                      )}
-
-                      {p.payment === "check" && (
-                        <>
-                          <label className="block text-[10px] mb-1">
-                            Check Fee %
-                          </label>
-                          <input
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
-                            value={p.checkFeePct}
-                            onChange={(e) =>
-                              updatePayment(
-                                p.id,
-                                "checkFeePct",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </>
-                      )}
-
-                      {(p.payment === "cash" || p.payment === "zelle") && (
-                        <div className="text-[10px] text-gray-400 mt-4">
-                          No Fee
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="text-[10px] text-gray-400 flex items-center">
-                      Payment #{p.id}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* RIGHT SIDE — SUMMARY INFO */}
-          <div className="space-y-3">
-
-
-            
             {/* Percentages */}
+            {canAdjustPercentages && (
             <div className="border rounded p-3 bg-gray-50">
               <div className="flex items-center justify-between mb-2">
   <h3 className="text-xs font-semibold">Percentages</h3>
@@ -1672,11 +1612,170 @@ const router = useRouter();
                 Disable auto-adjust
               </label>
             </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">
+                Payment Blocks (Multi-Payment)
+              </h3>
+              <button
+                type="button"
+                onClick={addPaymentRow}
+                className="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 rounded"
+              >
+                + Add Payment
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {payments.map((p: any) => {
+                const collectors = getCollectorOptions(p.payment);
+
+                return (
+                  <div
+                    key={p.id}
+                    className="relative grid grid-cols-5 gap-2 border rounded p-2 bg-gray-50 text-xs"
+                  >
+                    {/* Remove Button */}
+                    <button
+                      type="button"
+                      onClick={() => removePaymentRow(p.id)}
+                      className="absolute top-1 right-1 text-red-600 text-[10px] font-bold"
+                    >
+                      ✕
+                    </button>
+
+                    {/* Method */}
+                    <div>
+                      <label className="block text-[10px] mb-1">Method</label>
+                      <select
+                        className="border rounded px-1 py-1 w-full text-xs bg-white"
+                        value={p.payment}
+                        onChange={(e) =>
+                          updatePayment(p.id, "payment", e.target.value)
+                        }
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="credit">Credit</option>
+                        <option value="check">Check</option>
+                        <option value="zelle">Zelle</option>
+                      </select>
+                    </div>
+
+                    {/* Collected By */}
+                    <div>
+                      {p.payment !== "cash" ? (
+                        <>
+                          <label className="block text-[10px] mb-1">
+                            Collected By
+                          </label>
+                          <select
+                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            value={p.collectedBy}
+                            onChange={(e) =>
+                              updatePayment(
+                                p.id,
+                                "collectedBy",
+                                e.target.value
+                              )
+                            }
+                          >
+                            {collectors.map((c: string) => (
+                              <option key={c} value={c}>
+                                {c === "tech"
+                                  ? "Technician"
+                                  : c === "lead"
+                                  ? "Lead Source"
+                                  : "Company"}
+                              </option>
+                            ))}
+                          </select>
+                        </>
+                      ) : (
+                        <div className="text-[10px] text-gray-400 mt-4">
+                          No choice – Cash → Technician
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Amount */}
+                    <div>
+                      <label className="block text-[10px] mb-1">
+                        Amount ($)
+                      </label>
+                      <input
+                        className="border rounded px-1 py-1 w-full text-xs bg-white"
+                        value={p.amount}
+                        onChange={(e) =>
+                          updatePayment(p.id, "amount", e.target.value)
+                        }
+                      />
+                    </div>
+
+                    {/* Fee Column */}
+                    <div className="min-w-[70px]">
+                      {p.payment === "credit" && (
+                        <>
+                          <label className="block text-[10px] mb-1">
+                            CC Fee %
+                          </label>
+                          <input
+                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            value={p.ccFeePct}
+                            onChange={(e) =>
+                              updatePayment(
+                                p.id,
+                                "ccFeePct",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </>
+                      )}
+
+                      {p.payment === "check" && (
+                        <>
+                          <label className="block text-[10px] mb-1">
+                            Check Fee %
+                          </label>
+                          <input
+                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            value={p.checkFeePct}
+                            onChange={(e) =>
+                              updatePayment(
+                                p.id,
+                                "checkFeePct",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </>
+                      )}
+
+                      {(p.payment === "cash" || p.payment === "zelle") && (
+                        <div className="text-[10px] text-gray-400 mt-4">
+                          No Fee
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-[10px] text-gray-400 flex items-center">
+                      Payment #{p.id}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RIGHT SIDE — SUMMARY INFO */}
+          <div className="space-y-3">
 
             {/* Parts + Additional Fees */}
             <div className="border rounded p-3 bg-gray-50 space-y-2">
               <h3 className="text-xs font-semibold">Parts & Fees</h3>
 
+              {canAdjustParts && (
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] mb-1">Tech Parts</label>
@@ -1705,8 +1804,10 @@ const router = useRouter();
                   />
                 </div>
               </div>
+              )}
 
               {/* Additional Fee */}
+              {canAdjustFees && (
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-[10px] mb-1">Add Fee ($)</label>
@@ -1717,7 +1818,9 @@ const router = useRouter();
                   />
                 </div>
               </div>
+              )}
 
+              {canAdjustFees && (
               <div className="col-span-2 space-y-1 mt-4">
                 <label className="inline-flex items-center gap-2 text-[11px]">
                   <input
@@ -1752,6 +1855,7 @@ const router = useRouter();
                   Include parts in profit
                 </label>
               </div>
+              )}
 
               <label className="text-xs">Invoice #</label>
               <input

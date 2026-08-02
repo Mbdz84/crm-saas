@@ -45,6 +45,7 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
        STATUS DETECTION
     ====================================================== */
     let isCanceled = false;
+    let isPendingCancel = false;
     let isClosed = false;
     // Whether the new status ends the job for call-routing purposes
     // (Closed / Canceled / Pending Close / Pending Cancel).
@@ -53,6 +54,7 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
     if (typeof updates.status === "string") {
       const clean = updates.status.toLowerCase();
       isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
+      isPendingCancel = clean === "pending cancel";
       isClosed = clean === "closed";
       isTerminal = isTerminalCallStatus(updates.status);
     }
@@ -65,6 +67,7 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
       if (statusRow) {
         const clean = statusRow.name.toLowerCase();
         isCanceled = ["cancel", "canceled", "cancelled"].includes(clean);
+        isPendingCancel = clean === "pending cancel";
         isClosed = clean === "closed";
         isTerminal = isTerminalCallStatus(statusRow.name);
       }
@@ -140,12 +143,17 @@ console.log("🟡 INVALIDATION FLAGS:", {
             ? updates.statusId || null
             : job.statusId,
 
-...(isCanceled
+...(isCanceled || isPendingCancel
   ? {
+      // Save the reason for BOTH pending cancel and final cancel.
       canceledReason,
-      canceledAt: updates.canceledAt
-        ? new Date(updates.canceledAt)
-        : job.canceledAt ?? new Date(),
+      // Only a FINAL cancel stamps canceledAt (which drives the 45-min board
+      // hide); a pending cancel stays unstamped so it never disappears.
+      canceledAt: isCanceled
+        ? updates.canceledAt
+          ? new Date(updates.canceledAt)
+          : job.canceledAt ?? new Date()
+        : null,
     }
 
   : {
