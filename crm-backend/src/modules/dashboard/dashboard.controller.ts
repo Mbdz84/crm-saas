@@ -36,7 +36,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
       createdToday,
       closedToday,
       canceledInRange,
-      revenueAgg,
+      closedForMoney,
       unreadAgg,
       unassigned,
       appointments,
@@ -53,9 +53,26 @@ export async function getDashboardSummary(req: Request, res: Response) {
       prisma.job.count({
         where: { companyId, canceledAt: { gte: rangeStart, lt: rangeEnd } },
       }),
-      prisma.jobClosing.aggregate({
-        _sum: { totalAmount: true, companyProfitDisplay: true },
-        where: { job: { companyId }, closedAt: { gte: rangeStart, lt: rangeEnd } },
+      // Closed jobs (one closing each) for revenue + company profit — computed
+      // the SAME way as the Reports page so the numbers match exactly.
+      prisma.job.findMany({
+        where: {
+          companyId,
+          closedAt: { gte: rangeStart, lt: rangeEnd },
+          closing: { isNot: null },
+        },
+        select: {
+          technician: { select: { isOwner: true } },
+          source: { select: { isOwner: true } },
+          closing: {
+            select: {
+              totalAmount: true,
+              companyProfitDisplay: true,
+              techProfit: true,
+              leadProfit: true,
+            },
+          },
+        },
       }),
       prisma.smsConversation.aggregate({
         _sum: { unread: true },
@@ -97,13 +114,26 @@ export async function getDashboardSummary(req: Request, res: Response) {
       }),
     ]);
 
+    // Same math as the Reports page: company profit = the company's own split,
+    // plus the profit of any technician / lead source the company owns.
+    let revenue = 0;
+    let companyProfit = 0;
+    for (const j of closedForMoney as any[]) {
+      const c = j.closing;
+      if (!c) continue;
+      revenue += Number(c.totalAmount || 0);
+      companyProfit += Number(c.companyProfitDisplay || 0);
+      if (j.technician?.isOwner) companyProfit += Number(c.techProfit || 0);
+      if (j.source?.isOwner) companyProfit += Number(c.leadProfit || 0);
+    }
+
     return res.json({
       openJobs,
       created: createdToday,
       closed: closedToday,
       canceled: canceledInRange,
-      revenue: Number(revenueAgg._sum.totalAmount || 0),
-      companyProfit: Number(revenueAgg._sum.companyProfitDisplay || 0),
+      revenue,
+      companyProfit,
       unreadSms: unreadAgg._sum.unread || 0,
       unassigned: unassigned.map((j) => ({
         shortId: j.shortId,
