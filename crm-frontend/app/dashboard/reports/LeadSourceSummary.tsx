@@ -1,6 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { FileText } from "lucide-react";
+import SettleCell from "./SettleCell";
+import SettlementInlinePanel from "./SettlementInlinePanel";
 
 export default function LeadSourceSummary({
   data,
@@ -13,6 +16,8 @@ export default function LeadSourceSummary({
   from?: string;
   to?: string;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   function openReport(name: string) {
     const params = new URLSearchParams();
     params.append("kind", "lead");
@@ -60,6 +65,7 @@ export default function LeadSourceSummary({
             <th className="border px-2 py-1 text-center">Cancel %</th>
             <th className="border px-2 py-1 text-center">Total Amount</th>
             <th className="border px-0 py-1 text-center">Lead Balance (Profit)</th>
+            <th className="border px-2 py-1 text-center">Settled</th>
           </tr>
         </thead>
 
@@ -78,8 +84,8 @@ export default function LeadSourceSummary({
                 : "0";
 
             return (
+              <React.Fragment key={row.name}>
               <tr
-                key={row.name}
                 onClick={() => openReport(row.name)}
                 className="cursor-pointer hover:bg-gray-100"
               >
@@ -101,7 +107,54 @@ export default function LeadSourceSummary({
                 <td className="border px-0 py-1 text-center">
                   ${totals.leadBalance.toFixed(2)}
                 </td>
+                <td className="border px-2 py-1 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {(() => {
+                      const leadJobs = jobs.filter(
+                        (j) => j.source?.name === row.name && j.closing
+                      );
+                      return (
+                        <SettleCell
+                          partyType="leadSource"
+                          partyId={leadJobs[0]?.source?.id}
+                          partyName={row.name}
+                          from={from}
+                          to={to}
+                          jobs={leadJobs.map((j) => ({
+                            jobId: j.id,
+                            amount: Number(j.closing?.leadBalance || 0),
+                          }))}
+                        />
+                      );
+                    })()}
+                    <button
+                      type="button"
+                      title="Payment history"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpanded(expanded === row.name ? null : row.name);
+                      }}
+                      className="text-gray-500 hover:text-blue-600"
+                    >
+                      <FileText size={16} />
+                    </button>
+                  </div>
+                </td>
               </tr>
+              {expanded === row.name && (
+                <tr>
+                  <td colSpan={9} className="border p-0">
+                    <SettlementInlinePanel
+                      partyType="leadSource"
+                      partyId={
+                        jobs.find((j) => j.source?.name === row.name)?.source?.id
+                      }
+                      partyName={row.name}
+                    />
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             );
           })}
         </tbody>
@@ -139,6 +192,7 @@ export default function LeadSourceSummary({
                 )
                 .toFixed(2)}
             </td>
+            <td className="border px-2 py-1 text-center">-</td>
           </tr>
         </tfoot>
       </table>

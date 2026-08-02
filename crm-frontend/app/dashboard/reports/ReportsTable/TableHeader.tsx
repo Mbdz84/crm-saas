@@ -7,6 +7,8 @@ export default function TableHeader({
   onSort,
   allSelected,
   onToggleAll,
+  showSettled = false,
+  settledLabel = "Settled",
 }: {
   visible: Record<string, boolean>;
   sortField: string;
@@ -14,6 +16,8 @@ export default function TableHeader({
   onSort: (field: string) => void;
   allSelected: boolean;
   onToggleAll: () => void;
+  showSettled?: boolean;
+  settledLabel?: string;
 }) {
   return (
     <thead className="bg-gray-100 sticky top-0 z-20">
@@ -27,6 +31,13 @@ export default function TableHeader({
             onChange={onToggleAll}
           />
         </th>
+
+        {/* Settled (per-party) — only on the standalone entity report */}
+        {showSettled && (
+          <th className="border px-2 py-1 text-xs font-semibold whitespace-nowrap sticky left-6 z-30 bg-gray-100">
+            {settledLabel}
+          </th>
+        )}
 
         {columnDefs.map((col) =>
           visible[col.key] ? (

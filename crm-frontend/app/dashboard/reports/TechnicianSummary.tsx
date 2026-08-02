@@ -1,6 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { FileText } from "lucide-react";
+import SettleCell from "./SettleCell";
+import SettlementInlinePanel from "./SettlementInlinePanel";
 
 export default function TechnicianSummary({
   data,
@@ -13,6 +16,8 @@ export default function TechnicianSummary({
   from?: string;
   to?: string;
 }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
   function openReport(name: string) {
     const params = new URLSearchParams();
     params.append("kind", "tech");
@@ -78,6 +83,7 @@ export default function TechnicianSummary({
             <th className="border px-2 py-1 text-center">Total Amount</th>
             <th className="border px-2 py-1 text-center">Tech Balance</th>
             <th className="border px-2 py-1 text-center">Tech Profit</th>
+            <th className="border px-2 py-1 text-center">Settled</th>
           </tr>
         </thead>
 
@@ -96,8 +102,8 @@ export default function TechnicianSummary({
                 : "0";
 
             return (
+              <React.Fragment key={t.name}>
               <tr
-                key={t.name}
                 onClick={() => openReport(t.name)}
                 className="cursor-pointer hover:bg-blue-50"
               >
@@ -121,7 +127,55 @@ export default function TechnicianSummary({
                 <td className="border px-2 py-1 text-center">
                   ${totals.techProfit.toFixed(2)}
                 </td>
+                <td className="border px-2 py-1 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {(() => {
+                      const techJobs = jobs.filter(
+                        (j) => j.technician?.name === t.name && j.closing
+                      );
+                      return (
+                        <SettleCell
+                          partyType="technician"
+                          partyId={techJobs[0]?.technician?.id}
+                          partyName={t.name}
+                          from={from}
+                          to={to}
+                          jobs={techJobs.map((j) => ({
+                            jobId: j.id,
+                            amount: Number(j.closing?.techBalance || 0),
+                          }))}
+                        />
+                      );
+                    })()}
+                    <button
+                      type="button"
+                      title="Payment history"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpanded(expanded === t.name ? null : t.name);
+                      }}
+                      className="text-gray-500 hover:text-blue-600"
+                    >
+                      <FileText size={16} />
+                    </button>
+                  </div>
+                </td>
               </tr>
+              {expanded === t.name && (
+                <tr>
+                  <td colSpan={10} className="border p-0">
+                    <SettlementInlinePanel
+                      partyType="technician"
+                      partyId={
+                        jobs.find((j) => j.technician?.name === t.name)
+                          ?.technician?.id
+                      }
+                      partyName={t.name}
+                    />
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             );
           })}
         </tbody>
@@ -148,6 +202,7 @@ export default function TechnicianSummary({
             <td className="border px-2 py-1 text-center">
               ${grand.profit.toFixed(2)}
             </td>
+            <td className="border px-2 py-1 text-center">-</td>
           </tr>
         </tfoot>
       </table>

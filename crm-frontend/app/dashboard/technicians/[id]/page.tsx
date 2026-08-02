@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -9,6 +9,7 @@ import PermissionsTab from "./tabs/PermissionsTab";
 import FinancialTab from "./tabs/FinancialTab";
 import AvailabilityTab from "./tabs/AvailabilityTab";
 import MaskedCallSettingsTab from "./tabs/maskedCallSettings";
+import PaymentsTab from "@/components/settlements/PaymentsTab";
 import { TIMEZONE_OPTIONS } from "@/utils/timezone";
 
 export default function TechnicianProfilePage() {
@@ -27,9 +28,15 @@ export default function TechnicianProfilePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<
-    "profile" | "permissions" | "financial" | "availability" | "masked-calls"
-  >("profile");
+    | "profile"
+    | "permissions"
+    | "financial"
+    | "availability"
+    | "masked-calls"
+    | "payments"
+  >(searchParams.get("tab") === "payments" ? "payments" : "profile");
 
   // Viewer (the logged-in user) — technicians/dispatchers get a limited view.
   const [viewer, setViewer] = useState<any>(null);
@@ -207,12 +214,23 @@ export default function TechnicianProfilePage() {
                 Masked Calls
               </button>
             )}
+
+            <button
+              className={tab === "payments" ? "font-bold text-blue-600" : ""}
+              onClick={() => setTab("payments")}
+            >
+              Payments
+            </button>
           </>
         )}
       </div>
 
       {/* MAIN CONTENT */}
-      <div className={tab === "permissions" ? "" : "max-w-xl"}>
+      <div
+        className={
+          tab === "permissions" || tab === "payments" ? "" : "max-w-xl"
+        }
+      >
         {tab === "profile" && (
           <div className="space-y-6">
             <div>
@@ -384,6 +402,10 @@ export default function TechnicianProfilePage() {
             save={saveProfile}
             saving={saving}
           />
+        )}
+
+        {tab === "payments" && (
+          <PaymentsTab partyType="technician" partyId={id} />
         )}
       </div>
 

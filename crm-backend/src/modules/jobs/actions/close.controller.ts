@@ -118,6 +118,13 @@ export async function closeJob(req: Request, res: Response) {
     const { cashTotal, creditTotal, checkTotal, zelleTotal } =
       calcPaymentTotals(payments);
 
+    // Snapshot the previous closing total so we can auto-unsettle if it changes.
+    const prevClosing = await prisma.jobClosing.findUnique({
+      where: { jobId: job.id },
+      select: { totalAmount: true },
+    });
+    const prevTotal = prevClosing ? Number(prevClosing.totalAmount) : null;
+
     // Tech → "Pending Close" (editable). Admin → "Closed" (final).
     const targetName = isTech ? "Pending Close" : "Closed";
     const targetStatus = await prisma.jobStatus.findFirst({
@@ -283,6 +290,28 @@ export async function closeJob(req: Request, res: Response) {
       text: closeText,
       userId: user.id,
     });
+
+    // Auto-unsettle: if a previously-settled job's closing amount changed,
+    // remove its settlement stamps (both parties) so it re-enters the next
+    // settlement. The frozen Settlement history rows are left untouched.
+    if (
+      prevTotal !== null &&
+      Math.round(Number(totalAmount) * 100) !== Math.round(prevTotal * 100)
+    ) {
+      const removed = await prisma.jobPartySettlement.deleteMany({
+        where: { jobId: job.id },
+      });
+      if (removed.count > 0) {
+        await logJobEvent({
+          jobId: job.id,
+          type: "system",
+          text: `Unsettled — closing amount changed ($${prevTotal.toFixed(
+            2
+          )} → $${Number(totalAmount).toFixed(2)})`,
+          userId: user.id,
+        });
+      }
+    }
 
     return res.json(result);
   } catch (err) {

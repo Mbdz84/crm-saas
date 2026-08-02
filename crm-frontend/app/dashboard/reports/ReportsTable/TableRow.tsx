@@ -17,11 +17,15 @@ export default function TableRow({
   highlighted,
   toggleRow,
   visible,
+  showSettled = false,
+  settled,
 }: {
   job: any;
   highlighted: boolean;
   toggleRow: (id: string) => void;
   visible: Record<string, boolean>;
+  showSettled?: boolean;
+  settled?: { paid?: boolean } | undefined;
 }) {
   const c = job.closing;
 
@@ -93,6 +97,26 @@ const bg = highlighted
           onChange={() => toggleRow(job.id)}
         />
       </td>
+
+      {/* Settled (per-party) — only on the standalone entity report */}
+      {showSettled && (
+        <td
+          onClick={(e) => e.stopPropagation()}
+          className={`border px-2 py-1 text-center whitespace-nowrap sticky left-6 z-10 ${
+            isCancelled ? "bg-red-50" : "bg-white"
+          }`}
+        >
+          {settled ? (
+            settled.paid ? (
+              <span className="text-green-700 font-semibold">✓ Paid</span>
+            ) : (
+              <span className="text-amber-600 font-semibold">✓ Settled</span>
+            )
+          ) : (
+            <span className="text-gray-400">—</span>
+          )}
+        </td>
+      )}
 
       {visible.invoice && (
         <td className="border px-2 py-1">{c?.invoiceNumber || "-"}</td>

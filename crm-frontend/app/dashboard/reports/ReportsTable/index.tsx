@@ -80,6 +80,8 @@ export default function ReportsTable({
   expandedSourceName,
   defaultVisibleKeys,
   storageKey = "report_column_defaults",
+  settledMap,
+  settledLabel = "Settled",
 }: {
   rows: any[];
   from?: string;
@@ -88,7 +90,11 @@ export default function ReportsTable({
   expandedSourceName?: string | null;
   defaultVisibleKeys?: string[];
   storageKey?: string;
+  // When provided, a per-party "Settled" column is shown after the checkbox.
+  settledMap?: Record<string, any>;
+  settledLabel?: string;
 }) {
+  const showSettled = !!settledMap;
   const [highlighted, setHighlighted] = useState<Record<string, boolean>>({});
   const [sortField, setSortField] = useState<string>("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -110,6 +116,8 @@ function buildDefaultVisibility(): Record<string, boolean> {
   } else {
     columnDefs.forEach((c) => (v[c.key] = true));
   }
+  // The per-party "Settled" column defaults to visible when available.
+  if (showSettled) v.settled = true;
   return v;
 }
 
@@ -118,6 +126,10 @@ const [visible, setVisible] = useState<Record<string, boolean>>(
 );
 const [showColumns, setShowColumns] = useState(false);
 const columnsRef = useRef<HTMLDivElement>(null);
+
+// The Settled column exists only when a map is supplied, and can be hidden
+// via the Columns popup (defaults to visible).
+const settledVisible = showSettled && visible.settled !== false;
 
 // Close the Columns popup when clicking anywhere outside it.
 useEffect(() => {
@@ -142,6 +154,7 @@ useEffect(() => {
     columnDefs.forEach((c) => {
       if (stored[c.key] === undefined) stored[c.key] = true;
     });
+    if (showSettled && stored.settled === undefined) stored.settled = true;
     setVisible(stored);
   } catch {
     /* ignore malformed saved layout */
@@ -233,6 +246,9 @@ useEffect(() => {
                 setVisible={setVisible}
                 columnDefs={columnDefs}
                 storageKey={storageKey}
+                extraCols={
+                  showSettled ? [{ key: "settled", label: settledLabel }] : []
+                }
               />
             </div>
           )}
@@ -305,6 +321,8 @@ useEffect(() => {
         onSort={onSort}
         allSelected={allSelected}
         onToggleAll={toggleAllRows}
+        showSettled={settledVisible}
+        settledLabel={settledLabel}
       />
 
       <tbody>
@@ -314,6 +332,8 @@ useEffect(() => {
             job={job}
             visible={visible}
             highlighted={!!highlighted[job.id]}
+            showSettled={settledVisible}
+            settled={settledMap?.[job.id]}
             toggleRow={() =>
               setHighlighted((prev) => ({
                 ...prev,
@@ -323,12 +343,13 @@ useEffect(() => {
           />
         ))}
 
-        <TotalsRow rows={sortedRows} visible={visible} />
+        <TotalsRow rows={sortedRows} visible={visible} showSettled={settledVisible} />
         <TotalsRow
           rows={selectedRows}
           visible={visible}
           variant="selected"
           label={`Sel ${selectedCount}`}
+          showSettled={settledVisible}
         />
       </tbody>
     </table>

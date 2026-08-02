@@ -52,6 +52,8 @@ function ReportView() {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<any[]>([]);
   const [showCancelled, setShowCancelled] = useState(false);
+  // jobId -> settlement info for THIS party (settled with tech, or with lead source).
+  const [settledMap, setSettledMap] = useState<Record<string, any>>({});
 
   useEffect(() => {
     async function load() {
@@ -128,6 +130,44 @@ function ReportView() {
       return showCancelled ? isClosed || isCancelled : isClosed;
     });
   }, [scopeJobs, showCancelled]);
+
+  /* --------------------------------------------------
+     SETTLED STATUS (per party)
+     Which of these jobs are already settled with THIS
+     technician / lead source. Powers the "Settled" column.
+  -------------------------------------------------- */
+  const partyType = isTech ? "technician" : "leadSource";
+  const partyId = useMemo(() => {
+    const j = scopeJobs.find((x) =>
+      isTech ? x.technician?.id : x.source?.id
+    );
+    return isTech ? j?.technician?.id : j?.source?.id;
+  }, [scopeJobs, isTech]);
+
+  const jobIdsKey = useMemo(
+    () => filteredRows.map((j) => j.id).join(","),
+    [filteredRows]
+  );
+
+  useEffect(() => {
+    async function loadSettled() {
+      if (!partyId || !jobIdsKey) {
+        setSettledMap({});
+        return;
+      }
+      try {
+        const res = await fetch(
+          `${API}/settlements/status?partyType=${partyType}&partyId=${partyId}&jobIds=${jobIdsKey}`,
+          { credentials: "include" }
+        );
+        const d = await res.json();
+        setSettledMap(d.settled || {});
+      } catch {
+        /* ignore — column just shows "—" */
+      }
+    }
+    loadSettled();
+  }, [API, partyType, partyId, jobIdsKey]);
 
   const defaultVisibleKeys = isTech
     ? [
@@ -242,6 +282,8 @@ function ReportView() {
           to={to}
           expandedTechName={isTech ? name : null}
           expandedSourceName={isTech ? null : name}
+          settledMap={settledMap}
+          settledLabel={isTech ? "Settled (tech)" : "Settled (lead)"}
           defaultVisibleKeys={defaultVisibleKeys}
           storageKey={
             isTech

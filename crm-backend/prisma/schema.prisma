@@ -341,3 +341,46 @@ model InboundCall {
 
   @@index([companyId, occurredAt])
 }
+
+// ============================================================
+//  SETTLEMENTS — weekly payment history per party (technician /
+//  lead source). Settlement is per (job x party): a job can be
+//  settled with its technician and its lead source independently.
+//  See memory/settlement-feature.md.
+// ============================================================
+model Settlement {
+  id          String    @id @default(cuid())
+  companyId   String
+  partyType   String // "technician" | "leadSource"
+  partyId     String // User.id or LeadSource.id
+  periodStart DateTime
+  periodEnd   DateTime
+  amount      Decimal   @db.Decimal(10, 2) // signed snapshot; + = party owes the company
+  note        String?
+  manual      Boolean   @default(false) // manually-added row (bonus / adjustment)
+  paid        Boolean   @default(false)
+  paidAt      DateTime?
+  settledById String?
+  createdAt   DateTime  @default(now())
+
+  jobStamps JobPartySettlement[]
+
+  @@index([companyId, partyType, partyId])
+}
+
+// One stamp per (job x party): marks a job settled with that party.
+model JobPartySettlement {
+  id           String   @id @default(cuid())
+  companyId    String
+  jobId        String
+  partyType    String // "technician" | "leadSource"
+  partyId      String
+  settlementId String
+  amount       Decimal  @db.Decimal(10, 2) // this job's balance for this party at settle time
+  settledAt    DateTime @default(now())
+
+  settlement Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, partyType])
+  @@index([companyId, partyType, partyId])
+}

@@ -6,6 +6,7 @@ type Props = {
   visible: Record<string, boolean>;
   variant?: "total" | "selected";
   label?: string;
+  showSettled?: boolean;
 };
 
 const MONEY_KEYS = new Set([
@@ -36,6 +37,7 @@ export default function TotalsRow({
   visible,
   variant = "total",
   label,
+  showSettled = false,
 }: Props) {
   // Grand total hides when there are no rows; the selected row always shows.
   if (!rows.length && variant !== "selected") return null;
@@ -117,6 +119,10 @@ export default function TotalsRow({
       >
         {label}
       </td>
+
+      {showSettled && (
+        <td className={`sticky left-6 ${bg} border px-2 py-2 z-10`}></td>
+      )}
 
       {columnDefs.map((col) => {
         if (!visible[col.key]) return null;

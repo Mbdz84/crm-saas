@@ -1,22 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
+import PaymentsTab from "@/components/settlements/PaymentsTab";
 
-type TabKey = "profile" | "financial";
+type TabKey = "profile" | "financial" | "payments";
 
 export default function LeadSourceProfile() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [source, setSource] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<TabKey>("profile");
+  const [tab, setTab] = useState<TabKey>(
+    searchParams.get("tab") === "payments" ? "payments" : "profile"
+  );
 
   // Profile fields
   const [name, setName] = useState("");
@@ -278,7 +282,22 @@ const revokeApiKey = async () => {
         >
           Financial
         </button>
+
+        <button
+          className={
+            tab === "payments"
+              ? "font-bold text-blue-600 border-b-2 border-blue-600 pb-1"
+              : "text-gray-600"
+          }
+          onClick={() => setTab("payments")}
+        >
+          Payments
+        </button>
       </div>
+
+      {tab === "payments" && (
+        <PaymentsTab partyType="leadSource" partyId={String(id)} />
+      )}
 
       {/* TAB CONTENT */}
       <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 space-y-4">

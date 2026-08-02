@@ -30,6 +30,7 @@ import reportsRoutes from "./modules/reports/reports.routes";
 import messagesRoutes from "./modules/messages/messages.routes";
 import callerIdRoutes from "./modules/callerIds/callerId.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
+import settlementRoutes from "./modules/settlements/settlements.routes";
 import cronRoutes from "./modules/cron/cron.routes";
 
 import { authMiddleware } from "./middleware/auth";
@@ -107,6 +108,7 @@ app.use("/reports", reportsRoutes);
 app.use("/messages", authMiddleware, tenantMiddleware, messagesRoutes);
 app.use("/caller-ids", authMiddleware, tenantMiddleware, callerIdRoutes);
 app.use("/dashboard", authMiddleware, tenantMiddleware, dashboardRoutes);
+app.use("/settlements", authMiddleware, tenantMiddleware, settlementRoutes);
 
 /* ============================================================
    HEALTH CHECK

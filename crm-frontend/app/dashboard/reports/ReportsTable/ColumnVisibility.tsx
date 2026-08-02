@@ -8,7 +8,10 @@ export default function ColumnVisibility({
   visible,
   setVisible,
   storageKey = "report_column_defaults",
+  extraCols = [],
 }: any) {
+  // Extra toggles that aren't part of columnDefs (e.g. the per-party "Settled").
+  const allCols = [...extraCols, ...columnDefs];
   // Save current layout as the user's default (per-report storageKey)
   function saveDefaults() {
     try {
@@ -27,11 +30,11 @@ export default function ColumnVisibility({
   }
 
   // Select / deselect all columns
-  const allChecked = columnDefs.every((c) => visible[c.key]);
+  const allChecked = allCols.every((c) => visible[c.key]);
 
   function toggleAll() {
     const next: Record<string, boolean> = {};
-    columnDefs.forEach((c) => (next[c.key] = !allChecked));
+    allCols.forEach((c) => (next[c.key] = !allChecked));
     setVisible((prev: any) => ({ ...prev, ...next }));
   }
 
@@ -74,7 +77,7 @@ export default function ColumnVisibility({
 
       {/* Checkbox List */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
-        {columnDefs.map((col) => (
+        {allCols.map((col) => (
           <label
             key={col.key}
             className="flex items-center gap-2 text-sm cursor-pointer"
