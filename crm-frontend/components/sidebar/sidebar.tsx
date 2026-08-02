@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import SidebarLink from "./sidebar-link";
 import SidebarSection from "./sidebar-section";
 import {
-  ChevronLeft,
-  ChevronRight,
   Home,
   Briefcase,
   Calendar,
@@ -16,14 +14,11 @@ import {
   } from "lucide-react";
 
 export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Mobile-drawer-only sidebar — always expanded (desktop uses the topbar nav).
+  const collapsed = false;
   const [unread, setUnread] = useState(0);
   const [me, setMe] = useState<any>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved) setCollapsed(saved === "true");
-  }, []);
+  const [company, setCompany] = useState<any>(null);
 
   // Load the current user's permission flags (to gate nav links).
   useEffect(() => {
@@ -32,6 +27,10 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     fetch(`${base}/auth/me`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setMe(d?.user || null))
+      .catch(() => {});
+    fetch(`${base}/companies/me`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setCompany(d || null))
       .catch(() => {});
   }, []);
 
@@ -73,30 +72,11 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     };
   }, []);
 
-  const toggle = () => {
-    const newState = !collapsed;
-    setCollapsed(newState);
-    localStorage.setItem("sidebar-collapsed", newState.toString());
-  };
-
   return (
-    <aside
-      className={`
-        h-screen border-r bg-white dark:bg-gray-900 flex flex-col transition-all duration-300
-        ${collapsed ? "w-12" : "w-44"}
-      `}
-    >
+    <aside className="h-full w-full border-r bg-white dark:bg-gray-900 flex flex-col">
       {/* LOGO */}
-      <div className="px-4 mb-6 flex items-center justify-between">
-        {!collapsed && (
-          <h1 className="text-2xl font-bold transition-opacity">CRM</h1>
-        )}
-        <button
-          onClick={toggle}
-          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-800 ml-[-8px]"
-        >
-          {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-        </button>
+      <div className="px-4 py-4 mb-2">
+        <h1 className="text-2xl font-bold">CRM</h1>
       </div>
 
       {/* NAVIGATION */}
@@ -177,6 +157,22 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         collapsed={collapsed}
         onNavigate={onNavigate}
       />
+      {/* Company + logged-in user — mobile only (topbar shows it on desktop) */}
+      {!collapsed && (company || me) && (
+        <div className="lg:hidden px-4 py-3 border-t leading-tight">
+          {company?.name && (
+            <div className="text-sm font-semibold truncate">
+              {company.name}
+            </div>
+          )}
+          {me && (
+            <div className="text-xs text-gray-500 truncate">
+              {me.name} ({me.role})
+            </div>
+          )}
+        </div>
+      )}
+
       {!collapsed && (
         <div className="px-4 text-xs text-gray-500 mt-auto py-4">
           © {new Date().getFullYear()} CRM Platform

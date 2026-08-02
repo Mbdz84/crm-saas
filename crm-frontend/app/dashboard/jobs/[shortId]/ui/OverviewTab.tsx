@@ -1417,19 +1417,19 @@ const router = useRouter();
         {/* PAYMENT + RIGHT INFO */}
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           {/* LEFT — Percentages on top, then Payment Blocks */}
-          <div className="space-y-3">
-            {/* Percentages */}
+          <div className="flex flex-col gap-3">
+            {/* Percentages — order-last so Payment Blocks (money) shows first */}
             {canAdjustPercentages && (
-            <div className="border rounded p-3 bg-gray-50">
+            <div className="border rounded p-3 bg-gray-50 order-last">
               <div className="flex items-center justify-between mb-2">
   <h3 className="text-xs font-semibold">Percentages</h3>
 
   <div className="flex items-center gap-1">
-    <span className="text-[10px] text-gray-500">Split Mode</span>
+    <span className="text-xs text-gray-500">Split Mode</span>
     <button
       type="button"
       onClick={() => setSplitMode("percent")}
-      className={`px-2 py-0.5 text-xs rounded ${
+      className={`px-3 py-1 text-sm rounded ${
         splitMode === "percent" ? "bg-blue-600 text-white" : "bg-gray-200"
       }`}
     >
@@ -1438,7 +1438,7 @@ const router = useRouter();
     <button
       type="button"
       onClick={() => setSplitMode("dollar")}
-      className={`px-2 py-0.5 text-xs rounded ${
+      className={`px-3 py-1 text-sm rounded ${
         splitMode === "dollar" ? "bg-blue-600 text-white" : "bg-gray-200"
       }`}
     >
@@ -1449,12 +1449,12 @@ const router = useRouter();
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-  <label className="block text-[10px] mb-1">
+  <label className="block text-xs mb-1">
     Tech {splitMode === "percent" ? "%" : "$"}
   </label>
 
   <input
-  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
   value={splitMode === "percent" ? techPercent : techDollarInput}
   onChange={(e) => {
     if (splitMode === "percent") {
@@ -1500,12 +1500,12 @@ const router = useRouter();
 </div>
 
                 <div>
-  <label className="block text-[10px] mb-1">
+  <label className="block text-xs mb-1">
     Lead {splitMode === "percent" ? "%" : "$"}
   </label>
 
   <input
-  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
   value={splitMode === "percent" ? leadPercent : leadDollarInput}
   onChange={(e) => {
     if (splitMode === "percent") {
@@ -1551,12 +1551,12 @@ const router = useRouter();
 </div>
 
  <div>
-  <label className="block text-[10px] mb-1">
+  <label className="block text-xs mb-1">
     Company {splitMode === "percent" ? "%" : "$"}
   </label>
 
   <input
-  className="border rounded px-1 py-1 w-full text-xs bg-white"
+  className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
   value={splitMode === "percent" ? companyPercent : companyDollarInput}
   onChange={(e) => {
     if (splitMode === "percent") {
@@ -1634,7 +1634,7 @@ const router = useRouter();
                 return (
                   <div
                     key={p.id}
-                    className="relative grid grid-cols-5 gap-2 border rounded p-2 bg-gray-50 text-xs"
+                    className="relative grid grid-cols-2 md:grid-cols-5 gap-2 border rounded p-2 bg-gray-50 text-sm"
                   >
                     {/* Remove Button */}
                     <button
@@ -1647,9 +1647,9 @@ const router = useRouter();
 
                     {/* Method */}
                     <div>
-                      <label className="block text-[10px] mb-1">Method</label>
+                      <label className="block text-xs mb-1">Method</label>
                       <select
-                        className="border rounded px-1 py-1 w-full text-xs bg-white"
+                        className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                         value={p.payment}
                         onChange={(e) =>
                           updatePayment(p.id, "payment", e.target.value)
@@ -1666,11 +1666,11 @@ const router = useRouter();
                     <div>
                       {p.payment !== "cash" ? (
                         <>
-                          <label className="block text-[10px] mb-1">
+                          <label className="block text-xs mb-1">
                             Collected By
                           </label>
                           <select
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                             value={p.collectedBy}
                             onChange={(e) =>
                               updatePayment(
@@ -1700,11 +1700,11 @@ const router = useRouter();
 
                     {/* Amount */}
                     <div>
-                      <label className="block text-[10px] mb-1">
+                      <label className="block text-xs mb-1">
                         Amount ($)
                       </label>
                       <input
-                        className="border rounded px-1 py-1 w-full text-xs bg-white"
+                        className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                         value={p.amount}
                         onChange={(e) =>
                           updatePayment(p.id, "amount", e.target.value)
@@ -1716,11 +1716,11 @@ const router = useRouter();
                     <div className="min-w-[70px]">
                       {p.payment === "credit" && (
                         <>
-                          <label className="block text-[10px] mb-1">
+                          <label className="block text-xs mb-1">
                             CC Fee %
                           </label>
                           <input
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                             value={p.ccFeePct}
                             onChange={(e) =>
                               updatePayment(
@@ -1735,11 +1735,11 @@ const router = useRouter();
 
                       {p.payment === "check" && (
                         <>
-                          <label className="block text-[10px] mb-1">
+                          <label className="block text-xs mb-1">
                             Check Fee %
                           </label>
                           <input
-                            className="border rounded px-1 py-1 w-full text-xs bg-white"
+                            className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                             value={p.checkFeePct}
                             onChange={(e) =>
                               updatePayment(
@@ -1778,27 +1778,27 @@ const router = useRouter();
               {canAdjustParts && (
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] mb-1">Tech Parts</label>
+                  <label className="block text-xs mb-1">Tech Parts</label>
                   <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
+                    className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                     value={techParts}
                     onChange={(e) => setTechParts(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] mb-1">Lead Parts</label>
+                  <label className="block text-xs mb-1">Lead Parts</label>
                   <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
+                    className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                     value={leadParts}
                     onChange={(e) => setLeadParts(e.target.value)}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] mb-1">Company Parts</label>
+                  <label className="block text-xs mb-1">Company Parts</label>
                   <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
+                    className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                     value={companyParts}
                     onChange={(e) => setCompanyParts(e.target.value)}
                   />
@@ -1810,9 +1810,9 @@ const router = useRouter();
               {canAdjustFees && (
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[10px] mb-1">Add Fee ($)</label>
+                  <label className="block text-xs mb-1">Add Fee ($)</label>
                   <input
-                    className="border rounded px-1 py-1 w-full text-xs bg-white"
+                    className="border rounded px-1.5 py-1.5 w-full text-sm bg-white"
                     value={leadAdditionalFee}
                     onChange={(e) => setLeadAdditionalFee(e.target.value)}
                   />

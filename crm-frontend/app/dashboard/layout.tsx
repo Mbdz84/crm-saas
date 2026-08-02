@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden">
+    <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
 
       {/* TOP NAVIGATION (nav links + actions) */}
       <Topbar onMenuClick={() => setMobileSidebarOpen(true)} />
@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* MOBILE SIDEBAR DRAWER */}
       <div
-        className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-900 shadow-lg z-50 transform transition-transform duration-300 md:hidden
+        className={`fixed top-0 left-0 h-[100dvh] w-64 bg-white dark:bg-gray-900 shadow-lg z-50 transform transition-transform duration-300 md:hidden
         ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <Sidebar onNavigate={() => setMobileSidebarOpen(false)} />
