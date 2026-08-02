@@ -54,7 +54,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
         where: { companyId, canceledAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.jobClosing.aggregate({
-        _sum: { totalAmount: true },
+        _sum: { totalAmount: true, companyProfitDisplay: true },
         where: { job: { companyId }, closedAt: { gte: rangeStart, lt: rangeEnd } },
       }),
       prisma.smsConversation.aggregate({
@@ -103,6 +103,7 @@ export async function getDashboardSummary(req: Request, res: Response) {
       closed: closedToday,
       canceled: canceledInRange,
       revenue: Number(revenueAgg._sum.totalAmount || 0),
+      companyProfit: Number(revenueAgg._sum.companyProfitDisplay || 0),
       unreadSms: unreadAgg._sum.unread || 0,
       unassigned: unassigned.map((j) => ({
         shortId: j.shortId,

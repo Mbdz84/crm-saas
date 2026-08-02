@@ -26,6 +26,7 @@ interface Summary {
   closed: number;
   canceled: number;
   revenue: number;
+  companyProfit: number;
   unreadSms: number;
   unassigned: UnassignedJob[];
   appointments: Appointment[];
@@ -60,11 +61,14 @@ function computeRange(key: string, cf: string, ct: string) {
     case "yesterday":
       return { from: addDays(sod, -1), to: sod };
     case "this_week": {
-      const s = addDays(sod, -now.getDay());
+      // Week starts Monday (matches Reports: startOfWeek, weekStartsOn: 1).
+      const dow = (now.getDay() + 6) % 7; // 0 = Mon … 6 = Sun
+      const s = addDays(sod, -dow);
       return { from: s, to: addDays(s, 7) };
     }
     case "last_week": {
-      const s = addDays(sod, -now.getDay() - 7);
+      const dow = (now.getDay() + 6) % 7;
+      const s = addDays(sod, -dow - 7);
       return { from: s, to: addDays(s, 7) };
     }
     case "this_month":
@@ -140,6 +144,23 @@ export default function DashboardPage() {
     RANGE_OPTIONS.find((o) => o.key === range)?.label.replace("…", "") ??
     "Today";
 
+  // Actual dates for the selected range (shown next to the label).
+  const rangeDates = (() => {
+    if (range === "all_time") return null;
+    if (range === "custom" && (!customFrom || !customTo)) return null;
+    const { from, to } = computeRange(range, customFrom, customTo);
+    const end = addDays(to, -1); // `to` is exclusive → show inclusive end
+    const fmt = (d: Date) =>
+      d.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    return startOfDay(from).getTime() === startOfDay(end).getTime()
+      ? fmt(from)
+      : `${fmt(from)} – ${fmt(end)}`;
+  })();
+
   const finalized = (data?.closed ?? 0) + (data?.canceled ?? 0);
   const closeRate =
     finalized > 0 ? Math.round(((data?.closed ?? 0) / finalized) * 100) : null;
@@ -152,12 +173,7 @@ export default function DashboardPage() {
       value: data?.closed ?? 0,
     },
     { label: "Revenue", value: money(data?.revenue ?? 0) },
-    {
-      label: "Unread SMS",
-      value: data?.unreadSms ?? 0,
-      href: "/dashboard/chat",
-      highlight: (data?.unreadSms ?? 0) > 0,
-    },
+    { label: "Company Profit", value: money(data?.companyProfit ?? 0) },
   ];
 
   return (
@@ -166,7 +182,12 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-gray-500 text-sm">{rangeLabel} at a glance</p>
+          <p className="text-gray-500 text-sm">
+            {rangeLabel} at a glance
+            {rangeDates && (
+              <span className="text-gray-400"> · {rangeDates}</span>
+            )}
+          </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <select
@@ -210,7 +231,7 @@ export default function DashboardPage() {
               t.href
                 ? "hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
                 : "cursor-default"
-            } ${t.highlight ? "border-green-500" : ""}`}
+            }`}
           >
             <div className="text-2xl font-bold">{loading ? "—" : t.value}</div>
             <div className="text-xs text-gray-500 mt-1">{t.label}</div>
