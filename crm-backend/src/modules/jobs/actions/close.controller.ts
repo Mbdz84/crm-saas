@@ -125,8 +125,22 @@ export async function closeJob(req: Request, res: Response) {
     });
     const prevTotal = prevClosing ? Number(prevClosing.totalAmount) : null;
 
-    // Tech → "Pending Close" (editable). Admin → "Closed" (final).
-    const targetName = isTech ? "Pending Close" : "Closed";
+    // A close is PENDING when a technician/dispatcher submits it, or when the
+    // caller explicitly picked the "Pending Close" status (an admin saving a
+    // tech's closing without finalizing it). Anything else is a FINAL close.
+    let requestedPendingClose = false;
+    if (body.statusId) {
+      const requested = await prisma.jobStatus.findUnique({
+        where: { id: String(body.statusId) },
+        select: { name: true },
+      });
+      requestedPendingClose =
+        (requested?.name || "").trim().toLowerCase() === "pending close";
+    }
+
+    const isPending = isTech || requestedPendingClose;
+
+    const targetName = isPending ? "Pending Close" : "Closed";
     const targetStatus = await prisma.jobStatus.findFirst({
       where: { name: targetName, active: true },
     });
@@ -136,13 +150,13 @@ export async function closeJob(req: Request, res: Response) {
     const result = await prisma.$transaction(async (tx: any) => {
       const newStatusId = targetStatus.id;
 
-      // Admin close locks + stamps closedAt. Pending (tech) stays editable
-      // and is not stamped closed until an admin finalizes.
+      // A final close locks + stamps closedAt. A pending close stays editable
+      // and is not stamped closed until an admin finalizes it.
       const updatedJob = await tx.job.update({
         where: { id: job.id },
         data: {
-          isClosingLocked: !isTech,
-          closedAt: isTech ? null : closedAtDate,
+          isClosingLocked: !isPending,
+          closedAt: isPending ? null : closedAtDate,
           statusId: newStatusId,
 
           // Persist any job-field edits made while the closing panel was open
@@ -179,7 +193,7 @@ export async function closeJob(req: Request, res: Response) {
 
       // Only a FINAL close frees the extension; a pending close keeps the job
       // reachable while it's still open.
-      if (!isTech) {
+      if (!isPending) {
         await tx.jobCallSession.updateMany({
           where: { jobId: job.id, active: true },
           data: { active: false, lastCallerPhone: null },
@@ -218,7 +232,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: isTech ? null : closedAtDate,
+          closedAt: isPending ? null : closedAtDate,
           closedByUserId: user.id,
         },
         create: {
@@ -251,7 +265,7 @@ export async function closeJob(req: Request, res: Response) {
           creditTotal,
           checkTotal,
           zelleTotal,
-          closedAt: isTech ? null : closedAtDate,
+          closedAt: isPending ? null : closedAtDate,
           closedByUserId: user.id,
         },
       });
@@ -275,7 +289,11 @@ export async function closeJob(req: Request, res: Response) {
     ].filter(Boolean);
 
     const closeText = [
-      isTech ? "Pending Close submitted by technician" : "Job closed",
+      isPending
+        ? isTech
+          ? "Pending Close submitted by technician"
+          : "Pending Close saved"
+        : "Job closed",
       `Collected: ${money(collected)}${
         methodParts.length ? ` (${methodParts.join(", ")})` : ""
       }`,
@@ -286,7 +304,7 @@ export async function closeJob(req: Request, res: Response) {
 
     await logJobEvent({
       jobId: job.id,
-      type: isTech ? "updated" : "closed",
+      type: isPending ? "updated" : "closed",
       text: closeText,
       userId: user.id,
     });
@@ -314,8 +332,16 @@ export async function closeJob(req: Request, res: Response) {
     }
 
     return res.json(result);
-  } catch (err) {
+  } catch (err: any) {
     console.error("closeJob error:", err);
-    return res.status(500).json({ error: "Failed to close job" });
+    // Outside production, surface the real reason — a bare "Failed to close
+    // job" has hidden real bugs here (e.g. a Prisma validation error).
+    const detail =
+      process.env.NODE_ENV === "production"
+        ? null
+        : err?.message || String(err);
+    return res.status(500).json({
+      error: detail ? `Failed to close job: ${detail}` : "Failed to close job",
+    });
   }
 }

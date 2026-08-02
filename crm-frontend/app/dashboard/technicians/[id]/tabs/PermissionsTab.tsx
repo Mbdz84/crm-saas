@@ -268,6 +268,12 @@ export default function PermissionsTab({
           checked={!!tech.canAdjustFees}
           onChange={(v) => set("canAdjustFees", v)}
         />
+        <Toggle
+          label="Can see Totals & Balances"
+          hint="Off = the split box (how much tech / lead / company each gets) is hidden when the job is closed. The tech can still enter amounts and close."
+          checked={tech.canSeeTotals !== false}
+          onChange={(v) => set("canSeeTotals", v)}
+        />
       </Section>
 
       {/* MODULES (app navigation) */}

@@ -73,6 +73,27 @@ console.log("🔵 UPDATE JOB PAYLOAD:", {
       }
     }
 
+    // Technicians/dispatchers finalize nothing: a request to set Closed /
+    // Canceled is downgraded to its pending equivalent, so the job stays
+    // editable until an admin finalizes it. The UI already hides these
+    // options — this catches stale clients and crafted requests.
+    if (perms && (isClosed || isCanceled)) {
+      const pendingName = isClosed ? "Pending Close" : "Pending Cancel";
+      const pendingStatus = await prisma.jobStatus.findFirst({
+        where: { name: pendingName, active: true },
+      });
+
+      if (pendingStatus) {
+        updates.statusId = pendingStatus.id;
+        updates.status = pendingName;
+        // Never stamp/lock on a downgraded status.
+        updates.closedAt = null;
+        isPendingCancel = isCanceled;
+        isCanceled = false;
+        isClosed = false;
+      }
+    }
+
     const canceledReason = updates.statusNote || null;
 
     /* ======================================================

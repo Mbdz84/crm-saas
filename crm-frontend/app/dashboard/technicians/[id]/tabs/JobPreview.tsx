@@ -100,6 +100,7 @@ export default function JobPreview({ tech }: { tech: any }) {
   const adjParts = can("canAdjustParts");
   const adjFees = can("canAdjustFees");
   const seeClosing = can("canSeeClosing");
+  const seeTotals = can("canSeeTotals");
 
   const btn = "px-2 py-1 rounded text-[10px] whitespace-nowrap";
 
@@ -400,9 +401,25 @@ export default function JobPreview({ tech }: { tech: any }) {
             <RO placeholder="Example: 2025-00123" />
           </div>
 
-          <div className="text-[10px] text-gray-500">
-            Totals &amp; Balances — enter values → press Close Job.
-          </div>
+          <Restrict off={!seeTotals}>
+            <div className="border rounded p-2 space-y-1 bg-gray-50 dark:bg-gray-800">
+              <div className="font-semibold text-[11px]">Totals &amp; Balances</div>
+              <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                <div>
+                  <Label>Tech</Label>
+                  <RO value="$0" />
+                </div>
+                <div>
+                  <Label>Lead</Label>
+                  <RO value="$0" />
+                </div>
+                <div>
+                  <Label>Company</Label>
+                  <RO value="$0" />
+                </div>
+              </div>
+            </div>
+          </Restrict>
 
           <div className="flex gap-1.5">
             <span className={`${btn} bg-green-600 text-white`}>

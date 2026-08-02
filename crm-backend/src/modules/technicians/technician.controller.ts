@@ -72,6 +72,7 @@ export async function getTechnicians(req: any, res: Response) {
         maskedTwilioPhoneNumber: true,
         payrollEnabled: true,
         canSeeClosing: true,
+        canSeeTotals: true,
         canViewAllJobs: true,
         defaultTechPercent: true,
         defaultPartsResponsibility: true,
@@ -153,6 +154,7 @@ export async function createTechnician(req: any, res: Response) {
       maskedCalls,
       payrollEnabled,
       canSeeClosing,
+      canSeeTotals,
       canViewAllJobs,
 
       defaultTechPercent,
@@ -191,6 +193,7 @@ export async function createTechnician(req: any, res: Response) {
         maskedCalls: maskedCalls ?? false,
         payrollEnabled: payrollEnabled ?? false,
         canSeeClosing: canSeeClosing ?? true,
+        canSeeTotals: canSeeTotals ?? true,
         canViewAllJobs: canViewAllJobs ?? true,
 
         defaultTechPercent: defaultTechPercent ?? null,
@@ -254,6 +257,7 @@ export async function updateTechnician(req: any, res: Response) {
       maskedCalls: body.maskedCalls,
       payrollEnabled: body.payrollEnabled,
       canSeeClosing: body.canSeeClosing,
+      canSeeTotals: body.canSeeTotals,
       canViewAllJobs: body.canViewAllJobs,
 
       defaultTechPercent: body.defaultTechPercent,
@@ -310,6 +314,7 @@ if (f.maskedTwilioNumberSid !== undefined) {
   }
 }if (f.payrollEnabled !== undefined) allowedFields.payrollEnabled = Boolean(f.payrollEnabled);
 if (f.canSeeClosing !== undefined) allowedFields.canSeeClosing = Boolean(f.canSeeClosing);
+if (f.canSeeTotals !== undefined) allowedFields.canSeeTotals = Boolean(f.canSeeTotals);
 if (f.canViewAllJobs !== undefined) allowedFields.canViewAllJobs = Boolean(f.canViewAllJobs);
 if (f.isOwner !== undefined) allowedFields.isOwner = Boolean(f.isOwner);
 if (f.canLogin !== undefined) allowedFields.canLogin = Boolean(f.canLogin);

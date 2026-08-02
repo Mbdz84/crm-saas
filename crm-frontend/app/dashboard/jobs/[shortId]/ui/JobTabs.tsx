@@ -4,6 +4,7 @@ import { useJob } from "../state/JobProvider";
 import OverviewTab from "./OverviewTab";
 import LogsTab from "./LogsTab";
 import RecordingsTab from "./RecordingsTab";
+import InvoiceTab from "./InvoiceTab";
 
 export default function JobTabs() {
   const { tab, setTab } = useJob();
@@ -32,12 +33,20 @@ export default function JobTabs() {
         >
           Recordings
         </button>
+
+        <button
+          className={`pb-2 ${tab === "invoice" ? "border-b-2 border-blue-600" : ""}`}
+          onClick={() => setTab("invoice")}
+        >
+          Invoice
+        </button>
       </div>
 
       {/* ACTIVE TAB */}
       {tab === "overview" && <OverviewTab />}
       {tab === "log" && <LogsTab />}
       {tab === "recordings" && <RecordingsTab />}
+      {tab === "invoice" && <InvoiceTab />}
     </div>
   );
 }

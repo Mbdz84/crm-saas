@@ -2,12 +2,14 @@
 
 import { useJob } from "../state/JobProvider";
 
+type JobTab = "overview" | "log" | "recordings" | "invoice";
+
 export default function TabsHeader({
   tab,
   setTab,
 }: {
-  tab: "overview" | "log" | "recordings";
-  setTab: (t: "overview" | "log" | "recordings") => void;
+  tab: JobTab;
+  setTab: (t: JobTab) => void;
 }) {
   const { job } = useJob() as any;
   const viewer = job?.viewer;
@@ -45,6 +47,13 @@ export default function TabsHeader({
           Recordings
         </button>
       )}
+
+      <button
+        className={`pb-2 ${tab === "invoice" ? "border-b-2 border-blue-600" : ""}`}
+        onClick={() => setTab("invoice")}
+      >
+        Invoice
+      </button>
     </div>
   );
 }

@@ -5,8 +5,9 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import PaymentsTab from "@/components/settlements/PaymentsTab";
+import GoogleAddressInput from "@/components/GoogleAddressInput";
 
-type TabKey = "profile" | "financial" | "payments";
+type TabKey = "profile" | "financial" | "invoice" | "payments";
 
 export default function LeadSourceProfile() {
   const { id } = useParams();
@@ -41,6 +42,14 @@ export default function LeadSourceProfile() {
    // Incoming SMS numbers
    const [incomingSmsNumbers, setIncomingSmsNumbers] = useState<string[]>([]);
 
+   // Invoice identity (printed on this lead source's invoices)
+   const [invoiceCompanyName, setInvoiceCompanyName] = useState("");
+   const [invoicePhone, setInvoicePhone] = useState("");
+   const [invoiceAddress, setInvoiceAddress] = useState("");
+   const [invoiceCityStateZip, setInvoiceCityStateZip] = useState("");
+   const [invoiceLogoUrl, setInvoiceLogoUrl] = useState("");
+   const [invoiceLicense, setInvoiceLicense] = useState("");
+
    // Load lead source.
   const load = async () => {
     setLoading(true);
@@ -65,6 +74,14 @@ export default function LeadSourceProfile() {
       setLocked(data.locked ?? false);
 
       setIncomingSmsNumbers(data.incomingSmsNumbers ?? []);
+
+      // Invoice identity
+      setInvoiceCompanyName(data.invoiceCompanyName ?? "");
+      setInvoicePhone(data.invoicePhone ?? "");
+      setInvoiceAddress(data.invoiceAddress ?? "");
+      setInvoiceCityStateZip(data.invoiceCityStateZip ?? "");
+      setInvoiceLogoUrl(data.invoiceLogoUrl ?? "");
+      setInvoiceLicense(data.invoiceLicense ?? "");
 
       // Financial – Prisma decimals usually come as string
       setDefaultLeadPercent(
@@ -111,6 +128,12 @@ export default function LeadSourceProfile() {
         .map(n => n.trim())
         .filter(Boolean),
       autoApplyFinancialRules,
+      invoiceCompanyName: invoiceCompanyName.trim(),
+      invoicePhone: invoicePhone.trim(),
+      invoiceAddress: invoiceAddress.trim(),
+      invoiceCityStateZip: invoiceCityStateZip.trim(),
+      invoiceLogoUrl: invoiceLogoUrl.trim(),
+      invoiceLicense: invoiceLicense.trim(),
       defaultLeadPercent:
         defaultLeadPercent.trim() === "" ? null : defaultLeadPercent.trim(),
       defaultAdditionalFee:
@@ -281,6 +304,17 @@ const revokeApiKey = async () => {
           onClick={() => setTab("financial")}
         >
           Financial
+        </button>
+
+        <button
+          className={
+            tab === "invoice"
+              ? "font-bold text-blue-600 border-b-2 border-blue-600 pb-1"
+              : "text-gray-600"
+          }
+          onClick={() => setTab("invoice")}
+        >
+          Invoice Profile
         </button>
 
         <button
@@ -565,6 +599,90 @@ const revokeApiKey = async () => {
                   placeholder="e.g. 2"
                 />
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* INVOICE PROFILE TAB */}
+        {tab === "invoice" && (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500">
+              These details print in the top-left header of invoices generated
+              for jobs from this lead source. Leave a field blank to fall back to
+              the company profile.
+            </p>
+
+            <div>
+              <label className="text-sm font-medium">Company Name (on invoice)</label>
+              <input
+                className="mt-1 w-full border rounded p-2 text-sm dark:bg-gray-800"
+                value={invoiceCompanyName}
+                onChange={(e) => setInvoiceCompanyName(e.target.value)}
+                disabled={locked}
+                placeholder={name || "e.g. Expert Locksmiths"}
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium">Phone</label>
+                <input
+                  className="mt-1 w-full border rounded p-2 text-sm dark:bg-gray-800"
+                  value={invoicePhone}
+                  onChange={(e) => setInvoicePhone(e.target.value)}
+                  disabled={locked}
+                  placeholder="e.g. 773.900.5625"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">License #</label>
+                <input
+                  className="mt-1 w-full border rounded p-2 text-sm dark:bg-gray-800"
+                  value={invoiceLicense}
+                  onChange={(e) => setInvoiceLicense(e.target.value)}
+                  disabled={locked}
+                  placeholder="e.g. 191.000948"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Address</label>
+              <GoogleAddressInput
+                value={invoiceAddress}
+                onChange={setInvoiceAddress}
+                onSelect={(p) => {
+                  setInvoiceAddress(p.line1);
+                  setInvoiceCityStateZip(p.cityStateZip);
+                }}
+                placeholder="Start typing address…"
+                className="mt-1 w-full border rounded p-2 text-sm dark:bg-gray-800"
+              />
+              {(invoiceAddress || invoiceCityStateZip) && (
+                <div className="text-xs text-gray-500 mt-1 leading-snug">
+                  {invoiceAddress && <div>{invoiceAddress}</div>}
+                  {invoiceCityStateZip && <div>{invoiceCityStateZip}</div>}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Logo URL</label>
+              <input
+                className="mt-1 w-full border rounded p-2 text-sm dark:bg-gray-800"
+                value={invoiceLogoUrl}
+                onChange={(e) => setInvoiceLogoUrl(e.target.value)}
+                disabled={locked}
+                placeholder="https://…  (a public image URL, e.g. Dropbox)"
+              />
+              {invoiceLogoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={invoiceLogoUrl}
+                  alt="Logo preview"
+                  className="h-16 mt-2 rounded border object-contain bg-white p-1"
+                />
+              )}
             </div>
           </div>
         )}

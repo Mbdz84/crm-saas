@@ -10,6 +10,7 @@ type TechFlags = {
   canViewAllJobs: boolean;
   canSeeClientPhone: boolean;
   canSeeClosing: boolean;
+  canSeeTotals: boolean;
   canSeeLogs: boolean;
   canSeeRecordings: boolean;
   canSeeReports: boolean;
@@ -38,6 +39,7 @@ const TECH_DEFAULTS = {
   canViewAllJobs: false,
   canSeeClientPhone: true,
   canSeeClosing: true,
+  canSeeTotals: true,
   canSeeLogs: true,
   canSeeRecordings: true,
   canSeeReports: true,
@@ -74,6 +76,7 @@ async function techFlags(req: any): Promise<TechFlags> {
       canViewAllJobs: true,
       canSeeClientPhone: true,
       canSeeClosing: true,
+      canSeeTotals: true,
       canSeeLogs: true,
       canSeeRecordings: true,
       canSeeReports: true,
@@ -169,6 +172,7 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
       canSeeRecordings: true,
       canSeeClientPhone: true,
       canSeeClosing: true,
+      canSeeTotals: true,
       canSeeLeadSource: true,
       canSeeTechnicianField: true,
       canChangeJobType: true,
@@ -191,6 +195,7 @@ export async function jobViewer(req: any): Promise<Record<string, any>> {
     canSeeRecordings: f.canSeeRecordings,
     canSeeClientPhone: f.canSeeClientPhone,
     canSeeClosing: f.canSeeClosing,
+    canSeeTotals: f.canSeeTotals,
     canSeeLeadSource: f.canSeeLeadSource,
     canSeeTechnicianField: f.canSeeTechnicianField,
     canChangeJobType: f.canChangeJobType,

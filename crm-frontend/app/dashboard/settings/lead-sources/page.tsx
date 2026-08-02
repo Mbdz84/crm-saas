@@ -11,6 +11,115 @@ function initials(name?: string) {
   return (parts[0]?.[0] || "") + (parts[1]?.[0] || "");
 }
 
+/* ------------------------------------------------------------
+   Company-wide invoice description presets, shared by ALL lead
+   sources (stored on the Company). Populates the "Add preset"
+   dropdown on the job Invoice tab. Collapsible to stay out of
+   the way of the lead-source directory.
+------------------------------------------------------------ */
+function InvoiceDescriptions({ base }: { base?: string }) {
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [items, setItems] = useState<string[]>([]);
+  const [draft, setDraft] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${base}/companies/me`, { credentials: "include" });
+      const data = await res.json();
+      setItems(
+        Array.isArray(data?.invoiceDescriptions) ? data.invoiceDescriptions : []
+      );
+    } catch {
+      toast.error("Failed to load descriptions");
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const persist = async (next: string[]) => {
+    setBusy(true);
+    try {
+      const res = await fetch(`${base}/companies/update`, {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceDescriptions: next }),
+      });
+      if (!res.ok) throw new Error();
+      setItems(next);
+      toast.success("Saved");
+    } catch {
+      toast.error("Save failed");
+    }
+    setBusy(false);
+  };
+
+  const add = () => {
+    const v = draft.trim();
+    if (!v) return;
+    if (items.includes(v)) return toast.error("Already in the list");
+    setDraft("");
+    persist([...items, v]);
+  };
+
+  return (
+    <div className="border rounded-lg bg-white dark:bg-gray-900 p-4 space-y-3 max-w-2xl">
+      <p className="text-xs text-gray-500">
+        Preset line-item descriptions for invoices (e.g. “Car lockout”, “Rekey
+        Kwikset lock”), shared by all lead sources. These appear in the “Add
+        preset” dropdown when building an invoice on a job.
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          className="flex-1 border rounded p-2 text-sm dark:bg-gray-800"
+          placeholder="e.g. Unlock house front door"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+        />
+        <button
+          onClick={add}
+          disabled={busy}
+          className="px-3 py-2 bg-blue-600 text-white text-sm rounded disabled:opacity-50 whitespace-nowrap"
+        >
+          + Add
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-gray-400">No descriptions yet.</p>
+      ) : (
+        <ul className="divide-y border rounded">
+          {items.map((it, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between px-3 py-2 text-sm"
+            >
+              <span>{it}</span>
+              <button
+                onClick={() => persist(items.filter((_, idx) => idx !== i))}
+                disabled={busy}
+                className="text-xs text-red-600 hover:underline disabled:opacity-50"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function LeadSourcesPage() {
   const router = useRouter();
 
@@ -19,6 +128,7 @@ export default function LeadSourcesPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState("");
+  const [pageTab, setPageTab] = useState<"sources" | "descriptions">("sources");
 
   const base = process.env.NEXT_PUBLIC_API_URL;
 
@@ -99,6 +209,34 @@ export default function LeadSourcesPage() {
       {/* HEADER */}
       <h1 className="text-2xl md:text-3xl font-semibold">Lead Sources</h1>
 
+      {/* TABS */}
+      <div className="flex gap-6 border-b pb-2 text-sm">
+        <button
+          className={
+            pageTab === "sources"
+              ? "font-bold text-blue-600 border-b-2 border-blue-600 pb-1"
+              : "text-gray-600"
+          }
+          onClick={() => setPageTab("sources")}
+        >
+          Lead Sources
+        </button>
+        <button
+          className={
+            pageTab === "descriptions"
+              ? "font-bold text-blue-600 border-b-2 border-blue-600 pb-1"
+              : "text-gray-600"
+          }
+          onClick={() => setPageTab("descriptions")}
+        >
+          Invoice Descriptions
+        </button>
+      </div>
+
+      {pageTab === "descriptions" && <InvoiceDescriptions base={base} />}
+
+      {pageTab === "sources" && (
+        <>
       {/* ADD NEW */}
       <div className="border rounded-lg p-4 bg-white dark:bg-gray-900 flex gap-3">
         <input
@@ -188,6 +326,8 @@ export default function LeadSourcesPage() {
           ))}
         </div>
       ))}
+        </>
+      )}
     </div>
   );
 }

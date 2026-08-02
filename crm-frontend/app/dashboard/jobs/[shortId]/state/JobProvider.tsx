@@ -25,7 +25,7 @@ export function JobProvider({
   const [dirty, setDirty] = useState(false);
 
   const [tab, setTab] =
-    useState<"overview" | "log" | "recordings">("overview");
+    useState<"overview" | "log" | "recordings" | "invoice">("overview");
 
   /* CANCEL FIELDS */
   const [cancelReason, setCancelReason] = useState("");

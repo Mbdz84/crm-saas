@@ -915,7 +915,9 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
         "Tech have the job already",
         "Out of area",
         "Spam",
-        "Client canceled"
+        "Client canceled",
+        "CX said he will call back",
+        "Doesn't want to do it",
       ].map((tag) => (
         <button
           key={tag}
@@ -1308,6 +1310,7 @@ function ClosingPanel(props: any) {
   const canAdjustPercentages = viewer?.canAdjustPercentages !== false;
   const canAdjustParts = viewer?.canAdjustParts !== false;
   const canAdjustFees = viewer?.canAdjustFees !== false;
+  const canSeeTotals = viewer?.canSeeTotals !== false;
 
   const [splitMode, setSplitMode] = useState<"percent" | "dollar">("percent");
   const [techDollarInput, setTechDollarInput] = useState("");
@@ -1868,6 +1871,11 @@ const router = useRouter();
 
             {/* SUMMARY */}
             <div className="border rounded p-3 bg-gray-50 text-xs space-y-2">
+              {/* Totals & Balances — hidden when the viewer lacks "see totals"
+                  permission (e.g. a restricted technician). They can still enter
+                  amounts and close the job; only the split breakdown is hidden. */}
+              {canSeeTotals ? (
+              <>
               <h3 className="font-semibold mb-1">Totals & Balances</h3>
 
               {result ? (
@@ -1946,6 +1954,12 @@ const router = useRouter();
               ) : (
                 <p className="text-gray-400 text-[11px]">
                   Enter values → press <b>Close Job</b>.
+                </p>
+              )}
+              </>
+              ) : (
+                <p className="text-gray-400 text-[11px]">
+                  Enter values → press <b>Close Job</b> to submit.
                 </p>
               )}
 

@@ -19,6 +19,7 @@ model Company {
   smsSettings           Json?
   notifyTechOnJobCreate Boolean          @default(false)
   timezone              String           @default("America/Chicago")
+  invoiceDescriptions   String[]         @default([])
   jobs                  Job[]
   callSessions          JobCallSession[] @relation("CompanyCallSessions")
   jobTypes              JobType[]
@@ -45,6 +46,7 @@ model User {
   receiveSms                 Boolean?         @default(true)
   payrollEnabled             Boolean          @default(false)
   canSeeClosing              Boolean          @default(true)
+  canSeeTotals               Boolean          @default(true)
   canViewAllJobs             Boolean          @default(true)
   defaultTechPercent         Decimal?         @db.Decimal(5, 2)
   defaultPartsResponsibility String?
@@ -115,8 +117,67 @@ model LeadSource {
   apiKeyCreatedAt         DateTime? @db.Timestamptz(6)
   incomingSmsNumbers      String[]
   isOwner                 Boolean   @default(false)
+  invoiceCompanyName      String?
+  invoicePhone            String?
+  invoiceAddress          String?
+  invoiceCityStateZip     String?
+  invoiceLogoUrl          String?
+  invoiceLicense          String?
   jobs                    Job[]
   company                 Company   @relation(fields: [companyId], references: [id])
+}
+
+model Invoice {
+  id              String    @id @default(cuid())
+  companyId       String
+  jobId           String?
+  leadSourceId    String?
+  number          String
+  shortId         String?
+
+  // Customer snapshot
+  customerName    String?
+  customerAddress String?
+  location        String?
+  resPhone        String?
+  busPhone        String?
+  invoiceDate     DateTime?
+
+  // Line items: [{ qty, description, price, amount }]
+  lineItems       Json      @default("[]")
+
+  // Totals
+  totalMaterials  Decimal?  @db.Decimal(10, 2)
+  totalLabor      Decimal?  @db.Decimal(10, 2)
+  serviceCharge   Decimal?  @db.Decimal(10, 2)
+  tripCharge      Decimal?  @db.Decimal(10, 2)
+  subtotal        Decimal?  @db.Decimal(10, 2)
+  tax             Decimal?  @db.Decimal(10, 2)
+  total           Decimal?  @db.Decimal(10, 2)
+  serviceChargeOn Boolean   @default(false)
+  tripChargeOn    Boolean   @default(false)
+  showAuth        Boolean   @default(true)
+  showTerms       Boolean   @default(true)
+
+  // Layout
+  size            String    @default("a4") // "a4" | "receipt"
+  notes           String?
+
+  // Header snapshot (from lead source, company fallback)
+  hdrCompanyName  String?
+  hdrPhone        String?
+  hdrAddress      String?
+  hdrCityStateZip String?
+  hdrLogoUrl      String?
+  hdrLicense      String?
+
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([companyId, number])
+  @@index([companyId])
+  @@index([jobId])
 }
 
 model Job {
@@ -157,7 +218,9 @@ model Job {
 model JobClosing {
   id                    String   @id @default(cuid())
   jobId                 String   @unique
-  closedAt              DateTime @default(now())
+  // Null while the closing is PENDING (submitted by a technician, still
+  // editable). Stamped only when an admin finalizes the close.
+  closedAt              DateTime? @default(now())
   closedByUserId        String?
   invoiceNumber         String?
   payments              Json

@@ -121,11 +121,25 @@ export async function updateLeadSource(req: Request, res: Response) {
       defaultCheckFeePercent,
       autoApplyFinancialRules,
       isOwner,
+      invoiceCompanyName,
+      invoicePhone,
+      invoiceAddress,
+      invoiceCityStateZip,
+      invoiceLogoUrl,
+      invoiceLicense,
     } = req.body;
 
     const data: any = {};
 
     if (isOwner !== undefined) data.isOwner = Boolean(isOwner);
+
+    // Invoice identity (printed on this lead source's invoices)
+    if (invoiceCompanyName !== undefined) data.invoiceCompanyName = invoiceCompanyName || null;
+    if (invoicePhone !== undefined) data.invoicePhone = invoicePhone || null;
+    if (invoiceAddress !== undefined) data.invoiceAddress = invoiceAddress || null;
+    if (invoiceCityStateZip !== undefined) data.invoiceCityStateZip = invoiceCityStateZip || null;
+    if (invoiceLogoUrl !== undefined) data.invoiceLogoUrl = invoiceLogoUrl || null;
+    if (invoiceLicense !== undefined) data.invoiceLicense = invoiceLicense || null;
 
     if (incomingSmsNumbers !== undefined) {
   data.incomingSmsNumbers = Array.isArray(incomingSmsNumbers)
