@@ -161,6 +161,22 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
         CRM
       </Link>
 
+      {/* Mobile-only Chat button with unread SMS counter (desktop shows it in the nav below) */}
+      {!(isTech && user?.canUseChat === false) && (
+        <Link
+          href="/dashboard/chat"
+          aria-label={unread > 0 ? `Chat, ${unread} unread` : "Chat"}
+          className="md:hidden relative p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition"
+        >
+          <MessageSquare size={20} />
+          {unread > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 text-[10px] font-semibold bg-red-600 text-white rounded-full px-1 py-0.5 min-w-[17px] text-center leading-none">
+              {unread > 99 ? "99+" : unread}
+            </span>
+          )}
+        </Link>
+      )}
+
       {/* spacer (centers the nav) */}
       <div className="hidden md:block flex-1" />
 

@@ -911,13 +911,14 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
         "Duplicate lead",
         "Tech Don't have the key for it",
         "Client found the keys",
-        "Client wants to pay $",
         "Tech have the job already",
         "Out of area",
         "Spam",
         "Client canceled",
         "CX said he will call back",
         "Doesn't want to do it",
+        "Client wants to pay $",
+        "Quoted $ refused the service",
       ].map((tag) => (
         <button
           key={tag}
