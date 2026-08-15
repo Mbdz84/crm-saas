@@ -8,6 +8,7 @@ import { useJob } from "../state/JobProvider";
 import { useJobActions } from "../state/useJobActions";
 import Editable from "./Editable";
 import AppointmentPicker from "./AppointmentPicker";
+import PhoneJobHistory from "./PhoneJobHistory";
 import { useState } from "react";
 import { useEffect } from "react";
 import { toZonedTime, format } from "date-fns-tz";
@@ -140,6 +141,7 @@ export default function OverviewTab() {
   const canDeleteJob = jobViewer.canDeleteJob !== false;
   const canDuplicateJob = jobViewer.canDuplicateJob !== false;
   const canSeeCallerId = jobViewer.canSeeCallerId !== false;
+  const canSeePhoneHistory = jobViewer.canSeePhoneHistory !== false;
   const canEditDescription = jobViewer.canEditDescription !== false;
   const canEditStatus = jobViewer.canEditStatus !== false;
   const canSeeClosing = jobViewer.canSeeClosing !== false;
@@ -500,7 +502,13 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
             {callerName(phone)}
           </span>
         )}
+
       </div>
+
+      {/* Job history: other jobs that share this phone number */}
+      {canSeePhoneHistory && (
+        <PhoneJobHistory phone={phone} currentShortId={shortId} base={base} />
+      )}
     </div>
   );
 })()}
@@ -554,7 +562,13 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
             {callerName(phone)}
           </span>
         )}
+
       </div>
+
+      {/* Job history: other jobs that share this phone number */}
+      {canSeePhoneHistory && (
+        <PhoneJobHistory phone={phone} currentShortId={shortId} base={base} />
+      )}
     </div>
   );
 })()}

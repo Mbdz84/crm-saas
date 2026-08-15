@@ -84,6 +84,7 @@ export default function JobPreview({ tech }: { tech: any }) {
 
   const seePhone = can("canSeeClientPhone");
   const seeCallerId = can("canSeeCallerId");
+  const seePhoneHist = can("canSeePhoneHistory");
   const seeLead = can("canSeeLeadSource");
   const seeTech = can("canSeeTechnicianField");
   const editName = can("canEditCustomerName");
@@ -168,6 +169,11 @@ export default function JobPreview({ tech }: { tech: any }) {
                 </span>
               </Restrict>
             </div>
+            <Restrict off={!seePhoneHist} inline>
+              <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                3 other jobs ▾
+              </span>
+            </Restrict>
           </div>
 
           {/* PHONE 2 */}
@@ -183,6 +189,11 @@ export default function JobPreview({ tech }: { tech: any }) {
                 <RO placeholder="Ext" />
               </div>
             </div>
+            <Restrict off={!seePhoneHist} inline>
+              <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                2 other jobs ▾
+              </span>
+            </Restrict>
           </div>
 
           {/* MASKED CALLS */}

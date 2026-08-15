@@ -137,8 +137,16 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
     },
   ].filter((i) => i.show);
 
-  // Active = the visible item whose href is the longest prefix of the path.
-  const activeHref = navItems
+  // Where the gear icon points: settings for admins, own profile for techs.
+  const settingsHref =
+    isTech && user?.id
+      ? `/dashboard/technicians/${user.id}`
+      : "/dashboard/settings";
+
+  // Active = the item whose href is the longest prefix of the path. The gear
+  // destination is included so a deeper route (e.g. /dashboard/settings) wins
+  // over the /dashboard (Dashboard) prefix instead of lighting up Dashboard.
+  const activeHref = [...navItems, { href: settingsHref }]
     .filter((i) => pathname === i.href || pathname.startsWith(i.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
@@ -260,12 +268,13 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
 
       {/* Settings (admins) / My Profile (technician & dispatcher) */}
       <Link
-        href={
-          isTech && user?.id
-            ? `/dashboard/technicians/${user.id}`
-            : "/dashboard/settings"
-        }
-        className="hidden md:grid place-items-center p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800"
+        href={settingsHref}
+        className={clsx(
+          "hidden md:grid place-items-center p-2 rounded-lg",
+          settingsHref === activeHref
+            ? "bg-blue-600 text-white"
+            : "hover:bg-gray-200 dark:hover:bg-gray-800"
+        )}
         aria-label={isTech ? "My profile" : "Settings"}
       >
         <Settings size={18} />

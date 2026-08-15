@@ -194,6 +194,12 @@ export default function PermissionsTab({
           onChange={(v) => set("canSeeCallerId", v)}
         />
         <Toggle
+          label="Can see job history by phone"
+          hint="The “N other jobs” badge under a phone that lists past jobs from the same number."
+          checked={tech.canSeePhoneHistory !== false}
+          onChange={(v) => set("canSeePhoneHistory", v)}
+        />
+        <Toggle
           label="Can refresh call extensions"
           checked={tech.canRefreshExtension !== false}
           onChange={(v) => set("canRefreshExtension", v)}

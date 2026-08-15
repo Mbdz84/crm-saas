@@ -331,6 +331,7 @@ if (f.canEditCustomerAddress !== undefined) allowedFields.canEditCustomerAddress
 if (f.canEditDescription !== undefined) allowedFields.canEditDescription = Boolean(f.canEditDescription);
 if (f.canEditStatus !== undefined) allowedFields.canEditStatus = Boolean(f.canEditStatus);
 if (f.canSeeCallerId !== undefined) allowedFields.canSeeCallerId = Boolean(f.canSeeCallerId);
+if (f.canSeePhoneHistory !== undefined) allowedFields.canSeePhoneHistory = Boolean(f.canSeePhoneHistory);
 if (f.canRefreshExtension !== undefined) allowedFields.canRefreshExtension = Boolean(f.canRefreshExtension);
 if (f.canDeleteJob !== undefined) allowedFields.canDeleteJob = Boolean(f.canDeleteJob);
 if (f.canDuplicateJob !== undefined) allowedFields.canDuplicateJob = Boolean(f.canDuplicateJob);
