@@ -491,11 +491,13 @@ export default function ChatPage() {
       </div>
 
       {/* RIGHT — active thread */}
-      <div className={`${active ? "flex" : "hidden md:flex"} flex-1 flex-col`}>
+      <div className={`${active ? "flex" : "hidden md:flex"} flex-1 flex-col min-w-0`}>
         {active ? (
           <>
-            {/* header */}
-            <div className="px-3 py-3 border-b flex items-center gap-2">
+            {/* header — two rows on mobile so nothing runs off-screen */}
+            <div className="px-3 py-3 border-b flex flex-col gap-2 md:flex-row md:items-center">
+              {/* Row 1: back + contact info */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
               <button
                 onClick={() => setActiveId("")}
                 className="md:hidden p-1 -ml-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -553,7 +555,10 @@ export default function ChatPage() {
                   via {fmtPhone(active.crmNumber)}
                 </div>
               </div>
+              </div>
 
+              {/* Row 2: actions — wrap so nothing runs off-screen */}
+              <div className="flex flex-wrap items-center gap-1 shrink-0">
               <button
                 onClick={goToJob}
                 disabled={loadingJobs}
@@ -607,6 +612,7 @@ export default function ChatPage() {
               >
                 <Trash2 size={16} />
               </button>
+              </div>
             </div>
 
             {/* JOB PICKER (shown when the client has more than one job) */}
