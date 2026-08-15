@@ -13,6 +13,7 @@ interface JobType {
 interface LeadSource {
   id: string;
   name: string;
+  active?: boolean;
 }
 
 interface Tech {
