@@ -210,7 +210,9 @@ export default function AddJobFromTextPage() {
               onChange={(e) => setLeadSourceId(e.target.value)}
             >
               <option value="">Select lead source...</option>
-              {leadSources.map((src) => (
+              {leadSources
+                .filter((src: any) => src.active !== false)
+                .map((src) => (
                 <option key={src.id} value={src.id}>
                   {src.name}
                 </option>

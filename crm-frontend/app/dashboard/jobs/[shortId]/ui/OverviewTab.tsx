@@ -207,7 +207,14 @@ useEffect(() => {
   const techList = (Array.isArray(techs) ? techs : []).filter(
     (t: any) => t.active !== false || t.id === assignedTechId
   );
-  
+
+  // Hide inactive lead sources, but keep the one already assigned to THIS job
+  // so an existing assignment (source since deactivated) still shows.
+  const assignedSourceId = editableJob?.sourceId || (job as any)?.sourceId;
+  const leadSourceList = (Array.isArray(leadSources) ? leadSources : []).filter(
+    (s: any) => s.active !== false || s.id === assignedSourceId
+  );
+
   const selectedTech =
   editableJob?.technicianId
     ? techList.find((t: any) => t.id === editableJob.technicianId)
@@ -718,7 +725,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
               onChange={(e) => setField("sourceId", e.target.value)}
             >
               <option value="">Select source</option>
-              {leadSources.map((src: any) => (
+              {leadSourceList.map((src: any) => (
                 <option key={src.id} value={src.id}>
                   {src.name}
                 </option>

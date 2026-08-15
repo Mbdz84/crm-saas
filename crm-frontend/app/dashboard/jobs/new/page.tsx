@@ -328,7 +328,9 @@ export default function CreateJobPage() {
               onChange={handleChange}
             >
               <option value="">Select source</option>
-              {leadSources.map((s) => (
+              {leadSources
+                .filter((s) => s.active !== false)
+                .map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
                 </option>
