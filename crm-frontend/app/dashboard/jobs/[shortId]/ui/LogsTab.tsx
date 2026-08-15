@@ -33,6 +33,22 @@ function formatLogTime(date: string | Date, tz?: string) {
   return `${format(zoned, "MM/dd/yyyy, hh:mm:ss a")} (${effectiveTz})`;
 }
 
+// For incoming_call logs, the row is created when the call is ATTACHED to the
+// job (which can be much later than the call — e.g. a 2nd call that spawns a
+// new job attaches earlier calls too). The real call time is stored in the
+// log JSON as `occurredAt`; prefer it so each card shows when the call came in.
+function logDisplayTime(log: any): string | Date {
+  if (log?.type === "incoming_call") {
+    try {
+      const call = JSON.parse(log.text);
+      if (call?.occurredAt) return call.occurredAt;
+    } catch {
+      /* fall through to createdAt */
+    }
+  }
+  return log.createdAt;
+}
+
 function getLogActionLabel(type: string) {
   switch (type) {
     case "created":
@@ -138,7 +154,7 @@ export default function LogsTab() {
                 <div className="font-medium text-gray-800">
                   {getLogActionLabel(log.type)}
                 </div>
-                <div>{formatLogTime(log.createdAt, job.timezone)}</div>
+                <div>{formatLogTime(logDisplayTime(log), job.timezone)}</div>
               </div>
 
               <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-xs whitespace-nowrap">
