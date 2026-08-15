@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "canSeePhoneHistory" BOOLEAN NOT NULL DEFAULT true;

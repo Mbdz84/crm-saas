@@ -1,0 +1,7 @@
+-- Technician/user access permissions (see docs).
+ALTER TABLE "User" ADD COLUMN "canLogin" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "User" ADD COLUMN "canSeeClientPhone" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "User" ADD COLUMN "canSeeLogs" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "User" ADD COLUMN "canSeeRecordings" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "User" ADD COLUMN "canUseCalendar" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "User" ADD COLUMN "canSeeReports" BOOLEAN NOT NULL DEFAULT true;

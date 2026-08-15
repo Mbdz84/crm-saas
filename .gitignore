@@ -12,8 +12,8 @@ crm-backend/build/
 crm-frontend/.next/
 crm-frontend/out/
 
-# Prisma migrations auto-build
-crm-backend/prisma/migrations/*
+# NOTE: Prisma migrations are intentionally TRACKED in git so they ship in the
+# Docker image and `prisma migrate deploy` can apply them to production.
 
 # Env files
 *.env
@@ -36,3 +36,4 @@ tmp/
 *.jpg
 *.jpeg
 *.gif
+.claude/

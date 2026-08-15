@@ -1,0 +1,2 @@
+-- baseline migration
+-- database schema already matches prisma schema
