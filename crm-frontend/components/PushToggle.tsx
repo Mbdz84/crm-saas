@@ -136,9 +136,9 @@ export default function PushToggle({
         className="flex w-full items-center gap-3 px-4 py-2 rounded-md text-left text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800 disabled:opacity-50"
       >
         {on ? (
-          <Bell size={18} className="text-blue-600" />
+          <Bell size={18} className="text-green-600" />
         ) : (
-          <BellOff size={18} />
+          <BellOff size={18} className="text-red-600" />
         )}
         <span className="text-sm font-medium">
           {on ? "Notifications on" : "Notifications off"}
@@ -158,9 +158,9 @@ export default function PushToggle({
       className="hidden md:grid place-items-center p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition disabled:opacity-50"
     >
       {on ? (
-        <Bell size={18} className="text-blue-600" />
+        <Bell size={18} className="text-green-600" />
       ) : (
-        <BellOff size={18} className="text-gray-700 dark:text-gray-300" />
+        <BellOff size={18} className="text-red-600" />
       )}
     </button>
   );

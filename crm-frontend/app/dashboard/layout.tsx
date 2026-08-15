@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
-    <div className="flex flex-col h-[100dvh] w-full overflow-hidden">
+    <div className="fixed inset-0 flex flex-col overflow-hidden">
 
       {/* TOP NAVIGATION (nav links + actions) */}
       <Topbar onMenuClick={() => setMobileSidebarOpen(true)} />
