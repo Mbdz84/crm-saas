@@ -49,5 +49,8 @@ EXPOSE 8080
 
 # ------------------------------
 # Start the server
+# Apply any pending Prisma migrations to the (production) database first,
+# then boot. `migrate deploy` is idempotent — it only runs migrations not yet
+# recorded in the DB's _prisma_migrations table, and no-ops when up to date.
 # ------------------------------
-CMD ["node", "build/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node build/server.js"]
