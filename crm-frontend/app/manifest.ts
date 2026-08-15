@@ -1,0 +1,19 @@
+import type { MetadataRoute } from "next";
+
+// Makes the CRM installable (Add to Home Screen). Required for iPhone push.
+export default function manifest(): MetadataRoute.Manifest {
+  return {
+    name: "Moriel CRM",
+    short_name: "CRM",
+    start_url: "/dashboard/jobs",
+    scope: "/",
+    display: "standalone",
+    background_color: "#ffffff",
+    theme_color: "#2563eb",
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+}

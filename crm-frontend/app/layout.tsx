@@ -6,6 +6,12 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 export const metadata = {
   title: "CRM Platform",
   description: "CRM System",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "CRM" },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({

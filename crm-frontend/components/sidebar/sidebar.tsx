@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import SidebarLink from "./sidebar-link";
 import SidebarSection from "./sidebar-section";
+import PushToggle from "@/components/PushToggle";
 import {
   Home,
   Briefcase,
@@ -150,6 +151,9 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         collapsed={collapsed}
         onNavigate={onNavigate}
       />
+      {/* Chat notifications on/off (phones) */}
+      <PushToggle variant="row" />
+
       <SidebarLink
         href="/logout"
         label="Logout"

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 import { useTheme } from "@/components/theme/theme-provider";
+import PushToggle from "@/components/PushToggle";
 
 export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const router = useRouter();
@@ -252,6 +253,9 @@ export default function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
           )}
         </div>
       )}
+
+      {/* Chat notifications toggle (desktop) */}
+      <PushToggle variant="icon" />
 
       {/* Theme toggle */}
       <button

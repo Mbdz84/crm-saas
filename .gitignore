@@ -37,3 +37,7 @@ tmp/
 *.jpeg
 *.gif
 .claude/
+
+# ...but the PWA app icons MUST be tracked (they ship to Vercel / the browser).
+!crm-frontend/public/icons/
+!crm-frontend/public/icons/*.png
