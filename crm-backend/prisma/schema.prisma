@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Company {
@@ -86,6 +87,7 @@ model User {
   callSessions               JobCallSession[] @relation("UserCallSessions")
   jobClosingsClosed          JobClosing[]     @relation("JobClosingClosedBy")
   logs                       JobLog[]
+  pushSubscriptions          PushSubscription[]
   company                    Company          @relation(fields: [companyId], references: [id])
 }
 
@@ -447,4 +449,22 @@ model JobPartySettlement {
 
   @@unique([jobId, partyType])
   @@index([companyId, partyType, partyId])
+}
+// A single browser/device push subscription (Web Push). One per browser per
+// user; used to deliver chat notifications. Cleaned up automatically when a
+// push send returns 404/410 (expired).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
 }

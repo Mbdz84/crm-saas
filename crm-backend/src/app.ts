@@ -29,6 +29,7 @@ import systemRouter from "./modules/system/system.routes";
 
 import reportsRoutes from "./modules/reports/reports.routes";
 import messagesRoutes from "./modules/messages/messages.routes";
+import pushRoutes from "./modules/push/push.routes";
 import callerIdRoutes from "./modules/callerIds/callerId.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 import settlementRoutes from "./modules/settlements/settlements.routes";
@@ -108,6 +109,7 @@ app.use("/invoices", authMiddleware, tenantMiddleware, invoiceRoutes);
 app.use("/sms-settings", authMiddleware, tenantMiddleware, smsSettingsRouter);
 app.use("/reports", reportsRoutes);
 app.use("/messages", authMiddleware, tenantMiddleware, messagesRoutes);
+app.use("/push", authMiddleware, tenantMiddleware, pushRoutes);
 app.use("/caller-ids", authMiddleware, tenantMiddleware, callerIdRoutes);
 app.use("/dashboard", authMiddleware, tenantMiddleware, dashboardRoutes);
 app.use("/settlements", authMiddleware, tenantMiddleware, settlementRoutes);

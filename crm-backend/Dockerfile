@@ -53,4 +53,4 @@ EXPOSE 8080
 # then boot. `migrate deploy` is idempotent — it only runs migrations not yet
 # recorded in the DB's _prisma_migrations table, and no-ops when up to date.
 # ------------------------------
-CMD ["sh", "-c", "npx prisma migrate deploy && node build/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy || echo '⚠️ prisma migrate deploy failed — starting server anyway'; node build/server.js"]

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import twilio from "twilio";
 import prisma from "../../prisma/client";
+import { sendChatPush } from "../push/push.service";
 
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID!,
@@ -58,6 +59,16 @@ export async function recordInboundSms(input: {
       twilioSid: input.twilioSid || null,
     },
   });
+
+  // Fire web-push notifications to this company's subscribed devices.
+  // Fail-safe & non-blocking — never let a push error break SMS recording.
+  sendChatPush({
+    companyId,
+    conversationId: conversation.id,
+    senderName: conversation.customerName,
+    senderNumber: clientNumber,
+    body: input.body,
+  }).catch(() => {});
 
   return conversation;
 }
