@@ -49,6 +49,16 @@ export async function sendChatPush(opts: {
     });
     if (subs.length === 0) return;
 
+    // Per-user mute: any user who silenced THIS conversation must not get a
+    // push on any of their devices. Drop their subscriptions from the batch.
+    const mutes = await prisma.conversationMute.findMany({
+      where: { conversationId: opts.conversationId },
+      select: { userId: true },
+    });
+    const mutedUserIds = new Set(mutes.map((m) => m.userId));
+    const targets = subs.filter((s) => !mutedUserIds.has(s.userId));
+    if (targets.length === 0) return;
+
     const title =
       opts.senderName?.trim() || fmtPhone(opts.senderNumber) || "New message";
     const body = (opts.body || "").trim() || "📷 Media";
@@ -61,7 +71,7 @@ export async function sendChatPush(opts: {
     });
 
     await Promise.all(
-      subs.map(async (s) => {
+      targets.map(async (s) => {
         try {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },

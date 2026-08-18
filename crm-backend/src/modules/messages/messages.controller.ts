@@ -62,6 +62,8 @@ export async function recordInboundSms(input: {
 
   // Fire web-push notifications to this company's subscribed devices.
   // Fail-safe & non-blocking — never let a push error break SMS recording.
+  // Per-user mute is enforced INSIDE sendChatPush: any user who silenced this
+  // conversation is filtered out, so they get no push on any of their devices.
   sendChatPush({
     companyId,
     conversationId: conversation.id,
@@ -127,14 +129,20 @@ export async function recordOutboundSms(input: {
 export async function unreadCount(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
-    // Muted conversations never count toward badges.
+    const userId = req.user!.id;
+    // Conversations THIS user muted never count toward their badges.
+    const myMutes = await prisma.conversationMute.findMany({
+      where: { userId, conversation: { companyId } },
+      select: { conversationId: true },
+    });
+    const mutedIds = myMutes.map((m) => m.conversationId);
     const [inbox, archive] = await Promise.all([
       prisma.smsConversation.aggregate({
-        where: { companyId, box: "inbox", muted: false },
+        where: { companyId, box: "inbox", id: { notIn: mutedIds } },
         _sum: { unread: true },
       }),
       prisma.smsConversation.aggregate({
-        where: { companyId, box: "archive", muted: false },
+        where: { companyId, box: "archive", id: { notIn: mutedIds } },
         _sum: { unread: true },
       }),
     ]);
@@ -163,7 +171,19 @@ export async function listConversations(req: Request, res: Response) {
       orderBy: { lastMessageAt: "desc" },
     });
 
-    return res.json(conversations);
+    // Overlay THIS user's mute state (mute is per-user, not company-wide).
+    const userId = req.user!.id;
+    const myMutes = await prisma.conversationMute.findMany({
+      where: { userId, conversationId: { in: conversations.map((c) => c.id) } },
+      select: { conversationId: true },
+    });
+    const mutedSet = new Set(myMutes.map((m) => m.conversationId));
+    const withMute = conversations.map((c) => ({
+      ...c,
+      muted: mutedSet.has(c.id),
+    }));
+
+    return res.json(withMute);
   } catch (err) {
     console.error("🔥 listConversations error:", err);
     return res.status(500).json({ error: "Failed to load conversations" });
@@ -196,7 +216,16 @@ export async function getThread(req: Request, res: Response) {
       });
     }
 
-    return res.json({ conversation: { ...conversation, unread: 0 }, messages });
+    const muted = !!(await prisma.conversationMute.findUnique({
+      where: {
+        userId_conversationId: { userId: req.user!.id, conversationId: id },
+      },
+    }));
+
+    return res.json({
+      conversation: { ...conversation, unread: 0, muted },
+      messages,
+    });
   } catch (err) {
     console.error("🔥 getThread error:", err);
     return res.status(500).json({ error: "Failed to load thread" });
@@ -286,24 +315,26 @@ export async function deleteConversation(req: Request, res: Response) {
 export async function updateConversation(req: Request, res: Response) {
   try {
     const companyId = req.user!.companyId;
+    const userId = req.user!.id;
     const { id } = req.params;
     const body = req.body || {};
     const { box, muted } = body;
 
-    const data: { box?: string; muted?: boolean; displayName?: string | null } =
-      {};
+    // Fields stored on the conversation itself (shared across the company).
+    const data: { box?: string; displayName?: string | null } = {};
     if (box !== undefined) {
       if (!BOXES.includes(box))
         return res.status(400).json({ error: "Invalid box" });
       data.box = box;
     }
-    if (muted !== undefined) data.muted = !!muted;
     if ("displayName" in body) {
       const dn = (body.displayName || "").toString().trim();
       data.displayName = dn || null; // empty/number-choice clears it
     }
 
-    if (Object.keys(data).length === 0)
+    const hasConvUpdate = Object.keys(data).length > 0;
+    const hasMuteUpdate = muted !== undefined;
+    if (!hasConvUpdate && !hasMuteUpdate)
       return res.status(400).json({ error: "Nothing to update" });
 
     const conversation = await prisma.smsConversation.findFirst({
@@ -312,12 +343,36 @@ export async function updateConversation(req: Request, res: Response) {
     if (!conversation)
       return res.status(404).json({ error: "Conversation not found" });
 
-    const updated = await prisma.smsConversation.update({
-      where: { id },
-      data,
-    });
+    // Mute is PER-USER: a ConversationMute row means THIS user silenced it.
+    if (hasMuteUpdate) {
+      if (muted) {
+        await prisma.conversationMute.upsert({
+          where: { userId_conversationId: { userId, conversationId: id } },
+          create: { userId, conversationId: id },
+          update: {},
+        });
+      } else {
+        await prisma.conversationMute
+          .delete({
+            where: { userId_conversationId: { userId, conversationId: id } },
+          })
+          .catch(() => {}); // no row = already unmuted
+      }
+    }
 
-    return res.json(updated);
+    let convo: typeof conversation = conversation;
+    if (hasConvUpdate) {
+      convo = await prisma.smsConversation.update({ where: { id }, data });
+    }
+
+    // Reflect this user's current mute state in the response.
+    const isMuted = hasMuteUpdate
+      ? !!muted
+      : !!(await prisma.conversationMute.findUnique({
+          where: { userId_conversationId: { userId, conversationId: id } },
+        }));
+
+    return res.json({ ...convo, muted: isMuted });
   } catch (err) {
     console.error("🔥 updateConversation error:", err);
     return res.status(500).json({ error: "Failed to update conversation" });

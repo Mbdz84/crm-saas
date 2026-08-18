@@ -88,6 +88,7 @@ model User {
   jobClosingsClosed          JobClosing[]     @relation("JobClosingClosedBy")
   logs                       JobLog[]
   pushSubscriptions          PushSubscription[]
+  conversationMutes          ConversationMute[]
   company                    Company          @relation(fields: [companyId], references: [id])
 }
 
@@ -358,9 +359,28 @@ model SmsConversation {
   updatedAt       DateTime     @updatedAt
   company         Company      @relation(fields: [companyId], references: [id])
   messages        SmsMessage[]
+  mutes           ConversationMute[]
 
   @@unique([companyId, clientNumber, crmNumber])
   @@index([companyId, box, lastMessageAt])
+}
+
+/// Per-user mute for a conversation. A row here means THIS user has
+/// silenced THIS conversation: no push to their devices, and it drops out
+/// of their unread badge. No row = not muted for that user.
+/// (The legacy SmsConversation.muted boolean is company-wide and is no
+/// longer read by app logic — kept only to avoid a destructive migration.)
+model ConversationMute {
+  id             String          @id @default(cuid())
+  userId         String
+  conversationId String
+  createdAt      DateTime        @default(now())
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation   SmsConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, conversationId])
+  @@index([conversationId])
+  @@index([userId])
 }
 
 model CallerId {
