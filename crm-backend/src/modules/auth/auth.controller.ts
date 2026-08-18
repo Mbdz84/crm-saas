@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../../prisma/client";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET!;
+import { signAuthToken, setAuthCookie } from "../../lib/authCookie";
 
 export async function register(req: Request, res: Response) {
   try {
@@ -55,30 +53,14 @@ export async function login(req: Request, res: Response) {
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, companyId: user.companyId, role: user.role },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-/* --------------------------------------------------------
-   COOKIE CONFIG — WORKS FOR BOTH LOCAL & PRODUCTION
--------------------------------------------------------- */
-
-// Detect if running on localhost
-const isLocal =
-  req.hostname === "localhost" ||
-  req.hostname.startsWith("127.") ||
-  req.hostname.startsWith("10.") ||
-  req.hostname.startsWith("192.168.");
-
-res.cookie("token", token, {
-  httpOnly: true,
-  secure: !isLocal,                   // Production → TRUE (required)
-  sameSite: isLocal ? "lax" : "none", // Production → NONE (required for cross-domain)
-  domain: isLocal ? undefined : ".moriel.work", // Production cookie for all subdomains
-  path: "/",
-});
+    // 30-day sliding session — refreshed on every authenticated request
+    // (see authMiddleware) so active users stay logged in.
+    const token = signAuthToken({
+      userId: user.id,
+      companyId: user.companyId,
+      role: user.role,
+    });
+    setAuthCookie(req, res, token);
 
     return res.json({ message: "Logged in", user });
   } catch (err) {
