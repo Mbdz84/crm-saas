@@ -9,6 +9,7 @@ import { useState } from "react";
 ------------------------------------------------------------ */
 const GUIDES = [
   { key: "twilio-source-setup", label: "Twilio Source Setup" },
+  { key: "ai-agent-create-job", label: "AI Agent – Create Job (JSON)" },
 ];
 
 export default function DocsGuidesTab() {
@@ -34,6 +35,7 @@ export default function DocsGuidesTab() {
       </div>
 
       {sub === "twilio-source-setup" && <TwilioSourceSetupGuide />}
+      {sub === "ai-agent-create-job" && <AiAgentCreateJobGuide />}
     </div>
   );
 }
@@ -151,6 +153,154 @@ function TwilioSourceSetupGuide() {
             (they&apos;re kept ~60 days). The log entry stays.
           </li>
         </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   GUIDE: AI Agent – Create Job from JSON
+============================================================ */
+function AiAgentCreateJobGuide() {
+  return (
+    <div className="text-sm leading-relaxed space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold">AI Agent – Create Job from JSON</h2>
+        <p className="text-gray-600 dark:text-gray-300 mt-1">
+          Let a voice AI agent (or any external system) create a job directly by
+          POSTing JSON. The job lands on the board with status{" "}
+          <b>Accepted</b> and a log entry showing it was created by the AI agent.
+        </p>
+      </div>
+
+      <div className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-1">
+        <div>
+          <b>Endpoint:</b>{" "}
+          <code>POST https://api.moriel.work/api/ingest/job</code>
+        </div>
+        <div>
+          <b>Auth:</b> <code>Authorization: Bearer ls_live_…</code> (a lead
+          source API key)
+        </div>
+        <div>
+          <b>Content type:</b> <code>Application/JSON</code>
+        </div>
+      </div>
+
+      <Step n={1} title="Generate an API key for the lead source">
+        <p>
+          Open the lead source that represents your AI agent (e.g.{" "}
+          <i>AI Voice Agent</i>) and click <b>Generate API key</b>. Copy the key
+          (<code>ls_live_…</code>) — it is shown only once. This key tells the
+          CRM which company the job belongs to.
+        </p>
+      </Step>
+
+      <Step n={2} title="Point the agent at the endpoint">
+        <p>
+          Configure your voice agent&apos;s webhook / tool action to send a{" "}
+          <b>POST</b> request to{" "}
+          <code>https://api.moriel.work/api/ingest/job</code> with these headers:
+        </p>
+        <Code>{`Authorization: Bearer ls_live_YOUR_SOURCE_KEY
+Content-Type: application/json`}</Code>
+      </Step>
+
+      <Step n={3} title="Send the job as JSON">
+        <p>
+          Every field is optional <b>except</b> that you must include at least
+          one of <code>customerPhone</code> or <code>customerName</code>.
+          Recommended full body:
+        </p>
+        <Code>{`{
+  "origin": "ai_generated",
+  "customerName": "John Smith",
+  "customerPhone": "+15125551234",
+  "customerPhone2": "+15125559999",
+  "customerAddress": "123 Main St, Austin, TX 78701",
+  "description": "AC not cooling, wants a morning appointment",
+  "jobType": "AC Repair",
+  "scheduledAt": "2026-08-25T15:00:00Z",
+  "timezone": "America/Chicago",
+  "externalId": "call_abc123"
+}`}</Code>
+      </Step>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">Field reference</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-600 dark:text-gray-300">
+          <li>
+            <code>origin</code> — set to <code>"ai_generated"</code> so the log
+            reads “AI agent created the job.” Defaults to{" "}
+            <code>external_api</code> if omitted.
+          </li>
+          <li>
+            <code>customerName</code> / <code>customerPhone</code> — at least one
+            is required (otherwise you get <code>400</code>).
+          </li>
+          <li>
+            <code>customerPhone2</code>, <code>customerAddress</code>,{" "}
+            <code>description</code> — optional customer details / notes.
+          </li>
+          <li>
+            <code>jobType</code> — must match the <i>name</i> of an active Job
+            Type to be linked; otherwise the job is still created (just without a
+            type). Also used as the job title (falls back to “New Job”).
+          </li>
+          <li>
+            <code>scheduledAt</code> — ISO 8601 date/time string.
+          </li>
+          <li>
+            <code>timezone</code> — used only if it can&apos;t be derived from
+            the address; falls back to the company default.
+          </li>
+          <li>
+            <code>externalId</code> — optional reference (e.g. the call ID) for
+            future de-duplication.
+          </li>
+        </ul>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">Response</h3>
+        <p className="text-gray-600 dark:text-gray-300">On success:</p>
+        <Code>{`{ "success": true, "jobId": "…", "shortId": "…" }`}</Code>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">Troubleshooting</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-600 dark:text-gray-300">
+          <li>
+            <code>Missing API key</code> / <code>Invalid API key</code> → the{" "}
+            <code>Authorization: Bearer …</code> header is missing, malformed, or
+            the lead source is inactive. Regenerate and update it.
+          </li>
+          <li>
+            <code>customerPhone or customerName is required</code> → the body had
+            neither. Include at least one.
+          </li>
+          <li>
+            Job created but no type shown → the <code>jobType</code> name
+            didn&apos;t match an active Job Type. Check spelling in Settings →
+            Job Types.
+          </li>
+        </ul>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">Quick test (curl)</h3>
+        <Code>{`curl -X POST https://api.moriel.work/api/ingest/job \\
+  -H "Authorization: Bearer ls_live_YOUR_SOURCE_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "origin": "ai_generated",
+    "customerName": "Jane Doe",
+    "customerPhone": "+15125550100",
+    "customerAddress": "456 Oak Ave, Dallas, TX",
+    "jobType": "Plumbing",
+    "description": "Leaking kitchen faucet",
+    "scheduledAt": "2026-08-26T14:00:00Z"
+  }'`}</Code>
       </div>
     </div>
   );

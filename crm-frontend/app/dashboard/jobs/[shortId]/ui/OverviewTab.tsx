@@ -928,7 +928,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
         "Doesn’t have the money",
         "Doesn’t need the service anymore",
         "Went with different company",
-        "We cant do the job",
+        "Can't do the job",
         "Duplicate lead",
         "Tech Don't have the key for it",
         "Client found the keys",
