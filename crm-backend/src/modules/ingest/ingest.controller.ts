@@ -3,6 +3,7 @@ import prisma from "../../prisma/client";
 import { IngestJobPayload } from "./ingest.types";
 import { generateUniqueShortId } from "../jobs/utils/shortId";
 import { timezoneFromAddress } from "../../utils/timezone";
+import { attachPendingCallsToJob } from "../incomingCall/incomingCall.service";
 
 type JobOrigin = "ai_generated" | "incoming_sms" | "external_api";
 
@@ -96,6 +97,10 @@ export async function ingestJob(req: Request, res: Response) {
       },
     },
   });
+
+  // Call-first race: a dispatch-call recording may have hit /api/ingest/call
+  // before this job existed. Link any pending calls now. Fail-safe (never throws).
+  await attachPendingCallsToJob(job);
 
   return res.json({
     success: true,
