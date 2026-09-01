@@ -9,6 +9,7 @@ import { useState } from "react";
 ------------------------------------------------------------ */
 const GUIDES = [
   { key: "twilio-source-setup", label: "Twilio Source Setup" },
+  { key: "add-twilio-number", label: "Add a Twilio Number" },
   { key: "ai-agent-create-job", label: "AI Agent – Create Job (JSON)" },
 ];
 
@@ -35,6 +36,7 @@ export default function DocsGuidesTab() {
       </div>
 
       {sub === "twilio-source-setup" && <TwilioSourceSetupGuide />}
+      {sub === "add-twilio-number" && <AddTwilioNumberGuide />}
       {sub === "ai-agent-create-job" && <AiAgentCreateJobGuide />}
     </div>
   );
@@ -230,7 +232,7 @@ Content-Type: application/json`}</Code>
         <h3 className="font-semibold mb-1">Field reference</h3>
         <ul className="list-disc pl-5 space-y-1 text-gray-600 dark:text-gray-300">
           <li>
-            <code>origin</code> — set to <code>"ai_generated"</code> so the log
+            <code>origin</code> — set to <code>&quot;ai_generated&quot;</code> so the log
             reads “AI agent created the job.” Defaults to{" "}
             <code>external_api</code> if omitted.
           </li>
@@ -301,6 +303,121 @@ Content-Type: application/json`}</Code>
     "description": "Leaking kitchen faucet",
     "scheduledAt": "2026-08-26T14:00:00Z"
   }'`}</Code>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   GUIDE: Add a Twilio Number
+============================================================ */
+function AddTwilioNumberGuide() {
+  return (
+    <div className="text-sm leading-relaxed space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold">Add a Twilio Number</h2>
+        <p className="text-gray-600 dark:text-gray-300 mt-1">
+          Add a new Twilio number for <b>masked, recorded technician ↔ client
+          calls</b>. You point the number&apos;s voice webhook at the CRM, then
+          assign it to a technician. The CRM turns on recording automatically —
+          there is nothing else to wire up.
+        </p>
+      </div>
+
+      <div className="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-1">
+        <div>
+          <b>Voice webhook:</b>{" "}
+          <code>POST https://api.moriel.work/twilio/voice</code>
+        </div>
+        <div>
+          <b>SMS webhook (optional):</b>{" "}
+          <code>POST https://api.moriel.work/twilio/sms</code>
+        </div>
+      </div>
+
+      <Step n={1} title="Buy a voice-capable number in Twilio">
+        <p>
+          Twilio Console → <b>Phone Numbers → Buy a number</b>. Pick any number
+          with the <b>Voice</b> capability (add <b>SMS</b> too if this line should
+          also receive texts into the CRM).
+        </p>
+      </Step>
+
+      <Step n={2} title="Point its voice webhook at the CRM">
+        <p>
+          Open the number in Twilio and set, under <b>Voice Configuration</b> →{" "}
+          <b>A call comes in</b>:
+        </p>
+        <ul className="list-disc pl-5 space-y-1 mt-2">
+          <li>
+            <b>Type:</b> <code>Webhook</code>
+          </li>
+          <li>
+            <b>URL:</b> <code>https://api.moriel.work/twilio/voice</code>
+          </li>
+          <li>
+            <b>Method:</b> <code>HTTP POST</code>
+          </li>
+        </ul>
+        <p className="mt-2">
+          (Optional) For inbound SMS, set <b>A message comes in</b> to{" "}
+          <code>https://api.moriel.work/twilio/sms</code> (POST). Then <b>Save</b>.
+        </p>
+        <p className="text-gray-600 dark:text-gray-300 mt-2">
+          You do <b>not</b> need to set a recording callback — the CRM enables
+          recording during the call itself.
+        </p>
+      </Step>
+
+      <Step n={3} title="Assign the number to a technician">
+        <p>
+          Go to <b>Technicians / Users</b> → open the technician → turn on{" "}
+          <b>Masked Calls</b> → open <b>Masked Call Number</b>. Pick the new number
+          from the dropdown and click <b>Save Masked Number</b>.
+        </p>
+      </Step>
+
+      <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-700 p-3">
+        <b>Why the webhook has to come first:</b> the CRM builds that dropdown by
+        reading your Twilio account and listing only numbers whose voice webhook
+        points at <code>/twilio/voice</code>. If step 2 isn&apos;t done, the number
+        will <b>not appear</b> in step 3.
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">How it works</h3>
+        <p className="text-gray-600 dark:text-gray-300">
+          On a masked call the CRM dials the other party, uses the assigned number
+          as the <b>caller ID</b>, and records from ringing. The recording lands on
+          the matching job&apos;s <b>Log</b> tab. You never type the number&apos;s
+          SID — selecting it in the dropdown links it. Twilio keeps recordings
+          ~60 days.
+        </p>
+      </div>
+
+      <div className="border-t pt-4">
+        <h3 className="font-semibold mb-1">Troubleshooting</h3>
+        <ul className="list-disc pl-5 space-y-1 text-gray-600 dark:text-gray-300">
+          <li>
+            <b>Number not in the dropdown</b> / “No Twilio numbers available for
+            masked calls” → its voice webhook isn&apos;t set to{" "}
+            <code>https://api.moriel.work/twilio/voice</code> (must be <b>POST</b>,
+            and the URL must contain <code>/twilio/voice</code>). Fix it in Twilio
+            and reload.
+          </li>
+          <li>
+            <b>Masked Call Number section is locked</b> → turn on the{" "}
+            <b>Masked Calls</b> toggle for that technician first.
+          </li>
+          <li>
+            <b>Wrong caller ID / not recording</b> → the number isn&apos;t assigned
+            to that tech; calls then fall back to the default company number.
+          </li>
+          <li>
+            <b>New number still missing</b> → the list loads up to 50 numbers from
+            Twilio; remove unused ones if you&apos;re over that.
+          </li>
+        </ul>
       </div>
     </div>
   );
