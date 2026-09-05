@@ -45,6 +45,12 @@ export default function RecordingsTab() {
   const [smsTo, setSmsTo] = useState("");
   const [smsBody, setSmsBody] = useState("");
   const [smsSending, setSmsSending] = useState(false);
+  // Which number this job's SMS goes out from (tech mask, or CRM fallback)
+  const [smsSender, setSmsSender] = useState<{
+    from: string;
+    label: string;
+    masked: boolean;
+  } | null>(null);
 
   /* ----------------------------------------------------------
      AUTO LOAD WHEN TAB OPENS
@@ -138,6 +144,13 @@ function annotatePhones(text?: string) {
     setSmsTo(barePhone(job?.customerPhone) || barePhone(job?.customerPhone2));
     setSmsBody("");
     setSmsOpen(true);
+
+    // Resolve the sending number so the dispatcher sees it before sending
+    setSmsSender(null);
+    fetch(`${base}/jobs/${shortId}/sms-sender`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => s && setSmsSender(s))
+      .catch(() => {});
   }
 
   async function handleSendSms() {
@@ -238,6 +251,25 @@ function annotatePhones(text?: string) {
             >
               ✕
             </button>
+          </div>
+
+          {/* SENDING FROM */}
+          <div className="text-xs text-gray-600 dark:text-gray-400">
+            <b>From:</b>{" "}
+            {smsSender ? (
+              <>
+                {smsSender.from}{" "}
+                <span
+                  className={`ml-1 px-1.5 py-0.5 rounded text-white ${
+                    smsSender.masked ? "bg-purple-600" : "bg-gray-500"
+                  }`}
+                >
+                  {smsSender.label}
+                </span>
+              </>
+            ) : (
+              "resolving\u2026"
+            )}
           </div>
 
           {/* which number */}
