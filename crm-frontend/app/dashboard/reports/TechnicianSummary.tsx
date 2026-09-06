@@ -27,8 +27,8 @@ export default function TechnicianSummary({
   to?: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
-  // false = Tech Balance first, Tech Profit second (default order)
-  // true  = Tech Profit first, Tech Balance second
+  // false = Tech Profit first, Tech Balance second (default order)
+  // true  = Tech Balance first, Tech Profit second
   const [swapCols, setSwapCols] = useState(false);
   // "" = default order (as received); otherwise a key from sortOptions
   const [sortBy, setSortBy] = useState("");
@@ -173,8 +173,8 @@ export default function TechnicianSummary({
     </th>
   );
   const orderedHeaders = swapCols
-    ? [profitHeader, balanceHeader]
-    : [balanceHeader, profitHeader];
+    ? [balanceHeader, profitHeader]
+    : [profitHeader, balanceHeader];
 
   const balanceFooter = (
     <td key="balance" className="border px-2 py-1 text-center">
@@ -187,8 +187,8 @@ export default function TechnicianSummary({
     </td>
   );
   const orderedFooters = swapCols
-    ? [profitFooter, balanceFooter]
-    : [balanceFooter, profitFooter];
+    ? [balanceFooter, profitFooter]
+    : [profitFooter, balanceFooter];
 
   return (
     <div className="bg-white border rounded p-4 shadow mt-4">
@@ -283,8 +283,8 @@ export default function TechnicianSummary({
               </td>
             );
             const orderedCells = swapCols
-              ? [profitCell, balanceCell]
-              : [balanceCell, profitCell];
+              ? [balanceCell, profitCell]
+              : [profitCell, balanceCell];
 
             return (
               <React.Fragment key={t.name}>
