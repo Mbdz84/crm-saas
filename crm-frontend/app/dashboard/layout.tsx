@@ -4,11 +4,13 @@ import { useState } from "react";
 import Sidebar from "@/components/sidebar/sidebar";
 import Topbar from "@/components/topbar/topbar";
 import JobModal from "@/components/JobModal";
+import ReactQueryProvider from "@/app/providers/ReactQueryProvider";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
+    <ReactQueryProvider>
     <div className="fixed inset-0 flex flex-col overflow-hidden">
 
       {/* TOP NAVIGATION (nav links + actions) */}
@@ -37,5 +39,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       <JobModal />
     </div>
+    </ReactQueryProvider>
   );
 }

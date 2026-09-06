@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   DndContext,
@@ -268,6 +269,7 @@ export default function JobsPage() {
   });
 
   const base = process.env.NEXT_PUBLIC_API_URL;
+  const queryClient = useQueryClient();
 
   // Multi-select delete
   const [selectMode, setSelectMode] = useState(false);
@@ -293,25 +295,35 @@ export default function JobsPage() {
 
   // Current user's role — used to gate admin-only controls (e.g. Delete Jobs).
   const [role, setRole] = useState<string | null>(null);
+  const { data: meData } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
+        credentials: "include",
+      });
+      return res.ok ? res.json() : null;
+    },
+    staleTime: 5 * 60_000,
+  });
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/me`, {
-      credentials: "include",
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setRole(d?.user?.role ?? null))
-      .catch(() => {});
-  }, []);
+    setRole(meData?.user?.role ?? null);
+  }, [meData]);
 
   // Statuses for the Kanban columns + drag-to-change-status
   const [statuses, setStatuses] = useState<JobStatusMeta[]>([]);
+  const { data: statusesData } = useQuery({
+    queryKey: ["job-status"],
+    queryFn: async () => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/job-status`, {
+        credentials: "include",
+      });
+      return res.ok ? res.json() : [];
+    },
+    staleTime: 5 * 60_000,
+  });
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/job-status`, {
-      credentials: "include",
-    })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((d) => setStatuses(Array.isArray(d) ? d : []))
-      .catch(() => {});
-  }, []);
+    if (Array.isArray(statusesData)) setStatuses(statusesData);
+  }, [statusesData]);
 
   const kanbanSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -407,6 +419,7 @@ export default function JobsPage() {
       .then((res) => {
         if (!res.ok) throw new Error();
         toast.success(`#${short} moved to ${target.name}`, { duration: 4000 });
+        queryClient.invalidateQueries({ queryKey: ["jobs"] });
       })
       .catch(() => {
         setJobs(prev); // revert on failure
@@ -460,34 +473,54 @@ export default function JobsPage() {
       setJobs((prev: any[]) =>
         prev.filter((j) => !selectedIds.has(j.shortId))
       );
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
       exitSelectMode();
     } catch {
       toast.error("Failed to delete");
     }
   }
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch(`${base}/jobs`, { credentials: "include" });
-
-        if (!res.ok) {
-          console.warn("JWT expired → redirecting to login");
-          router.push("/login");
-          return;
-        }
-
-        const data = await res.json();
-        setJobs(data);
-      } catch (err) {
-        console.error("LOAD JOBS ERROR", err);
-      } finally {
-        setLoading(false);
+  // Cached jobs query. On revisit it returns the cached list immediately
+  // (no spinner, instant render) and revalidates in the background.
+  const {
+    data: jobsData,
+    isError: jobsIsError,
+    error: jobsError,
+    isSuccess: jobsIsSuccess,
+  } = useQuery({
+    queryKey: ["jobs"],
+    queryFn: async () => {
+      const res = await fetch(`${base}/jobs`, { credentials: "include" });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("UNAUTHORIZED");
       }
-    };
+      if (!res.ok) throw new Error("Failed to load jobs");
+      return res.json();
+    },
+    staleTime: 0,
+  });
 
-    load();
-  }, []);
+  // Feed fetched/cached jobs into local state so all existing
+  // drag/delete/edit logic (which mutates `jobs`) keeps working unchanged.
+  useEffect(() => {
+    if (jobsData) setJobs(jobsData);
+  }, [jobsData]);
+
+  useEffect(() => {
+    if (jobsIsSuccess) setLoading(false);
+  }, [jobsIsSuccess]);
+
+  useEffect(() => {
+    if (jobsIsError) {
+      if ((jobsError as Error)?.message === "UNAUTHORIZED") {
+        console.warn("JWT expired → redirecting to login");
+        router.push("/login");
+      } else {
+        console.error("LOAD JOBS ERROR", jobsError);
+      }
+      setLoading(false);
+    }
+  }, [jobsIsError, jobsError, router]);
 
 useEffect(() => {
   const saved = localStorage.getItem("jobs.columns");
