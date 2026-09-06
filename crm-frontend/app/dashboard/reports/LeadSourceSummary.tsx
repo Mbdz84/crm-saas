@@ -1,9 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, ArrowUpDown } from "lucide-react";
 import SettleCell from "./SettleCell";
 import SettlementInlinePanel from "./SettlementInlinePanel";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export default function LeadSourceSummary({
   data,
@@ -17,6 +27,9 @@ export default function LeadSourceSummary({
   to?: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  // "" = default order (as received); otherwise a key from sortOptions
+  const [sortBy, setSortBy] = useState("");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   function openReport(name: string) {
     const params = new URLSearchParams();
@@ -50,9 +63,109 @@ export default function LeadSourceSummary({
   const sum = (key: string) =>
     data.reduce((s, r) => s + Number(r[key] || 0), 0);
 
+  /* --------------------------------------------------
+     SORTING
+  -------------------------------------------------- */
+  type LeadRow = {
+    name: string;
+    total?: number;
+    closed?: number;
+    cancelled?: number;
+  };
+  const sortOptions: {
+    key: string;
+    label: string;
+    get: (r: LeadRow) => number | string;
+  }[] = [
+    { key: "name", label: "Lead Source", get: (r) => r.name || "" },
+    { key: "total", label: "Total", get: (r) => Number(r.total || 0) },
+    { key: "closed", label: "Closed", get: (r) => Number(r.closed || 0) },
+    {
+      key: "cancelled",
+      label: "Cancelled",
+      get: (r) => Number(r.cancelled || 0),
+    },
+    {
+      key: "closingPct",
+      label: "Closing %",
+      get: (r) =>
+        Number(r.total || 0) > 0
+          ? Number(r.closed || 0) / Number(r.total || 0)
+          : 0,
+    },
+    {
+      key: "cancelPct",
+      label: "Cancel %",
+      get: (r) =>
+        Number(r.total || 0) > 0
+          ? Number(r.cancelled || 0) / Number(r.total || 0)
+          : 0,
+    },
+    {
+      key: "totalAmount",
+      label: "Total Amount",
+      get: (r) => getLeadTotals(r.name).totalAmount,
+    },
+    {
+      key: "leadBalance",
+      label: "Lead Balance (Profit)",
+      get: (r) => getLeadTotals(r.name).leadBalance,
+    },
+  ];
+
+  const activeSort = sortOptions.find((o) => o.key === sortBy);
+  const sortedData = activeSort
+    ? [...data].sort((a, b) => {
+        const av = activeSort.get(a);
+        const bv = activeSort.get(b);
+        const cmp =
+          typeof av === "string" || typeof bv === "string"
+            ? String(av).localeCompare(String(bv))
+            : (av as number) - (bv as number);
+        return sortDir === "asc" ? cmp : -cmp;
+      })
+    : data;
+
   return (
     <div className="bg-white border rounded p-4 shadow mt-6">
-      <h2 className="text-xl font-semibold mb-3">Lead Source Summary</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-semibold">Lead Source Summary</h2>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              title="Sort lead sources"
+              className="flex items-center gap-1 text-sm border rounded px-2 py-1 hover:bg-gray-50"
+            >
+              <ArrowUpDown size={14} />
+              {activeSort ? `Sort: ${activeSort.label}` : "Sort by"}
+              {activeSort ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+              {sortOptions.map((o) => (
+                <DropdownMenuRadioItem key={o.key} value={o.key}>
+                  {o.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+              }}
+            >
+              Direction: {sortDir === "asc" ? "Ascending ↑" : "Descending ↓"}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortBy("")}>
+              Default order
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <table className="w-full text-sm border">
         <thead className="bg-gray-100">
@@ -70,7 +183,7 @@ export default function LeadSourceSummary({
         </thead>
 
         <tbody>
-          {data.map((row: any) => {
+          {sortedData.map((row: any) => {
             const totals = getLeadTotals(row.name);
 
             const closingPct =

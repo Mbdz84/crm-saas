@@ -1,9 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { FileText } from "lucide-react";
+import { FileText, ArrowLeftRight, ArrowUpDown } from "lucide-react";
 import SettleCell from "./SettleCell";
 import SettlementInlinePanel from "./SettlementInlinePanel";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 export default function TechnicianSummary({
   data,
@@ -17,6 +27,12 @@ export default function TechnicianSummary({
   to?: string;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  // false = Tech Balance first, Tech Profit second (default order)
+  // true  = Tech Profit first, Tech Balance second
+  const [swapCols, setSwapCols] = useState(false);
+  // "" = default order (as received); otherwise a key from sortOptions
+  const [sortBy, setSortBy] = useState("");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   function openReport(name: string) {
     const params = new URLSearchParams();
@@ -67,9 +83,165 @@ export default function TechnicianSummary({
     ),
   };
 
+  function toggleSwap() {
+    setSwapCols((v) => !v);
+  }
+
+  /* --------------------------------------------------
+     SORTING
+  -------------------------------------------------- */
+  type TechRow = {
+    name: string;
+    total?: number;
+    closed?: number;
+    cancelled?: number;
+  };
+  const sortOptions: {
+    key: string;
+    label: string;
+    get: (t: TechRow) => number | string;
+  }[] = [
+    { key: "name", label: "Technician", get: (t) => t.name || "" },
+    { key: "total", label: "Total", get: (t) => Number(t.total || 0) },
+    { key: "closed", label: "Closed", get: (t) => Number(t.closed || 0) },
+    { key: "cancelled", label: "Cancelled", get: (t) => Number(t.cancelled || 0) },
+    {
+      key: "closingPct",
+      label: "Closing %",
+      get: (t) =>
+        Number(t.total || 0) > 0 ? Number(t.closed || 0) / Number(t.total || 0) : 0,
+    },
+    {
+      key: "cancelPct",
+      label: "Cancel %",
+      get: (t) =>
+        Number(t.total || 0) > 0
+          ? Number(t.cancelled || 0) / Number(t.total || 0)
+          : 0,
+    },
+    {
+      key: "totalAmount",
+      label: "Total Amount",
+      get: (t) => getTechTotals(t.name).totalAmount,
+    },
+    {
+      key: "techProfit",
+      label: "Tech Profit",
+      get: (t) => getTechTotals(t.name).techProfit,
+    },
+    {
+      key: "techBalance",
+      label: "Tech Balance",
+      get: (t) => getTechTotals(t.name).techBalance,
+    },
+  ];
+
+  const activeSort = sortOptions.find((o) => o.key === sortBy);
+  const sortedData = activeSort
+    ? [...data].sort((a, b) => {
+        const av = activeSort.get(a);
+        const bv = activeSort.get(b);
+        const cmp =
+          typeof av === "string" || typeof bv === "string"
+            ? String(av).localeCompare(String(bv))
+            : (av as number) - (bv as number);
+        return sortDir === "asc" ? cmp : -cmp;
+      })
+    : data;
+
+  /* --------------------------------------------------
+     SWAPPABLE COLUMNS: Tech Balance <-> Tech Profit
+  -------------------------------------------------- */
+  const balanceHeader = (
+    <th
+      key="balance"
+      onClick={toggleSwap}
+      title="Click to swap Balance / Profit column order"
+      className="border px-2 py-1 text-center cursor-pointer hover:bg-gray-200 select-none"
+    >
+      Tech Balance
+    </th>
+  );
+  const profitHeader = (
+    <th
+      key="profit"
+      onClick={toggleSwap}
+      title="Click to swap Balance / Profit column order"
+      className="border px-2 py-1 text-center cursor-pointer hover:bg-gray-200 select-none"
+    >
+      Tech Profit
+    </th>
+  );
+  const orderedHeaders = swapCols
+    ? [profitHeader, balanceHeader]
+    : [balanceHeader, profitHeader];
+
+  const balanceFooter = (
+    <td key="balance" className="border px-2 py-1 text-center">
+      ${grand.balance.toFixed(2)}
+    </td>
+  );
+  const profitFooter = (
+    <td key="profit" className="border px-2 py-1 text-center">
+      ${grand.profit.toFixed(2)}
+    </td>
+  );
+  const orderedFooters = swapCols
+    ? [profitFooter, balanceFooter]
+    : [balanceFooter, profitFooter];
+
   return (
     <div className="bg-white border rounded p-4 shadow mt-4">
-      <h2 className="text-xl font-semibold mb-3">Technician Summary</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xl font-semibold">Technician Summary</h2>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleSwap}
+            title="Swap the Tech Balance and Tech Profit columns"
+            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+          >
+            <ArrowLeftRight size={14} />
+            Swap Balance / Profit
+          </button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                title="Sort technicians"
+                className="flex items-center gap-1 text-sm border rounded px-2 py-1 hover:bg-gray-50"
+              >
+                <ArrowUpDown size={14} />
+                {activeSort ? `Sort: ${activeSort.label}` : "Sort by"}
+                {activeSort ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+              <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                {sortOptions.map((o) => (
+                  <DropdownMenuRadioItem key={o.key} value={o.key}>
+                    {o.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                }}
+              >
+                Direction: {sortDir === "asc" ? "Ascending ↑" : "Descending ↓"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortBy("")}>
+                Default order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       <table className="w-full text-sm border">
         <thead className="bg-gray-100">
@@ -81,14 +253,13 @@ export default function TechnicianSummary({
             <th className="border px-2 py-1 text-center">Closing %</th>
             <th className="border px-2 py-1 text-center">Cancel %</th>
             <th className="border px-2 py-1 text-center">Total Amount</th>
-            <th className="border px-2 py-1 text-center">Tech Balance</th>
-            <th className="border px-2 py-1 text-center">Tech Profit</th>
+            {orderedHeaders}
             <th className="border px-2 py-1 text-center">Settled</th>
           </tr>
         </thead>
 
         <tbody>
-          {data.map((t: any) => {
+          {sortedData.map((t: any) => {
             const totals = getTechTotals(t.name);
 
             const closingPct =
@@ -100,6 +271,20 @@ export default function TechnicianSummary({
               Number(t.total || 0) > 0
                 ? ((Number(t.cancelled || 0) / Number(t.total || 0)) * 100).toFixed(1)
                 : "0";
+
+            const balanceCell = (
+              <td key="balance" className="border px-2 py-1 text-center">
+                ${totals.techBalance.toFixed(2)}
+              </td>
+            );
+            const profitCell = (
+              <td key="profit" className="border px-2 py-1 text-center">
+                ${totals.techProfit.toFixed(2)}
+              </td>
+            );
+            const orderedCells = swapCols
+              ? [profitCell, balanceCell]
+              : [balanceCell, profitCell];
 
             return (
               <React.Fragment key={t.name}>
@@ -121,12 +306,7 @@ export default function TechnicianSummary({
                 <td className="border px-2 py-1 text-center">
                   ${totals.totalAmount.toFixed(2)}
                 </td>
-                <td className="border px-2 py-1 text-center">
-                  ${totals.techBalance.toFixed(2)}
-                </td>
-                <td className="border px-2 py-1 text-center">
-                  ${totals.techProfit.toFixed(2)}
-                </td>
+                {orderedCells}
                 <td className="border px-2 py-1 text-center">
                   <div className="flex items-center justify-center gap-2">
                     {(() => {
@@ -195,13 +375,7 @@ export default function TechnicianSummary({
               ${grand.totalAmount.toFixed(2)}
             </td>
 
-            <td className="border px-2 py-1 text-center">
-              ${grand.balance.toFixed(2)}
-            </td>
-
-            <td className="border px-2 py-1 text-center">
-              ${grand.profit.toFixed(2)}
-            </td>
+            {orderedFooters}
             <td className="border px-2 py-1 text-center">-</td>
           </tr>
         </tfoot>
