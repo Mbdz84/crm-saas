@@ -690,6 +690,7 @@ function formatAddress(addr?: string | null) {
   if (loading) return <div className="p-6">Loading jobs...</div>;
 
   const columnKeysInOrder: ColumnKey[] = [
+    "createdAt",
     "shortId",
     "customer",
     "phone",
@@ -698,7 +699,6 @@ function formatAddress(addr?: string | null) {
     "status",
     "source",
     "appointment",
-    "createdAt",
   ];
 
   return (
@@ -913,6 +913,14 @@ function formatAddress(addr?: string | null) {
               <thead className="bg-gray-100 dark:bg-gray-800">
   <tr>
     {selectMode && <th className="p-2 w-8"></th>}
+    {columnsVisible.createdAt && (
+      <th
+  className="p-2 text-left w-32 cursor-pointer select-none"
+onClick={() => toggleSort("createdAt")}
+>
+  Created
+</th>
+    )}
     {columnsVisible.shortId && (
       <th className="p-2 text-left w-20">Job ID</th>
     )}
@@ -956,14 +964,6 @@ onClick={() => toggleSort("source")}
 onClick={() => toggleSort("appointment")}
 >
   Appt Time
-</th>
-    )}
-    {columnsVisible.createdAt && (
-      <th
-  className="p-2 text-left w-32 cursor-pointer select-none"
-onClick={() => toggleSort("createdAt")}
->
-  Created
 </th>
     )}
      </tr>
@@ -1014,6 +1014,16 @@ onClick={() => toggleSort("createdAt")}
                           />
                         </td>
                       )}
+                      {columnsVisible.createdAt && (
+  <td className="p-2 leading-tight">
+    <div className="text-sm">
+      {new Date(job.createdAt).toLocaleDateString()}
+    </div>
+    <div className="text-xs text-gray-500">
+      {new Date(job.createdAt).toLocaleTimeString()}
+    </div>
+  </td>
+)}
                       {columnsVisible.shortId && (
                         <td className="p-2 font-mono text-xs">{short}</td>
                       )}
@@ -1044,16 +1054,6 @@ onClick={() => toggleSort("createdAt")}
     </div>
     <div className="text-xs text-gray-500">
       {formatApptDate(job.scheduledAt)}
-    </div>
-  </td>
-)}
-                      {columnsVisible.createdAt && (
-  <td className="p-2 leading-tight">
-    <div className="text-sm">
-      {new Date(job.createdAt).toLocaleDateString()}
-    </div>
-    <div className="text-xs text-gray-500">
-      {new Date(job.createdAt).toLocaleTimeString()}
     </div>
   </td>
 )}
