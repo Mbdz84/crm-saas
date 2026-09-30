@@ -283,8 +283,18 @@ export default function LeadSourceSummary({
             <td className="border px-2 py-1 text-center">{sum("closed")}</td>
             <td className="border px-2 py-1 text-center">{sum("cancelled")}</td>
 
-            <td className="border px-2 py-1 text-center">-</td>
-            <td className="border px-2 py-1 text-center">-</td>
+            <td className="border px-2 py-1 text-center">
+              {sum("total") > 0
+                ? ((sum("closed") / sum("total")) * 100).toFixed(1)
+                : "0.0"}
+              %
+            </td>
+            <td className="border px-2 py-1 text-center">
+              {sum("total") > 0
+                ? ((sum("cancelled") / sum("total")) * 100).toFixed(1)
+                : "0.0"}
+              %
+            </td>
 
             <td className="border px-2 py-1 text-center">
               $

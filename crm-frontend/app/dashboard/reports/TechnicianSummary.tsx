@@ -368,8 +368,18 @@ export default function TechnicianSummary({
             <td className="border px-2 py-1 text-center">{grand.closed}</td>
             <td className="border px-2 py-1 text-center">{grand.cancelled}</td>
 
-            <td className="border px-2 py-1 text-center">-</td>
-            <td className="border px-2 py-1 text-center">-</td>
+            <td className="border px-2 py-1 text-center">
+              {grand.totalJobs > 0
+                ? ((grand.closed / grand.totalJobs) * 100).toFixed(1)
+                : "0.0"}
+              %
+            </td>
+            <td className="border px-2 py-1 text-center">
+              {grand.totalJobs > 0
+                ? ((grand.cancelled / grand.totalJobs) * 100).toFixed(1)
+                : "0.0"}
+              %
+            </td>
 
             <td className="border px-2 py-1 text-center">
               ${grand.totalAmount.toFixed(2)}
