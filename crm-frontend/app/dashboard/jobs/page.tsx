@@ -1142,8 +1142,8 @@ onClick={() => toggleSort("appointment")}
                   )}
 
                   <div className="flex justify-between items-center mt-2 text-xs text-gray-600">
-                    <span>{job.technician?.name || "No tech"}</span>
-                    <span>{job.source?.name || "No source"}</span>
+                    <span>👨‍🔧 {job.technician?.name || "No tech"}</span>
+                    <span>🏬 {job.source?.name || "No source"}</span>
                   </div>
 
                   {job.scheduledAt && (
