@@ -707,13 +707,13 @@ function formatAddress(addr?: string | null) {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Job Board</h1>
-          <p className="text-gray-500 text-sm">
+          <p className="hidden md:block text-gray-500 text-sm">
             Live jobs grouped by status. Closed and canceled jobs disappear from
             this board 45 minutes after they are completed.
           </p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="hidden md:flex gap-2">
           {/* View toggle: List / Kanban */}
           <div className="flex rounded border overflow-hidden text-sm">
             <button

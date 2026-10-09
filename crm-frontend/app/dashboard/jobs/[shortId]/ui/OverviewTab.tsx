@@ -461,7 +461,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 
   return (
     <div>
-      <label className="block text-sm font-medium mb-1">Phone</label>
+      <label className="block text-sm font-medium mb-1">📞 Phone</label>
 
       <div className="flex gap-2">
         {/* Phone */}
@@ -521,7 +521,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 
   return (
     <div>
-      <label className="block text-sm font-medium mb-1">Phone 2</label>
+      <label className="block text-sm font-medium mb-1">📞 Phone 2</label>
 
       <div className="flex gap-2">
         {/* Phone */}
@@ -652,7 +652,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
     const line2 = parts.slice(1).join(",").trim();
     return (
       <div className="mt-3 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-        <div className="font-medium mb-1">Address</div>
+        <div className="font-medium mb-1">📍 Address</div>
         <div>{line1}</div>
         {line2 && <div>{line2}</div>}
       </div>
@@ -732,7 +732,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
         <div className="border rounded p-4 space-y-4 bg-muted/50 dark:bg-gray-900">
           {canSeeLeadSource && (
           <div>
-            <label className="block text-sm font-medium">Lead Source</label>
+            <label className="block text-sm font-medium">🏬 Lead Source</label>
             <select
               className="mt-1 w-full border rounded p-2"
               value={editableJob.sourceId || ""}
@@ -751,7 +751,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
           {/* Tech + SMS */}
           {canSeeTechnicianField && (
           <div>
-            <label className="block text-sm font-medium">Technician</label>
+            <label className="block text-sm font-medium">👨‍🔧 Technician</label>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-2">
               <select
@@ -803,7 +803,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium">Status</label>
+            <label className="block text-sm font-medium">⏳ Status</label>
             <select
               className={`mt-1 w-full border rounded p-2 ${
                 !canEditStatus || cancelLockedForTech
