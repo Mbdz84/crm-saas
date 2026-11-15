@@ -12,13 +12,39 @@ import {
 /* ============================================================
    GET ALL JOBS (JOB BOARD)
 ============================================================ */
+// Closed/Canceled jobs older than this are left off the jobs board.
+const BOARD_HIDE_MS = 45 * 60 * 1000;
+const FINAL_STATUSES = ["Closed", "Canceled", "Cancelled"];
+
 export async function getJobs(req: Request, res: Response) {
   try {
     const isTech =
       req.user?.role === "technician" || req.user?.role === "dispatcher";
 
     const jobs = await prisma.job.findMany({
-      where: { companyId: req.user!.companyId, ...(await ownJobsWhere(req)) },
+      where: {
+        companyId: req.user!.companyId,
+        ...(await ownJobsWhere(req)),
+        // Board only needs live jobs: skip Closed / Canceled jobs finalized
+        // more than 45 min ago (same rule the board used to apply client-side).
+        // Older ones are still reachable through /jobs/search and reports.
+        NOT: {
+          AND: [
+            {
+              OR: [
+                { jobStatus: { name: { in: FINAL_STATUSES } } },
+                { statusId: null, status: { in: FINAL_STATUSES } },
+              ],
+            },
+            {
+              OR: [
+                { closedAt: { lt: new Date(Date.now() - BOARD_HIDE_MS) } },
+                { canceledAt: { lt: new Date(Date.now() - BOARD_HIDE_MS) } },
+              ],
+            },
+          ],
+        },
+      },
 
       orderBy: [
         // Group by status order first
