@@ -60,7 +60,12 @@ interface Job {
   createdAt: string;
   closedAt?: string | null;
   canceledAt?: string | null;
+  canceledReason?: string | null;
 }
+
+// Cancel-type groups ("Cancel", "Canceled", "Cancelled", "Pending Cancel")
+// get an extra "Cancel Reason" column.
+const isCancelStatus = (name?: string | null) => /cancel/i.test(name || "");
 
 /* ------------------------------------------------------------
    COLUMN VISIBILITY TYPES
@@ -966,6 +971,9 @@ onClick={() => toggleSort("appointment")}
   Appt Time
 </th>
     )}
+    {isCancelStatus(group.statusName) && (
+      <th className="p-2 text-left w-56">Cancel Reason</th>
+    )}
      </tr>
 </thead>
               <tbody>
@@ -1057,7 +1065,14 @@ onClick={() => toggleSort("appointment")}
     </div>
   </td>
 )}
-                      
+                      {isCancelStatus(group.statusName) && (
+                        <td
+                          className="p-2 truncate"
+                          title={job.canceledReason || ""}
+                        >
+                          {job.canceledReason?.trim() || "-"}
+                        </td>
+                      )}
 
                      
 
@@ -1145,6 +1160,13 @@ onClick={() => toggleSort("appointment")}
                     <span>👨‍🔧 {job.technician?.name || "No tech"}</span>
                     <span>🏬 {job.source?.name || "No source"}</span>
                   </div>
+
+                  {isCancelStatus(group.statusName) && (
+                    <div className="mt-1 text-xs text-red-600">
+                      <span className="font-semibold">Cancel reason:</span>{" "}
+                      {job.canceledReason?.trim() || "-"}
+                    </div>
+                  )}
 
                   {job.scheduledAt && (
   <div className="mt-1 text-xs text-blue-600 font-semibold">
