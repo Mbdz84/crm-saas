@@ -327,6 +327,48 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 
   const editingLocked = job.isClosingLocked === true;
 
+  // Save & Stay / Save & Exit. When the status is Closed / Pending Close and
+  // closing amounts were entered, save through the SAME close endpoint as the
+  // "Close Job" buttons so the payments / split are persisted too.
+  async function handleSave(exit: boolean) {
+    const hasClosingAmounts = (jobCtx.payments || []).some(
+      (p: any) => Number(p?.amount) > 0
+    );
+    const useClosePath =
+      showClosingPanel &&
+      hasClosingAmounts &&
+      !(isTechnician && editingLocked);
+
+    if (useClosePath) {
+      const r = calculateSplit();
+      if (!r) return toast.error("Run calculation first");
+      const ok = await closeJob(
+        r,
+        {
+          statusNote: cancelReason,
+          closedAt: editableJob.closedAt
+            ? new Date(editableJob.closedAt).toISOString()
+            : null,
+        },
+        { skipReload: exit }
+      );
+      if (ok && exit) router.push("/dashboard/jobs");
+      return;
+    }
+
+    await saveChanges({
+      statusNote: cancelReason,
+      canceledAt: editableJob.canceledAt
+        ? new Date(editableJob.canceledAt).toISOString()
+        : null,
+      reminders: reminders.map((r: any) => ({
+        minutesBefore: r.minutes,
+        canceled: r.canceled === true,
+      })),
+    });
+    if (exit) router.push("/dashboard/jobs");
+  }
+
   
 
   function getCollectorOptions(payment: "cash" | "credit" | "check" | "zelle") {
@@ -1159,20 +1201,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 <div className="flex justify-start items-center gap-3 mt-4">
   <button
     type="button"
-    onClick={() => {
-      console.log("🟢 FRONTEND REMINDERS SENT:", reminders);
-
-      saveChanges({
-  statusNote: cancelReason,
-  canceledAt: editableJob.canceledAt
-    ? new Date(editableJob.canceledAt).toISOString()
-    : null,
-  reminders: reminders.map((r) => ({
-    minutesBefore: r.minutes,
-    canceled: r.canceled === true,
-  })),
-});
-    }}
+    onClick={() => handleSave(false)}
     className="px-4 py-2 rounded shadow text-white bg-green-600"
   >
     Save & Stay
@@ -1180,20 +1209,7 @@ const cancelLockedForTech = isFinalCanceled && isTechnician;
 
   <button
   type="button"
-  onClick={async () => {
-    await saveChanges({
-  statusNote: cancelReason,
-  canceledAt: editableJob.canceledAt
-    ? new Date(editableJob.canceledAt).toISOString()
-    : null,
-  reminders: reminders.map((r) => ({
-    minutesBefore: r.minutes,
-    canceled: r.canceled === true,
-  })),
-});
-
-    router.push("/dashboard/jobs");
-  }}
+  onClick={() => handleSave(true)}
   className="px-4 py-2 rounded shadow text-white bg-green-600"
 >
   Save & Exit
