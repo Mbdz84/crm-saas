@@ -79,7 +79,7 @@ export async function inboundVoice(req: Request, res: Response) {
       const dial = twiml.dial({
         callerId,
         record: "record-from-ringing",
-        recordingStatusCallback: "/twilio/recording",
+        recordingStatusCallback: `/twilio/recording?session=${clientSession.id}`,
         recordingStatusCallbackMethod: "POST",
         action: "/twilio/voice/dial-complete",
         method: "POST",
@@ -145,7 +145,7 @@ console.log("📞 FORCED TECH CALLER ID =", callerId);
 const dial = twiml.dial({
   callerId, // ✅ ALWAYS technician’s assigned masked number
   record: "record-from-ringing",
-  recordingStatusCallback: `/twilio/recording?ext=${session.extension}`,
+  recordingStatusCallback: `/twilio/recording?session=${session.id}`,
   recordingStatusCallbackMethod: "POST",
   action: "/twilio/voice/dial-complete",
   method: "POST",
@@ -176,50 +176,120 @@ export async function clientWhisper(req: Request, res: Response) {
 
 /* -----------------------------------------------------------
    RECORDING WEBHOOK
+   Match the recording to the EXACT call session that placed the call.
+   Extensions are reused after a job closes, so matching on the extension
+   alone could save the recording on an old (closed/canceled) job.
 ----------------------------------------------------------- */
+async function findSessionForRecording(req: Request) {
+  const sessionId = req.query.session as string | undefined;
+  const ext = req.query.ext as string | undefined;
+  const { CallSid, ParentCallSid } = req.body;
+
+  // 1) Exact session id passed in the callback URL (all new calls).
+  if (sessionId) {
+    const s = await prisma.jobCallSession.findUnique({
+      where: { id: sessionId },
+    });
+    if (s) return s;
+  }
+
+  // 2) Match by the Twilio CallSid saved when the call started.
+  const sids = [CallSid, ParentCallSid].filter(Boolean) as string[];
+  if (sids.length) {
+    const s = await prisma.jobCallSession.findFirst({
+      where: {
+        OR: [
+          { lastOutboundCallSid: { in: sids } },
+          { lastInboundCallSid: { in: sids } },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (s) return s;
+  }
+
+  // 3) Legacy callbacks (calls started before this deploy used ?ext=).
+  //    Only an ACTIVE session may own the extension — never an old job.
+  if (ext) {
+    return prisma.jobCallSession.findFirst({
+      where: { extension: ext, active: true },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  return null;
+}
+
+// Retry short DB hiccups (pooler / cold start) instead of losing the recording.
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      await new Promise((r) => setTimeout(r, 500 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 export async function handleRecording(req: Request, res: Response) {
+  const {
+    RecordingUrl,
+    RecordingSid,
+    RecordingDuration,
+    CallSid,
+    ParentCallSid,
+  } = req.body;
+
   try {
-    const {
-      RecordingUrl,
-      RecordingSid,
-      RecordingDuration,
-      CallSid,
-      ParentCallSid,
-    } = req.body;
-
-    let session = null;
-
-    const ext = req.query.ext as string | undefined;
-    if (ext) {
-      session = await prisma.jobCallSession.findFirst({
-        where: { extension: ext },
-      });
-    }
-
-    if (!session && CallSid) {
-      session = await prisma.jobCallSession.findFirst({
-        where: { lastInboundCallSid: CallSid },
-      });
-    }
+    const session = await withRetry(() => findSessionForRecording(req));
 
     if (!session) {
+      console.warn("⚠️ RECORDING: no session matched", {
+        RecordingSid,
+        CallSid,
+        ParentCallSid,
+        query: req.query,
+      });
       return res.send("<Response />");
     }
 
-    await prisma.jobRecord.create({
-      data: {
-        jobId: session.jobId,
-        callSid: CallSid,
-        recordingSid: RecordingSid,
-        url: RecordingUrl,
-        duration: Number(RecordingDuration) || null,
-        parentCallSid: ParentCallSid || null,
-      },
-    });
+    // Twilio can deliver the same callback more than once — no duplicates.
+    if (RecordingSid) {
+      const existing = await withRetry(() =>
+        prisma.jobRecord.findFirst({
+          where: { recordingSid: RecordingSid },
+          select: { id: true },
+        })
+      );
+      if (existing) return res.send("<Response />");
+    }
 
+    await withRetry(() =>
+      prisma.jobRecord.create({
+        data: {
+          jobId: session.jobId,
+          callSid: CallSid,
+          recordingSid: RecordingSid,
+          url: RecordingUrl,
+          duration: Number(RecordingDuration) || null,
+          parentCallSid: ParentCallSid || null,
+        },
+      })
+    );
+
+    console.log("✅ RECORDING saved", {
+      jobId: session.jobId,
+      sessionId: session.id,
+      RecordingSid,
+    });
     return res.send("<Response />");
-  } catch {
-    return res.send("<Response />");
+  } catch (err) {
+    // Log loudly (was silently swallowed before) and tell Twilio it failed.
+    console.error("🔥 RECORDING WEBHOOK ERROR", { RecordingSid, CallSid, err });
+    return res.status(500).send("<Response />");
   }
 }
 
